@@ -90,18 +90,6 @@ API.prototype.getFields = function (processId) {
     return deferred.promise;
 };
 
-Object.defineProperty(API.prototype, 'cache',
-    {
-        enumerable: true,
-        get: function () {
-            if (!this.__cache) {
-                this.__cache = new DataCache(this);
-            }
-            return this.__cache;
-        }
-    });
-
-
 API.prototype.getForms = function (processOrId, viewId) {
     var deferred = new Deferred();
     var baseRequest = new BaseProcessData(processOrId);
@@ -222,6 +210,8 @@ DataCache.prototype.getProcessInfo = function (processId) {
     });
 };
 
+exports.DataCache = DataCache;
+    
 exports.DATA_TYPES = {
     NA: 0,
     Text: 1,
