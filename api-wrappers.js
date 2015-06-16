@@ -64,30 +64,52 @@ API.prototype.request = function (endPoint, data) {
     return deferred.promise;
 };
 
-API.prototype.getProcesses = function (includeArcived) {
-    var deferred = new Deferred();
-    this.request('Procs').then(
-        function (response) {
-            deferred.resolve(response.Procs.filter(function (proc) {
-                return proc.Enabled && (includeArcived || !proc.Archived);
-            }));
+API.prototype.getProcesses = function (includeDisabled) {
+    var self = this;
+    return Promised.seq([
+        function() {
+            return self.request('Procs');
         },
-        function (error) {
-            deferred.reject(error);
-        });
-    return deferred.promise;
+        function (response) {
+            return response.Procs.filter(function (proc) {
+                proc._api = self;
+                proc.getFields = getFields;
+                return (includeDisabled || proc.Enabled);
+            });
+        },
+    ]);
 };
 
-API.prototype.getFields = function (processId) {
-    var deferred = new Deferred();
-    this.request('ProcFields', new BaseProcessData(processId)).then(
-        function (response) {
-            deferred.resolve(response.Process);
+function getFields(asObject) {
+    var proc = this;
+    return Promised.seq([
+        function () {
+            return proc._api.getFields(proc.ProcessID);
         },
-        function (error) {
-            deferred.reject(error);
-        });
-    return deferred.promise;
+        function (response) {
+            if(asObject) {
+                var fields = {};
+                response.Fields.forEach(function (field) {
+                    fields[field.Name] = field;
+                });
+                response.Fields = fields;
+            }
+            response.process = proc;
+            return response;
+        }
+    ]);
+}
+
+API.prototype.getFields = function (processId) {
+    var self = this;
+    return Promised.seq([
+        function() {
+            return self.request('ProcFields', new BaseProcessData(processId));
+        },
+        function (response) {
+            return response.Process;
+        },
+    ]);
 };
 
 API.prototype.getForms = function (processOrId, viewId) {
@@ -144,7 +166,7 @@ API.prototype.getHeaders = function () {
     return { RpmApiKey: this.key };
 };
 
-API.prototype.getLastModifications = function (includeArcived) {
+API.prototype.getLastModifications = function () {
     var deferred = new Deferred();
     this.request('Modified').then(
         function (response) {
@@ -158,6 +180,26 @@ API.prototype.getLastModifications = function (includeArcived) {
             deferred.reject(error);
         });
     return deferred.promise;
+};
+
+API.prototype.getModifiedAspects = function () {
+    var self = this; 
+    return Promised.seq([
+        self.getLastModifications,
+        function (response) {
+            var result = [];
+            if(self._lastKnownModified) {
+                for(var key in self._lastKnownModified) {
+                    var value = self._lastKnownModified[key];
+                    if(response[key]>value) {
+                        result.push(key);
+                    }
+                }
+            }
+            self._lastKnownModified = response;
+            return result;
+        }
+    ]);
 };
 
 exports.RpmApi = API;
