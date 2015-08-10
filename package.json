@@ -1,14 +1,14 @@
 {
   "name": "integration-common",
   "description": "Usefull stuff",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Dmitriy Serdyukov",
   "files": [ "api-wrappers.js","mssql.js","util.js"],
   "license": "ISC",
   "dependencies": {
     "tedious": "~1.11.0",
     "promised-io": "^0.3.5",
-    "string": "^3.0.1",
+    "string": "^3.3.0",
     "node-rest-client": "^1.4.4"
   },
   "private": true,

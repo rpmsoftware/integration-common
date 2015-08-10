@@ -67,17 +67,39 @@ API.prototype.request = function (endPoint, data) {
 API.prototype.getProcesses = function (includeDisabled) {
     var self = this;
     return Promised.seq([
-        function() {
+        function () {
             return self.request('Procs');
         },
         function (response) {
             return response.Procs.filter(function (proc) {
                 proc._api = self;
                 proc.getFields = getFields;
+                proc.getForms = getForms;
+                proc.addForm = addForm;
                 return (includeDisabled || proc.Enabled);
             });
         },
     ]);
+};
+
+API.prototype.getInfo = function () {
+    return this.request('Info');
+};
+
+API.prototype.editForm = function (formId, fields, properties) {
+    properties = properties || {};
+    properties.FormID = formId;
+    if(typeof fields==='object') { 
+        properties.Fields = Object.keys(fields).map(function (key) {
+            return { Field: key, Value: fields[key] };
+        })
+    } 
+    
+    return this.request('ProcFormEdit', {Form: properties});
+};
+
+API.prototype.trashForm = function (formId) {
+    return this.request('ProcFormTrash', {FormID: formId});
 };
 
 function getFields(asObject) {
@@ -87,7 +109,7 @@ function getFields(asObject) {
             return proc._api.getFields(proc.ProcessID);
         },
         function (response) {
-            if(asObject) {
+            if (asObject) {
                 var fields = {};
                 response.Fields.forEach(function (field) {
                     fields[field.Name] = field;
@@ -100,10 +122,14 @@ function getFields(asObject) {
     ]);
 }
 
+function getForms(viewId) {
+    return this._api.getForms(this.ProcessID, viewId);
+};
+
 API.prototype.getFields = function (processId) {
     var self = this;
     return Promised.seq([
-        function() {
+        function () {
             return self.request('ProcFields', new BaseProcessData(processId));
         },
         function (response) {
@@ -153,12 +179,17 @@ function BaseProcessData(processOrId) {
     };
 }
 
+function addForm(data) {
+    return this._api.addForm(this.ProcessID, data);
+};
+
 API.prototype.addForm = function (processId, data) {
     var request = new BaseProcessData(processId);
-    request.Form = {};
-    request.Form.Fields = Object.keys(data).map(function (key) {
-        return { Field: key, Value: data[key] };
-    });
+    request.Form = {
+        Fields: Object.keys(data).map(function (key) {
+            return { Field: key, Value: data[key] };
+        })
+    };
     return this.request('ProcFormAdd', request);
 };
 
@@ -183,15 +214,15 @@ API.prototype.getLastModifications = function () {
 };
 
 API.prototype.getModifiedAspects = function () {
-    var self = this; 
+    var self = this;
     return Promised.seq([
         self.getLastModifications,
         function (response) {
             var result = [];
-            if(self._lastKnownModified) {
-                for(var key in self._lastKnownModified) {
+            if (self._lastKnownModified) {
+                for (var key in self._lastKnownModified) {
                     var value = self._lastKnownModified[key];
-                    if(response[key]>value) {
+                    if (response[key] > value) {
                         result.push(key);
                     }
                 }
@@ -253,7 +284,7 @@ DataCache.prototype.getProcessInfo = function (processId) {
 };
 
 exports.DataCache = DataCache;
-    
+
 exports.DATA_TYPE = {
     NA: 0,
     Text: 1,
