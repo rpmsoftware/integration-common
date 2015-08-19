@@ -1,7 +1,7 @@
 {
   "name": "integration-common",
   "description": "Usefull stuff",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "author": "Dmitriy Serdyukov",
   "files": [ "api-wrappers.js","mssql.js","util.js"],
   "license": "ISC",
