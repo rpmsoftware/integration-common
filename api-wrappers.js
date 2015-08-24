@@ -44,7 +44,10 @@ API.prototype.request = function (endPoint, data) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
     var deferred = new Deferred();
-    console.log('\nPOST ' + url + '\n\n' + JSON.stringify(data) + '\n\n');
+    console.log('\nPOST ' + url);
+    if (data) {
+        console.log(JSON.stringify(data));
+    }
     var requestTime = new Date();
     new RESTClient().post(url, args, function (data, response) {
         var responseTime = new Date();
@@ -76,6 +79,7 @@ API.prototype.getProcesses = function (includeDisabled) {
                 proc.getFields = getFields;
                 proc.getForms = getForms;
                 proc.addForm = addForm;
+                proc.getFormList = getFormList;
                 return (includeDisabled || proc.Enabled);
             });
         },
@@ -89,17 +93,20 @@ API.prototype.getInfo = function () {
 API.prototype.editForm = function (formId, fields, properties) {
     properties = properties || {};
     properties.FormID = formId;
-    if(typeof fields==='object') { 
+    if (typeof fields === 'object') {
         properties.Fields = Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
         })
-    } 
-    
-    return this.request('ProcFormEdit', {Form: properties});
+    }
+    return this.request('ProcFormEdit', { Form: properties });
+};
+
+API.prototype.setFormArchived = function (archived, formId) {
+    return this.request(archived ? 'ProcFormArchive' : 'ProcFormUnarchive', { FormID: formId });
 };
 
 API.prototype.trashForm = function (formId) {
-    return this.request('ProcFormTrash', {FormID: formId});
+    return this.request('ProcFormTrash', { FormID: formId });
 };
 
 function getFields(asObject) {
@@ -124,6 +131,23 @@ function getFields(asObject) {
 
 function getForms(viewId) {
     return this._api.getForms(this.ProcessID, viewId);
+};
+
+function getFormList(includeArchived, viewId) {
+    var proc = this;
+    var request = { ProcessID: proc.ProcessID, IncludeArchived: Boolean(includeArchived) };
+    if (typeof viewId === 'number') {
+        request.ViewID = viewId;
+    }
+    return Promised.seq([
+        function () {
+            return proc._api.request('ProcFormList', request);
+        },
+        function (response) {
+            return response.Forms;
+        }
+    ]);
+
 };
 
 API.prototype.getFields = function (processId) {
@@ -161,6 +185,7 @@ API.prototype.getForms = function (processOrId, viewId) {
 };
 
 API.prototype.getForm = function (processOrFormId, formNumber) {
+    var api = this;
     var request;
     if (arguments.length > 1) {
         request = new BaseProcessData(processOrFormId);
@@ -168,8 +193,37 @@ API.prototype.getForm = function (processOrFormId, formNumber) {
     } else {
         request = { FormID: processOrFormId };
     }
-    return this.request('ProcForm', request);
+    return Promised.seq([
+        function () {
+            return api.request('ProcForm', request);
+        },
+        function (response) {
+            response.Form.getFieldsAsObject = getFormFieldsAsObject;
+            response.Form.getFieldValue = getFormFieldValue;
+            return response;
+        }
+    ]);
 };
+
+function getFormFieldsAsObject() {
+    var form = this;
+    var obj = {};
+    form.Fields.forEach(function (pair) {
+        obj[pair.Field] = pair.Value;
+    });
+    return obj;
+}
+
+function getFormFieldValue(fieldName) {
+    var fields = this.Fields;
+    for (var ii in fields) {
+        var pair = fields[ii];
+        if (pair.Field === fieldName) {
+            return pair.Value;
+        }
+    };
+    throw new Error('Unknown form field: ' + fieldName);
+}
 
 function BaseProcessData(processOrId) {
     if (typeof processOrId === 'number') {
