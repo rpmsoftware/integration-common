@@ -121,13 +121,6 @@ function getFields(asObject) {
             if (asObject) {
                 var fields = {};
                 response.Fields.forEach(function (field) {
-                    console.log('=== Field:',proc.Process, field);
-                    if(field.Rows) {
-                        field.Rows.forEach(function (row) {
-                            console.log('=== Row:',row)
-                        }
-                        );  
-                    } 
                     fields[field.Name] = field;
                 });
                 response.Fields = fields;
