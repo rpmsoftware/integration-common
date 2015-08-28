@@ -30,6 +30,7 @@ function API(url, key, name) {
     this.url = url;
     this.key = key;
     this.name = name;
+    this._requestClient = new RESTClient();
 }
 
 API.prototype.getUrl = function (endPoint) {
@@ -49,7 +50,7 @@ API.prototype.request = function (endPoint, data) {
         console.log(JSON.stringify(data));
     }
     var requestTime = new Date();
-    new RESTClient().post(url, args, function (data, response) {
+    function callback(data, response) {
         var responseTime = new Date();
         var doneData;
         var isError = false;
@@ -63,7 +64,8 @@ API.prototype.request = function (endPoint, data) {
         doneData.requestTime = requestTime;
         doneData.responseTime = responseTime;
         (isError ? deferred.reject : deferred.resolve)(doneData);
-    });
+    }
+    this._requestClient.post(url, args, callback);
     return deferred.promise;
 };
 
@@ -119,11 +121,20 @@ function getFields(asObject) {
             if (asObject) {
                 var fields = {};
                 response.Fields.forEach(function (field) {
+                    console.log('=== Field:',proc.Process, field);
+                    if(field.Rows) {
+                        field.Rows.forEach(function (row) {
+                            console.log('=== Row:',row)
+                        }
+                        );  
+                    } 
                     fields[field.Name] = field;
                 });
                 response.Fields = fields;
             }
             response.process = proc;
+            
+
             return response;
         }
     ]);

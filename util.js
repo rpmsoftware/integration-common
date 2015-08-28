@@ -155,10 +155,10 @@ exports.pushIfNotIn = function (array, value) {
     return result;
 }
 
-exports.getEager =function (object, id, error) {
+exports.getEager = function (object, id, error) {
     var result = object[id];
     if (!result) {
-        throw new Error((error || 'Unknown element: ') + id);
+        throw new Error(error || util.format('Unknown property: %s. Object: %s', id, object));
     }
     return result;
 }
