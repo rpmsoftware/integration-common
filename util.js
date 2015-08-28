@@ -155,10 +155,53 @@ exports.pushIfNotIn = function (array, value) {
     return result;
 }
 
-exports.getEager = function (object, id, error) {
+function getEager (object, id, error) {
     var result = object[id];
     if (!result) {
         throw new Error(error || util.format('Unknown property: %s. Object: %s', id, object));
     }
     return result;
 }
+exports.getEager = getEager;
+
+function dummy() { }
+
+function matchObjects(obj1, obj2, matcher) {
+    var names = {};
+
+    matcher = matcher || dummy;
+
+    for (var key in obj1) {
+        matcher(getEager(obj2, key), obj1.dataRows[key]);
+        names[key] = true;
+    }
+
+    for (var key in obj2) {
+        if (!names[key]) {
+            matcher(getEager(obj1, key), obj2.dataRows[key]);
+        }
+    }
+}
+exports.matchObjects = matchObjects;
+
+function throwError(message, name, data) {
+    var error = new Error('' + message);
+    if (typeof name !== 'string') {
+        data = name;
+        name = undefined;
+    }
+    if (name) {
+        error.name = name;
+    }
+    if (typeof data === 'object') {
+        for (var key in data) {
+            if (key === 'name' || key === 'message') {
+                continue;
+            }
+            error[key] = data[key];
+        }
+    }
+    throw error;
+}
+
+exports.throwError = throwError;
