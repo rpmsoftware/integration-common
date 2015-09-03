@@ -155,16 +155,17 @@ exports.pushIfNotIn = function (array, value) {
     return result;
 }
 
-function getEager (object, id, error) {
+function getEager(object, id, error) {
     var result = object[id];
     if (!result) {
-        throw new Error(error || util.format('Unknown property: %s. Object: %s', id, object));
+        throwError(error || util.format('Property "%s" not found in object: %s', id, JSON.stringify(object)), 'PropertyNotFoundError', { property: id, object: object });
     }
     return result;
 }
 exports.getEager = getEager;
 
-function dummy() { }
+function dummy() {
+}
 
 function matchObjects(obj1, obj2, matcher) {
     var names = {};
@@ -172,13 +173,13 @@ function matchObjects(obj1, obj2, matcher) {
     matcher = matcher || dummy;
 
     for (var key in obj1) {
-        matcher(getEager(obj2, key), obj1.dataRows[key]);
+        matcher(obj1[key], getEager(obj2, key));
         names[key] = true;
     }
 
     for (var key in obj2) {
         if (!names[key]) {
-            matcher(getEager(obj1, key), obj2.dataRows[key]);
+            matcher(getEager(obj1, key), obj2[key]);
         }
     }
 }
@@ -205,3 +206,17 @@ function throwError(message, name, data) {
 }
 
 exports.throwError = throwError;
+
+if (!Array.prototype.equals) {
+    Array.prototype.equals = function (another) {
+        if (this.length != another.length) {
+            return false;
+        }
+        for (var idx in this) {
+            if (this[idx] !== another[idx]) {
+                return false;
+            }
+        }
+        return true;
+    };
+}

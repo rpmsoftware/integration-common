@@ -23,9 +23,9 @@ function API(url, key, name) {
         return;
     }
     if (typeof url === 'object') {
-        key = url.key
-        name = url.name
-        url = url.url
+        key = url.key;
+        name = url.name;
+        url = url.url;
     }
     this.url = url;
     this.key = key;
@@ -95,11 +95,10 @@ API.prototype.getInfo = function () {
 API.prototype.editForm = function (formId, fields, properties) {
     properties = properties || {};
     properties.FormID = formId;
-    if (typeof fields === 'object') {
-        properties.Fields = Object.keys(fields).map(function (key) {
+    properties.Fields = Array.isArray(fields) ? fields :
+        Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
-        })
-    }
+        });
     return this.request('ProcFormEdit', { Form: properties });
 };
 
@@ -126,7 +125,7 @@ function getFields(asObject) {
                 response.Fields = fields;
             }
             response.process = proc;
-            
+
 
             return response;
         }
@@ -244,9 +243,10 @@ function addForm(data) {
 API.prototype.addForm = function (processId, data) {
     var request = new BaseProcessData(processId);
     request.Form = {
-        Fields: Object.keys(data).map(function (key) {
-            return { Field: key, Value: data[key] };
-        })
+        Fields: Array.isArray(data) ? data :
+            Object.keys(data).map(function (key) {
+                return { Field: key, Value: data[key] };
+            })
     };
     return this.request('ProcFormAdd', request);
 };
