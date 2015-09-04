@@ -19,17 +19,17 @@ function Range(min, max) {
 
 Range.prototype.within = function (value) {
     return this.min <= value && this.max >= value;
-}
+};
 
 exports.isInteger = function (value) {
     return typeof value === 'number' && !(value % 1);
-}
+};
 
 exports.getRejectedPromise = function (error) {
     var deferred = new Deferred();
     deferred.reject(error);
     return deferred.promise;
-}
+};
 
 exports.Range = Range;
 
@@ -40,14 +40,16 @@ exports.runOnce = function (callable, parameters) {
             run = false;
             callable.apply(null, parameters);
         }
-    }
-}
+    };
+};
 
-exports.clearArray = function (array) {
+function clearArray(array) {
     while (array.length) {
         array.pop();
     }
 }
+
+exports.clearArray = clearArray;
 
 exports.toBoolean = function (value) {
     if (typeof value !== 'string') {
@@ -64,9 +66,9 @@ exports.toBoolean = function (value) {
         case '':
             return false;
         default:
-            throw new Error('Cannot convert to boolean: ' + value);
+            throw new SyntaxError('Cannot convert to boolean: ' + value);
     }
-}
+};
 
 exports.indexOf = function (array, value) {
     var result = array.indexOf(value);
@@ -74,7 +76,7 @@ exports.indexOf = function (array, value) {
         throw new Error(util.format('Value %s is not in %s', value, array));
     }
     return result;
-}
+};
 
 function NotImplementedError() {
     Error.call(this, 'Implement me');
@@ -109,11 +111,14 @@ Statistics.prototype.hasChanges = function () {
 exports.ChangeStatistics = Statistics;
 
 exports.isEmpty = function (object) {
+    if (Array.isArray(object)) {
+        return object.length < 1;
+    }
     for (var key in object) {
         return false;
     }
     return true;
-}
+};
 
 exports.getDeepValue = function (object, keys) {
     try {
@@ -126,7 +131,7 @@ exports.getDeepValue = function (object, keys) {
         }
     }
     return object;
-}
+};
 
 exports.getOrCreate = function (object, key, defaultValue) {
     var result = object[key];
@@ -134,26 +139,20 @@ exports.getOrCreate = function (object, key, defaultValue) {
         result = object[key] = defaultValue;
     }
     return result;
-}
+};
 
 exports.getCache = function () {
     if (!this._cache) {
         this._cache = {};
     }
     return this._cache;
-}
+};
 
 exports.deleteCache = function () {
     delete this._cache;
-}
+};
 
-exports.pushIfNotIn = function (array, value) {
-    var result = array.indexOf(value) < 0;
-    if (result) {
-        array.push(value);
-    }
-    return result;
-}
+
 
 function getEager(object, id, error) {
     var result = object[id];
@@ -207,16 +206,53 @@ function throwError(message, name, data) {
 
 exports.throwError = throwError;
 
-if (!Array.prototype.equals) {
-    Array.prototype.equals = function (another) {
-        if (this.length != another.length) {
-            return false;
-        }
-        for (var idx in this) {
-            if (this[idx] !== another[idx]) {
+function extendArrayPrototype() {
+    if (!Array.prototype.equals) {
+        Array.prototype.equals = function (another) {
+            if (this.length != another.length) {
                 return false;
             }
-        }
-        return true;
-    };
+            for (var idx in this) {
+                if (this[idx] !== another[idx]) {
+                    return false;
+                }
+            }
+            return true;
+        };
+    }
+
+    if (!Array.prototype.contains) {
+        Array.prototype.contains = function (value) {
+            return this.indexOf(value) >= 0;
+        };
+    }
+
+    if (!Array.prototype.clear) {
+        Array.prototype.clear = function () {
+            clearArray(this);
+        };
+    }
+
+    if (!Array.prototype.pushUnique) {
+        Array.prototype.pushUnique = function (value) {
+            var result = this.indexOf(value) < 0;
+            if (result) {
+                this.push(value);
+            }
+            return result;
+        };
+    }
 }
+
+exports.tryJsonParse = function (value) {
+    if (typeof value !== 'string') {
+        return value;
+    }
+    try {
+        value = JSON.parse(value);
+    } catch (err) {
+    }
+    return value;
+};
+
+extendArrayPrototype();

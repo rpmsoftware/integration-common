@@ -5,19 +5,6 @@ var Promised = require('promised-io/promise');
 var Deferred = Promised.Deferred;
 var RESTClient = require('node-rest-client').Client;
 
-function EndPoint(apiServer, name) {
-    this.name = name;
-    this.apiServer = apiServer;
-}
-
-EndPoint.prototype.getUrl = function () {
-    return this.apiServer.getUrl(this.name);
-};
-
-EndPoint.prototype.request = function (data) {
-    return this.apiServer.request(this.name);
-};
-
 function API(url, key, name) {
     if (!arguments) {
         return;
@@ -217,7 +204,7 @@ function getFormFieldsAsObject() {
     return obj;
 }
 
-function getFormFieldValue(fieldName) {
+function getFormFieldValue(fieldName, eager) {
     var fields = this.Fields;
     for (var ii in fields) {
         var pair = fields[ii];
@@ -225,7 +212,11 @@ function getFormFieldValue(fieldName) {
             return pair.Value;
         }
     };
-    throw new Error('Unknown form field: ' + fieldName);
+    if(eager) {
+        throw new Error('Unknown form field: ' + fieldName);
+    } else {
+        return null;
+    }
 }
 
 function BaseProcessData(processOrId) {
