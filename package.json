@@ -1,7 +1,7 @@
 {
   "name": "integration-common",
   "description": "RPM common libraries",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "author": "Dmitriy Serdyukov",
   "files": [ "api-wrappers.js","mssql.js","util.js"],
   "license": "ISC",

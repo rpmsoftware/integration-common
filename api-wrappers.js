@@ -4,6 +4,7 @@ require('string').extendPrototype();
 var Promised = require('promised-io/promise');
 var Deferred = Promised.Deferred;
 var RESTClient = require('node-rest-client').Client;
+var urlLib = require('url');
 
 function API(url, key, name) {
     if (!arguments) {
@@ -14,17 +15,15 @@ function API(url, key, name) {
         name = url.name;
         url = url.url;
     }
-    this.url = url;
+    url = url.toLowerCase().ensureRight('/');
+    this.url = url.ensureRight('Api2.svc/');
     this.key = key;
     this.name = name;
     this._requestClient = new RESTClient();
 }
 
 API.prototype.getUrl = function (endPoint) {
-    var url = this.url.toLowerCase().ensureRight('/');
-    url = url.ensureRight('rpm/');
-    url = url.ensureRight('Api2.svc/');
-    return url + endPoint;
+    return this.url + endPoint;
 };
 
 

@@ -5,7 +5,7 @@ var fs = require('fs');
 var Deferred = require('promised-io/promise').Deferred;
 
 exports.readConfig = function (envName, fileName) {
-    var config = process.env[envName] || fs.readFileSync(fileName || 'config.json');
+    var config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'ascii');
     return JSON.parse(config);
 };
 
