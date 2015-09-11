@@ -246,25 +246,27 @@ API.prototype.getHeaders = function () {
 };
 
 API.prototype.getLastModifications = function () {
-    var deferred = new Deferred();
-    this.request('Modified').then(
+    var self = this;
+    return Promised.seq([
+        function() {
+            return self.request('Modified');
+        },
         function (response) {
             var result = {};
             response.Modified.forEach(function (modified) {
                 result[modified.Type] = modified.Age;
             });
-            deferred.resolve(result);
+            return result;
         },
-        function (error) {
-            deferred.reject(error);
-        });
-    return deferred.promise;
+    ]);
 };
 
 API.prototype.getModifiedAspects = function () {
     var self = this;
     return Promised.seq([
-        self.getLastModifications,
+        function() {
+            return self.getLastModifications();
+        },
         function (response) {
             var result = [];
             if (self._lastKnownModified) {

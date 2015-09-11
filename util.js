@@ -141,18 +141,17 @@ exports.getOrCreate = function (object, key, defaultValue) {
     return result;
 };
 
-exports.getCache = function () {
-    if (!this._cache) {
-        this._cache = {};
+exports.getCache = function (object) {
+    object = object || this;
+    if (!object._cache) {
+        object._cache = {};
     }
-    return this._cache;
+    return object._cache;
 };
 
-exports.deleteCache = function () {
-    delete this._cache;
+exports.deleteCache = function (object) {
+    delete (object || this)._cache;
 };
-
-
 
 function getEager(object, id, error) {
     var result = object[id];
