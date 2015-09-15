@@ -1,18 +1,24 @@
 {
-  "name": "integration-common",
-  "description": "RPM common libraries",
-  "version": "0.0.12",
-  "author": "Dmitriy Serdyukov",
-  "files": [ "api-wrappers.js","mssql.js","util.js"],
-  "license": "ISC",
-  "dependencies": {
-    "tedious": "~1.11.0",
-    "promised-io": "^0.3.5",
-    "string": "^3.3.0",
-    "node-rest-client": "^1.4.4"
-  },
-  "private": true,
-  "engines": {
-    "node": ">=0.10.x"
-  }
+    "name": "integration-common",
+    "description": "RPM common libraries",
+    "version": "0.1.0",
+    "author": "Dmitriy Serdyukov",
+    "files": [
+        "api-wrappers.js",
+        "mssql.js",
+        "util.js"
+    ],
+    "license": "ISC",
+    "dependencies": {
+        "to-csv": "^0.1.0",
+        "tedious": "~1.11.0",
+        "promised-io": "^0.3.5",
+        "string": "^3.3.0",
+        "node-rest-client": "^1.4.4"
+    },
+    "private": true,
+    "engines": {
+        "node": ">=0.10.x"
+    }
 }
+
