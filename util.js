@@ -1,3 +1,4 @@
+/* global process */
 'use strict';
 var util = require('util');
 var fs = require('fs');
@@ -28,6 +29,22 @@ exports.isInteger = function (value) {
 exports.getRejectedPromise = function (error) {
     var deferred = new Deferred();
     deferred.reject(error);
+    return deferred.promise;
+};
+
+exports.getResultOrError = function (promise, log) {
+    var deferred = new Deferred();
+    promise.then(
+        function (result) {
+            deferred.resolve(result);
+        },
+        function (error) {
+            error = error instanceof Error ? error : new Error(error);
+            if(log) {
+                console.log(error);
+            }
+            deferred.resolve(error);
+        });
     return deferred.promise;
 };
 
@@ -121,6 +138,10 @@ exports.isEmpty = function (object) {
 };
 
 exports.getDeepValue = function (object, keys) {
+    if(!Array.isArray(keys)) {
+        keys = arguments;
+        keys.shift();
+    }
     try {
         keys.forEach(function (key) {
             object = object[key];
