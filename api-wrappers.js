@@ -5,6 +5,7 @@ var Promised = require('promised-io/promise');
 var Deferred = Promised.Deferred;
 var RESTClient = require('node-rest-client').Client;
 var urlLib = require('url');
+var rpmUtil = require('./util');
 
 function API(url, key, name) {
     if (!arguments) {
@@ -73,6 +74,29 @@ API.prototype.getProcesses = function (includeDisabled) {
         },
     ]);
 };
+
+API.prototype.getCachedProcesses = function () {
+    var api = this;
+    var cache = rpmUtil.getCache(api);
+    return Promised.seq([
+        function () {
+            return cache._processes ? api.getModifiedAspects() : undefined;
+        },
+        function (modifiedAspects) {
+            return modifiedAspects && !modifiedAspects.contains('ProcList') ? cache._processes : api.getProcesses();
+        },
+        function (processes) {
+            if (Array.isArray(processes)) {
+                cache._processes = {};
+                processes.forEach(function (process) {
+                    cache._processes[process.ProcessID] = process;
+                });
+            }
+            return cache._processes;
+        }
+    ]);
+};
+
 
 API.prototype.getInfo = function () {
     return this.request('Info');
