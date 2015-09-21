@@ -1,3 +1,4 @@
+/* global process */
 (function () {
     var promised = require('promised-io/promise');
     var Deferred = promised.Deferred;
@@ -32,43 +33,42 @@
             return api.getProcesses(true);
         },
         function (response) {
-            var promises = [];
+            var steps = [];
+            var data = [];
 
             response.forEach(function (proc) {
-                promises.push(getFields(proc));
-            });
-            return promised.all(promises);
-        },
-        function (responses) {
-            var data = [];
-            responses.forEach(function (proc) {
-                if (!proc) {
-                    return;
-                }
-                // if (proc.ProcessID !== 2260) {
-                //     return;
-                // }
-                var process = processes[proc.ProcessID];
-                proc.Fields.forEach(function (f) {
-
-                    if (f.FieldType !== fieldType) {
+                steps.push(function () {
+                    return getFields(proc);
+                });
+                steps.push(function (fields) {
+                    if (!fields) {
                         return;
                     }
+                    var process = processes[fields.ProcessID];
+                    fields.Fields.forEach(function (f) {
 
-                    var refProcName = processes[f.ProcessID];
-                    refProcName = refProcName && refProcName.Process || util.format('[%s]', refSubTypes[f.SubType]);
-                    data.push({
-                        'Process ID': process.ProcessID,
-                        'Process Name': process.Process,
-                        'Process Enabled': process.Enabled,
-                        'Field Name': f.Name,
-                        'Field Archived': f.Archived,
-                        'Ref Process ID': f.ProcessID,
-                        'Ref Process Name': refProcName,
+                        if (f.FieldType !== fieldType) {
+                            return;
+                        }
+
+                        var refProcName = processes[f.ProcessID];
+                        refProcName = refProcName && refProcName.Process || util.format('[%s]', refSubTypes[f.SubType]);
+                        data.push({
+                            'Process ID': process.ProcessID,
+                            'Process Name': process.Process,
+                            'Process Enabled': process.Enabled,
+                            'Field Name': f.Name,
+                            'Field Archived': f.Archived,
+                            'Ref Process ID': f.ProcessID,
+                            'Ref Process Name': refProcName,
+                        });
                     });
                 });
             });
-            return data;
+            steps.push(function() {
+                return data;
+            })   
+            return promised.seq(steps);
         }
     ]).then(
         function (result) {
