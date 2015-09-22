@@ -214,6 +214,7 @@ API.prototype.getForm = function (processOrFormId, formNumber) {
             response.Form.getFieldsAsObject = getFormFieldsAsObject;
             response.Form.getFieldValue = getFormFieldValue;
             response.Form.getField = getFormField;
+            response.Form.getFieldByUid = getFormFieldByUid;
             return response;
         }
     ]);
@@ -234,17 +235,23 @@ function getFormFieldValue(fieldName, eager) {
 }
 
 function getFormField(fieldName, eager) {
-    var fields = this.Fields;
-    for (var ii in fields) {
-        var field = fields[ii];
-        if (field.Field === fieldName) {
-            return field;
-        }
-    };
-    if (eager) {
-        throw new Error('Unknown form field: ' + fieldName);
+    var result = this.Fields.reduceToFirst(function (field) {
+        return field.Field === fieldName;
+    });
+    if (!result && eager) {
+        throw new Error('Unknown form field:' + fieldName);
     }
-    return null;
+    return result;
+}
+
+function getFormFieldByUid(uid, eager) {
+    var result = this.Fields.reduceToFirst(function (field) {
+        return field.Uid === uid;
+    });
+    if (!result && eager) {
+        throw new Error('Unknown form field. Uid:' + uid);
+    }
+    return result;
 }
 
 function BaseProcessData(processOrId) {
