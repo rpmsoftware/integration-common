@@ -69,6 +69,7 @@ API.prototype.getProcesses = function (includeDisabled) {
                 proc.getForms = getForms;
                 proc.addForm = addForm;
                 proc.getFormList = getFormList;
+                proc.getCachedFields = getCachedFields;
                 return (includeDisabled || proc.Enabled);
             });
         },
@@ -138,6 +139,30 @@ function getFields(asObject) {
 
 
             return response;
+        }
+    ]);
+}
+
+
+function getCachedFields () {
+    var proc = this;
+    var cache = rpmUtil.getCache(proc);
+    return Promised.seq([
+        function () {
+            if(cache._fields) {
+                return proc.getModifiedAspects();
+            }
+        },
+        function (modifiedAspects) {
+            if(!modifiedAspects || modifiedAspects.contains('ProcFields')) {
+                return  proc.getFields();
+            }
+        },
+        function (fields) {
+            if(fields) {
+                cache._fields = fields;
+            }
+            return cache._fields;
         }
     ]);
 }
