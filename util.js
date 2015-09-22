@@ -40,7 +40,7 @@ exports.getResultOrError = function (promise, log) {
         },
         function (error) {
             error = error instanceof Error ? error : new Error(error);
-            if(log) {
+            if (log) {
                 console.log(error);
             }
             deferred.resolve(error);
@@ -138,7 +138,7 @@ exports.isEmpty = function (object) {
 };
 
 exports.getDeepValue = function (object, keys) {
-    if(!Array.isArray(keys)) {
+    if (!Array.isArray(keys)) {
         keys = arguments;
         keys.shift();
     }
@@ -226,41 +226,55 @@ function throwError(message, name, data) {
 
 exports.throwError = throwError;
 
-function extendArrayPrototype() {
-    if (!Array.prototype.equals) {
-        Array.prototype.equals = function (another) {
-            if (this.length != another.length) {
+var arrayPrototypeExtensions = {
+    equals: function (another) {
+        if (this.length != another.length) {
+            return false;
+        }
+        for (var idx in this) {
+            if (this[idx] !== another[idx]) {
                 return false;
             }
-            for (var idx in this) {
-                if (this[idx] !== another[idx]) {
-                    return false;
-                }
+        }
+        return true;
+
+    },
+
+    contains: function (value) {
+        return this.indexOf(value) >= 0;
+    },
+
+    clear: function () {
+        clearArray(this);
+
+    },
+
+    pushUnique: function (value) {
+        var result = this.indexOf(value) < 0;
+        if (result) {
+            this.push(value);
+        }
+        return result;
+
+    },
+
+    reduceToFirst: function (callback) {
+        for (var ii in this) {
+            var element = this[ii];
+            if (callback(element)) {
+                return element;
             }
-            return true;
         };
     }
 
-    if (!Array.prototype.contains) {
-        Array.prototype.contains = function (value) {
-            return this.indexOf(value) >= 0;
-        };
-    }
+};
 
-    if (!Array.prototype.clear) {
-        Array.prototype.clear = function () {
-            clearArray(this);
-        };
-    }
 
-    if (!Array.prototype.pushUnique) {
-        Array.prototype.pushUnique = function (value) {
-            var result = this.indexOf(value) < 0;
-            if (result) {
-                this.push(value);
-            }
-            return result;
-        };
+function extendArrayPrototype() {
+    for (var property in arrayPrototypeExtensions) {
+        if (!Array.prototype[property]) {
+            Array.prototype[property] = arrayPrototypeExtensions[property];
+        }
     }
 }
 
