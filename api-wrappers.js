@@ -260,7 +260,7 @@ function getFormFieldValue(fieldName, eager) {
 }
 
 function getFormField(fieldName, eager) {
-    var result = this.Fields.reduceToFirst(function (field) {
+    var result = this.Fields.find(function (field) {
         return field.Field === fieldName;
     });
     if (!result && eager) {
@@ -270,7 +270,7 @@ function getFormField(fieldName, eager) {
 }
 
 function getFormFieldByUid(uid, eager) {
-    var result = this.Fields.reduceToFirst(function (field) {
+    var result = this.Fields.find(function (field) {
         return field.Uid === uid;
     });
     if (!result && eager) {
