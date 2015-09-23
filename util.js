@@ -258,10 +258,10 @@ var arrayPrototypeExtensions = {
 
     },
 
-    reduceToFirst: function (callback) {
-        for (var ii in this) {
+    find: function (callback) {
+        for (var ii = 0; ii < this.length; ii++) {
             var element = this[ii];
-            if (callback(element)) {
+            if (callback(element,ii)) {
                 return element;
             }
         };
