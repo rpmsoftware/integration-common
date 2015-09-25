@@ -43,7 +43,7 @@ API.prototype.request = function (endPoint, data) {
         var isError = false;
         if (data.Result) {
             isError = data.Result.Error;
-            doneData = isError ? data.Result.Error : data.Result;
+            doneData = isError ? data.Result.Error : (data.Result || data);
         } else {
             isError = true;
             doneData = data;
@@ -88,10 +88,7 @@ API.prototype.getCachedProcesses = function () {
         },
         function (processes) {
             if (Array.isArray(processes)) {
-                cache._processes = {};
-                processes.forEach(function (process) {
-                    cache._processes[process.ProcessID] = process;
-                });
+                cache._processes = processes.toObject('ProcessID');
             }
             return cache._processes;
         }
@@ -129,37 +126,31 @@ function getFields(asObject) {
         },
         function (response) {
             if (asObject) {
-                var fields = {};
-                response.Fields.forEach(function (field) {
-                    fields[field.Name] = field;
-                });
-                response.Fields = fields;
+                response.Fields = response.Fields.toObject('Name');
             }
             response.process = proc;
-
-
             return response;
         }
     ]);
 }
 
 
-function getCachedFields () {
+function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
     return Promised.seq([
         function () {
-            if(cache._fields) {
+            if (cache._fields) {
                 return proc.getModifiedAspects();
             }
         },
         function (modifiedAspects) {
-            if(!modifiedAspects || modifiedAspects.contains('ProcFields')) {
-                return  proc.getFields();
+            if (!modifiedAspects || modifiedAspects.contains('ProcFields')) {
+                return proc.getFields();
             }
         },
         function (fields) {
-            if(fields) {
+            if (fields) {
                 cache._fields = fields;
             }
             return cache._fields;
@@ -309,7 +300,7 @@ API.prototype.getHeaders = function () {
 API.prototype.getLastModifications = function () {
     var self = this;
     return Promised.seq([
-        function() {
+        function () {
             return self.request('Modified');
         },
         function (response) {
@@ -325,7 +316,7 @@ API.prototype.getLastModifications = function () {
 API.prototype.getModifiedAspects = function () {
     var self = this;
     return Promised.seq([
-        function() {
+        function () {
             return self.getLastModifications();
         },
         function (response) {
@@ -343,6 +334,55 @@ API.prototype.getModifiedAspects = function () {
         }
     ]);
 };
+
+
+API.prototype.getCustomers = function (asObject) {
+    var self = this;
+    return Promised.seq([
+        function () {
+            return self.request('Customers');
+        },
+        function (response) {
+            response.Customers = response.CustomersResult.Customers;
+            delete response.CustomersResult;
+            if (asObject) {
+                response.Customers = response.Customers.toAbject('CustomerID');
+            }
+            return response;
+        },
+    ]);
+};
+
+API.prototype.getSuppliers = function (asObject) {
+    var self = this;
+    return Promised.seq([
+        function () {
+            return self.request('Suppliers');
+        },
+        function (response) {
+            if (asObject) {
+                response.Suppliers = response.Suppliers.toObject('SupplierID');
+            }
+            return response;
+        },
+    ]);
+};
+
+API.prototype.getAgencies = function (asObject) {
+    var self = this;
+    return Promised.seq([
+        function () {
+            return self.request('Agencies');
+        },
+        function (response) {
+            if (asObject) {
+                response.Agencies = response.Agencies.toObject('AgencyID');
+            }
+            return response;
+        },
+    ]);
+};
+
 
 exports.RpmApi = API;
 

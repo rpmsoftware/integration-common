@@ -176,7 +176,7 @@ exports.deleteCache = function (object) {
 
 function getEager(object, id, error) {
     var result = object[id];
-    if (result===undefined) {
+    if (result === undefined) {
         throwError(error || util.format('Property "%s" not found in object: %s', id, JSON.stringify(object)), 'PropertyNotFoundError', { property: id, object: object });
     }
     return result;
@@ -261,10 +261,25 @@ var arrayPrototypeExtensions = {
     find: function (callback) {
         for (var ii = 0; ii < this.length; ii++) {
             var element = this[ii];
-            if (callback(element,ii)) {
+            if (callback(element, ii)) {
                 return element;
             }
         };
+    },
+
+    toObject: function (keyProperty) {
+        var result = {};
+        this.forEach(function (element) {
+            var key = element[keyProperty];
+            if (key === undefined) {
+                throw Error('Property cannot be empty: ' + keyProperty);
+            }
+            if (result[key]) {
+                throw Error('Duplicate elements with the same key property value: ' + result[key]);
+            }
+            result[key] = element;
+        });
+        return result;
     }
 
 };
