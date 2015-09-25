@@ -213,6 +213,22 @@ API.prototype.getForms = function (processOrId, viewId) {
     return deferred.promise;
 };
 
+API.prototype.getFormList = function (processOrId, viewId, includeArchived) {
+    if(includeArchived===undefined && typeof viewId==='boolean') {
+        includeArchived = viewId;
+        viewId = undefined;
+    }
+    var baseRequest = new BaseProcessData(processOrId);
+    if (viewId) {
+        baseRequest.ViewID = viewId;
+    }
+    if(includeArchived) {
+        baseRequest.IncludeArchived = true;
+    }
+    return this.request('ProcFormList', baseRequest);
+};
+
+
 API.prototype.getForm = function (processOrFormId, formNumber) {
     var api = this;
     var request;
