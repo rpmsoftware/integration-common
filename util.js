@@ -176,7 +176,7 @@ exports.deleteCache = function (object) {
 
 function getEager(object, id, error) {
     var result = object[id];
-    if (!result) {
+    if (result===undefined) {
         throwError(error || util.format('Property "%s" not found in object: %s', id, JSON.stringify(object)), 'PropertyNotFoundError', { property: id, object: object });
     }
     return result;
