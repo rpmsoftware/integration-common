@@ -213,6 +213,7 @@ API.prototype.getForms = function (processOrId, viewId) {
     return deferred.promise;
 };
 
+
 API.prototype.getFormList = function (processId, viewId, includeArchived) {
     if (includeArchived === undefined && typeof viewId === 'boolean') {
         includeArchived = viewId;
@@ -351,7 +352,6 @@ API.prototype.getModifiedAspects = function () {
     ]);
 };
 
-
 API.prototype.getCustomers = function (asObject) {
     var self = this;
     return Promised.seq([
@@ -359,8 +359,6 @@ API.prototype.getCustomers = function (asObject) {
             return self.request('Customers');
         },
         function (response) {
-            response.Customers = response.CustomersResult.Customers;
-            delete response.CustomersResult;
             if (asObject) {
                 response.Customers = response.Customers.toAbject('CustomerID');
             }
