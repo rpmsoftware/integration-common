@@ -367,6 +367,13 @@ API.prototype.getCustomers = function (asObject) {
     ]);
 };
 
+API.prototype.getCustomer = function (nameOrID) {
+    var api = this;
+    var request = {};
+    request[(typeof nameOrID==='number') ? 'CustomerID' : 'Customer'] = nameOrID;
+    return api.request('Customer', request);
+};
+
 API.prototype.getSuppliers = function (asObject) {
     var self = this;
     return Promised.seq([
