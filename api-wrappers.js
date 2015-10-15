@@ -64,13 +64,35 @@ API.prototype.getProcesses = function (includeDisabled) {
         },
         function (response) {
             return response.Procs.filter(function (proc) {
-                proc._api = self;
-                proc.getFields = getFields;
-                proc.getForms = getForms;
-                proc.addForm = addForm;
-                proc.getFormList = getFormList;
-                proc.getCachedFields = getCachedFields;
+                self._extendProcess(proc);
                 return (includeDisabled || proc.Enabled);
+            });
+        },
+    ]);
+};
+
+API.prototype._extendProcess = function (proc) {
+    proc._api = this;
+    proc.getFields = getFields;
+    proc.getForms = getForms;
+    proc.addForm = addForm;
+    proc.getFormList = getFormList;
+    proc.getCachedFields = getCachedFields;
+    proc.getAllForms = getAllForms;
+};
+
+API.prototype.getProcess = function (nameOrID) {
+    var self = this;
+    return Promised.seq([
+        function () {
+            return self.request('Procs');
+        },
+        function (response) {
+            var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+            return response.Procs.find(function (proc) {
+                var result = (proc[key] == nameOrID);
+                result && self._extendProcess(proc);
+                return result;
             });
         },
     ]);
@@ -157,6 +179,33 @@ function getCachedFields() {
         }
     ]);
 }
+
+function getAllForms(includeArchived) {
+    var process = this;
+	return Promised.seq([
+		function () {
+			return process.getFormList(includeArchived);
+		},
+		function (forms) {
+			var steps = [];
+			var data = [];
+			function addForm(form) {
+				data.push(form);
+			}
+			forms.forEach(function (form) {
+				steps.push(function () {
+					return process._api.getForm(form.ID);
+				});
+				steps.push(addForm);
+			});
+			steps.push(function () {
+				return data;
+			});
+			return Promised.seq(steps);
+		}
+	]);
+}
+
 
 function getForms(viewId) {
     return this._api.getForms(this.ProcessID, viewId);

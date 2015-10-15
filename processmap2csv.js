@@ -6,7 +6,7 @@
     var api = new rpm.RpmApi(require('./util').readConfig('RPM_CONFIG', 'config.json'));
     var util = require('util');
 
-    var fieldType = rpm.OBJECT_TYPE.FormReference;
+    var reffieldType = rpm.OBJECT_TYPE.FormReference;
     var refSubTypes = {};
     for (var key in rpm.REF_DATA_TYPE) {
         refSubTypes[rpm.REF_DATA_TYPE[key]] = key;
@@ -33,8 +33,12 @@
             return api.getProcesses(true);
         },
         function (response) {
+            if (!Array.isArray(response)) {
+                response = [response];
+            }
             var steps = [];
             var data = [];
+            var fieldsByUid = {};
 
             response.forEach(function (proc) {
                 steps.push(function () {
@@ -44,30 +48,40 @@
                     if (!fields) {
                         return;
                     }
-                    var process = processes[fields.ProcessID];
-                    fields.Fields.forEach(function (f) {
 
-                        if (f.FieldType !== fieldType) {
+                    var process = processes[fields.ProcessID];
+                    fields.Fields.forEach(function (field) {
+
+                        if (field.FieldType !== reffieldType) {
                             return;
                         }
-
-                        var refProcName = processes[f.ProcessID];
-                        refProcName = refProcName && refProcName.Process || util.format('[%s]', refSubTypes[f.SubType]);
-                        data.push({
-                            'Process ID': process.ProcessID,
-                            'Process Name': process.Process,
-                            'Process Enabled': process.Enabled,
-                            'Field Name': f.Name,
-                            'Field Archived': f.Archived,
-                            'Ref Process ID': f.ProcessID,
-                            'Ref Process Name': refProcName,
-                        });
+                        field.process = process;
+                        fieldsByUid[field.Uid] = field;
+                        data.push(field);
                     });
                 });
             });
-            steps.push(function() {
-                return data;
-            })   
+            steps.push(function () {
+                return data.map(function (field) {
+                    var refProcName = processes[field.ProcessID];
+                    refProcName = refProcName && refProcName.Process || util.format('[%s]', refSubTypes[field.SubType]);
+                    var parent = fieldsByUid[field.ParentUid];
+                    return {
+                        'Process ID': field.process.ProcessID,
+                        'Process Name': field.process.Process,
+                        'Process Enabled': field.process.Enabled,
+                        'Field Uid': field.Uid,
+                        'Field Name': field.Name,
+                        'Field Archived': field.Archived,
+                        'Parent Process ID': parent && parent.process.ProcessID,
+                        'Parent Process Name': parent && parent.process.Process,
+                        'Parent Uid': field.ParentUid,
+                        'Parent Name': parent && parent.Name,
+                        'Ref Process ID': field.ProcessID,
+                        'Ref Process Name': refProcName
+                    };
+                });
+            });
             return promised.seq(steps);
         }
     ]).then(
