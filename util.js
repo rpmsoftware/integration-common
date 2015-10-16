@@ -305,3 +305,11 @@ exports.tryJsonParse = function (value) {
 };
 
 extendArrayPrototype();
+
+exports.forcePrototype = function (base, data) {
+	var result = Object.create(base.prototype);
+	for (var key in data) {
+		result[key] = data[key];
+	}
+	return result;
+};
