@@ -307,9 +307,26 @@ exports.tryJsonParse = function (value) {
 extendArrayPrototype();
 
 exports.forcePrototype = function (base, data) {
-	var result = Object.create(base.prototype);
-	for (var key in data) {
-		result[key] = data[key];
-	}
-	return result;
+    var result = Object.create(base.prototype);
+    for (var key in data) {
+        result[key] = data[key];
+    }
+    return result;
+};
+
+exports.isHeroku = function () {
+    for (var key in HEROKU_ENVIRONMENT) {
+        var value = HEROKU_ENVIRONMENT[key];
+        var env = process.env[key];
+        if (!env || typeof value === 'string' && value !== env || value.test && !value.test(env)) {
+            return false;
+        }
+    }
+    return true;
+};
+
+var HEROKU_ENVIRONMENT = {
+    DYNO: /^web\.\d+$/,
+    PORT: /^\d+$/,
+    NODE_HOME: '/app/.heroku/node',
 };
