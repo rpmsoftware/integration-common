@@ -330,3 +330,13 @@ var HEROKU_ENVIRONMENT = {
     PORT: /^\d+$/,
     NODE_HOME: '/app/.heroku/node',
 };
+
+exports.defineStandardProperty = function (replicator, name, getter, setter) {
+    var property = {
+        get: getter,
+        set: setter || undefined,
+        enumerable: true,
+        configurable: true
+    };
+    Object.defineProperty(replicator, name, property);
+};
