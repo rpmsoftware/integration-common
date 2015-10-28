@@ -2,8 +2,8 @@
 'use strict';
 var util = require('util');
 var fs = require('fs');
-
-var Deferred = require('promised-io/promise').Deferred;
+var promised = require('promised-io/promise');
+var Deferred = promised.Deferred;
 
 exports.readConfig = function (envName, fileName) {
     var config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'ascii');
@@ -339,4 +339,21 @@ exports.defineStandardProperty = function (replicator, name, getter, setter) {
         configurable: true
     };
     Object.defineProperty(replicator, name, property);
+};
+
+exports.chainPromises = function (array, startingValue) {
+    var deferred = new Deferred();
+    function next(value) {
+        var nextAction = array.shift();
+        if (nextAction) {
+            promised.when(nextAction(value), next, function (error) {
+                deferred.reject(error, true);
+            });
+        }
+        else {
+            deferred.resolve(value);
+        }
+    }
+    next(startingValue);
+    return deferred.promise;
 };
