@@ -357,3 +357,31 @@ exports.chainPromises = function (array, startingValue) {
     next(startingValue);
     return deferred.promise;
 };
+
+exports.createObjectSerializer = function (object, fileName) {
+    var running = false;
+    var triggered = false;
+
+    function doSave() {
+        triggered = false;
+        console.log('Saving state');
+        fs.writeFile(fileName, JSON.stringify(object), function (err) {
+            running = false;
+            if (err) {
+                console.error(err);
+            }
+            if (triggered) {
+                doSave();
+            }
+        });
+
+    }
+    
+    return function () {
+        triggered = true;
+        if (!running) {
+            running = true;
+            doSave();
+        }
+    };
+};
