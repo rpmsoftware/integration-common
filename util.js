@@ -397,8 +397,12 @@ exports.chainPromises6 = function (array, unsafe) {
             if (nextAction === undefined) {
                 resolve(value);
             } else {
-                value = (typeof nextAction === 'function') ? nextAction(value) : nextAction;
-                (typeof value.then === 'function') ? value.then(next, reject) : next(value);
+                try {
+                    value = (typeof nextAction === 'function') ? nextAction(value) : nextAction;
+                    (typeof value === 'object' && typeof value.then === 'function') ? value.then(next, reject) : next(value);
+                } catch (error) {
+                    reject(error);
+                }
             }
         }
         next();
