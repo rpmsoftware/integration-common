@@ -1,8 +1,7 @@
+/* global Promise */
 'use strict';
 require('string').extendPrototype();
 
-var Promised = require('promised-io/promise');
-var Deferred = Promised.Deferred;
 var RESTClient = require('node-rest-client').Client;
 var urlLib = require('url');
 var rpmUtil = require('./util');
@@ -27,38 +26,38 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
-
 API.prototype.request = function (endPoint, data) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
-    var deferred = new Deferred();
-    console.log('\nPOST ' + url);
-    if (data) {
-        console.log(JSON.stringify(data));
-    }
-    var requestTime = new Date();
-    function callback(data, response) {
-        var responseTime = new Date();
-        var doneData;
-        var isError = false;
-        if (data.Result) {
-            isError = data.Result.Error;
-            doneData = isError ? data.Result.Error : (data.Result || data);
-        } else {
-            isError = true;
-            doneData = data;
+    var self = this;
+    return new Promise(function (resolve, reject) {
+        console.log('\nPOST ' + url);
+        if (data) {
+            console.log(JSON.stringify(data));
         }
-        doneData.requestTime = requestTime;
-        doneData.responseTime = responseTime;
-        (isError ? deferred.reject : deferred.resolve)(doneData);
-    }
-    this._requestClient.post(url, args, callback);
-    return deferred.promise;
+        var requestTime = new Date();
+        function callback(data, response) {
+            var responseTime = new Date();
+            var doneData;
+            var isError = false;
+            if (data.Result) {
+                isError = data.Result.Error;
+                doneData = isError ? data.Result.Error : (data.Result || data);
+            } else {
+                isError = true;
+                doneData = data;
+            }
+            doneData.requestTime = requestTime;
+            doneData.responseTime = responseTime;
+            (isError ? reject : resolve)(doneData);
+        }
+        self._requestClient.post(url, args, callback);
+    });
 };
 
 API.prototype.getProcesses = function (includeDisabled) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Procs');
         },
@@ -83,7 +82,7 @@ API.prototype._extendProcess = function (proc) {
 
 API.prototype.getProcess = function (nameOrID) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Procs');
         },
@@ -101,7 +100,7 @@ API.prototype.getProcess = function (nameOrID) {
 API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return cache._processes ? api.getModifiedAspects() : undefined;
         },
@@ -142,7 +141,7 @@ API.prototype.trashForm = function (formId) {
 
 function getFields(asObject) {
     var proc = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return proc._api.getFields(proc.ProcessID);
         },
@@ -160,7 +159,7 @@ function getFields(asObject) {
 function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             if (cache._fields) {
                 return proc.getModifiedAspects();
@@ -182,28 +181,28 @@ function getCachedFields() {
 
 function getAllForms(includeArchived) {
     var process = this;
-	return Promised.seq([
-		function () {
-			return process.getFormList(includeArchived);
-		},
-		function (forms) {
-			var steps = [];
-			var data = [];
-			function addForm(form) {
-				data.push(form);
-			}
-			forms.forEach(function (form) {
-				steps.push(function () {
-					return process._api.getForm(form.ID);
-				});
-				steps.push(addForm);
-			});
-			steps.push(function () {
-				return data;
-			});
-			return Promised.seq(steps);
-		}
-	]);
+    return rpmUtil.chainPromises6([
+        function () {
+            return process.getFormList(includeArchived);
+        },
+        function (forms) {
+            var steps = [];
+            var data = [];
+            function addForm(form) {
+                data.push(form);
+            }
+            forms.forEach(function (form) {
+                steps.push(function () {
+                    return process._api.getForm(form.ID);
+                });
+                steps.push(addForm);
+            });
+            steps.push(function () {
+                return data;
+            });
+            return rpmUtil.chainPromises6(steps);
+        }
+    ]);
 }
 
 
@@ -217,7 +216,7 @@ function getFormList(includeArchived, viewId) {
     if (typeof viewId === 'number') {
         request.ViewID = viewId;
     }
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return proc._api.request('ProcFormList', request);
         },
@@ -230,7 +229,7 @@ function getFormList(includeArchived, viewId) {
 
 API.prototype.getFields = function (processId) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('ProcFields', new BaseProcessData(processId));
         },
@@ -241,25 +240,25 @@ API.prototype.getFields = function (processId) {
 };
 
 API.prototype.getForms = function (processOrId, viewId) {
-    var deferred = new Deferred();
     var baseRequest = new BaseProcessData(processOrId);
     if (viewId) {
         baseRequest.ViewID = viewId;
     }
-    this.request('ProcForms', baseRequest).then(
-        function (response) {
-            deferred.resolve(response);
-        }, function (response) {
-            if (response.Message === 'No forms') {
-                response = new BaseProcessData(processOrId);
-                response.Columns = [];
-                response.Forms = [];
-                deferred.resolve(response);
-            } else {
-                deferred.reject(response);
-            }
-        });
-    return deferred.promise;
+    return new Promise(function (resolve, reject) {
+        this.request('ProcForms', baseRequest).then(
+            function (response) {
+                resolve(response);
+            }, function (response) {
+                if (response.Message === 'No forms') {
+                    response = new BaseProcessData(processOrId);
+                    response.Columns = [];
+                    response.Forms = [];
+                    resolve(response);
+                } else {
+                    reject(response);
+                }
+            });
+    });
 };
 
 
@@ -288,7 +287,7 @@ API.prototype.getForm = function (processOrFormId, formNumber) {
     } else {
         request = { FormID: processOrFormId };
     }
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return api.request('ProcForm', request);
         },
@@ -365,7 +364,7 @@ API.prototype.getHeaders = function () {
 
 API.prototype.getLastModifications = function () {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Modified');
         },
@@ -381,7 +380,7 @@ API.prototype.getLastModifications = function () {
 
 API.prototype.getModifiedAspects = function () {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.getLastModifications();
         },
@@ -403,7 +402,7 @@ API.prototype.getModifiedAspects = function () {
 
 API.prototype.getCustomers = function (asObject) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Customers');
         },
@@ -419,13 +418,13 @@ API.prototype.getCustomers = function (asObject) {
 API.prototype.getCustomer = function (nameOrID) {
     var api = this;
     var request = {};
-    request[(typeof nameOrID==='number') ? 'CustomerID' : 'Customer'] = nameOrID;
+    request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
     return api.request('Customer', request);
 };
 
 API.prototype.getSuppliers = function (asObject) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Suppliers');
         },
@@ -440,7 +439,7 @@ API.prototype.getSuppliers = function (asObject) {
 
 API.prototype.getAgencies = function (asObject) {
     var self = this;
-    return Promised.seq([
+    return rpmUtil.chainPromises6([
         function () {
             return self.request('Agencies');
         },

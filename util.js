@@ -1,3 +1,4 @@
+/* global Promise */
 /* global process */
 'use strict';
 var util = require('util');
@@ -376,7 +377,7 @@ exports.createObjectSerializer = function (object, fileName) {
         });
 
     }
-    
+
     return function () {
         triggered = true;
         if (!running) {
@@ -384,4 +385,22 @@ exports.createObjectSerializer = function (object, fileName) {
             doSave();
         }
     };
+};
+
+exports.chainPromises6 = function (array, unsafe) {
+    if (!unsafe) {
+        array = array.concat();
+    }
+    return new Promise(function (resolve, reject) {
+        function next(value) {
+            var nextAction = array.shift();
+            if (nextAction === undefined) {
+                resolve(value);
+            } else {
+                value = (typeof nextAction === 'function') ? nextAction(value) : nextAction;
+                (typeof value.then === 'function') ? value.then(next, reject) : next(value);
+            }
+        }
+        next();
+    });
 };
