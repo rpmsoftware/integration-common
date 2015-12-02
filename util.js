@@ -1,10 +1,7 @@
-/* global Promise */
 /* global process */
 'use strict';
 var util = require('util');
 var fs = require('fs');
-var promised = require('promised-io/promise');
-var Deferred = promised.Deferred;
 
 exports.readConfig = function (envName, fileName) {
     var config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'ascii');
@@ -25,28 +22,6 @@ Range.prototype.within = function (value) {
 
 exports.isInteger = function (value) {
     return typeof value === 'number' && !(value % 1);
-};
-
-exports.getRejectedPromise = function (error) {
-    var deferred = new Deferred();
-    deferred.reject(error);
-    return deferred.promise;
-};
-
-exports.getResultOrError = function (promise, log) {
-    var deferred = new Deferred();
-    promise.then(
-        function (result) {
-            deferred.resolve(result);
-        },
-        function (error) {
-            error = error instanceof Error ? error : new Error(error);
-            if (log) {
-                console.log(error);
-            }
-            deferred.resolve(error);
-        });
-    return deferred.promise;
 };
 
 exports.Range = Range;
@@ -342,23 +317,6 @@ exports.defineStandardProperty = function (replicator, name, getter, setter) {
     Object.defineProperty(replicator, name, property);
 };
 
-exports.chainPromises = function (array, startingValue) {
-    var deferred = new Deferred();
-    function next(value) {
-        var nextAction = array.shift();
-        if (nextAction) {
-            promised.when(nextAction(value), next, function (error) {
-                deferred.reject(error, true);
-            });
-        }
-        else {
-            deferred.resolve(value);
-        }
-    }
-    next(startingValue);
-    return deferred.promise;
-};
-
 exports.createObjectSerializer = function (object, fileName) {
     var running = false;
     var triggered = false;
@@ -387,24 +345,3 @@ exports.createObjectSerializer = function (object, fileName) {
     };
 };
 
-exports.chainPromises6 = function (array, unsafe) {
-    if (!unsafe) {
-        array = array.concat();
-    }
-    return new Promise(function (resolve, reject) {
-        function next(value) {
-            var nextAction = array.shift();
-            if (nextAction === undefined) {
-                resolve(value);
-            } else {
-                try {
-                    value = (typeof nextAction === 'function') ? nextAction(value) : nextAction;
-                    (typeof value === 'object' && typeof value.then === 'function') ? value.then(next, reject) : next(value);
-                } catch (error) {
-                    reject(error);
-                }
-            }
-        }
-        next();
-    });
-};

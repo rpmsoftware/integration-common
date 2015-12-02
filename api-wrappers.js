@@ -57,17 +57,12 @@ API.prototype.request = function (endPoint, data) {
 
 API.prototype.getProcesses = function (includeDisabled) {
     var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Procs');
-        },
-        function (response) {
-            return response.Procs.filter(function (proc) {
-                self._extendProcess(proc);
-                return (includeDisabled || proc.Enabled);
-            });
-        },
-    ]);
+    return self.request('Procs').then(function (response) {
+        return response.Procs.filter(function (proc) {
+            self._extendProcess(proc);
+            return (includeDisabled || proc.Enabled);
+        });
+    });
 };
 
 API.prototype._extendProcess = function (proc) {
@@ -82,38 +77,30 @@ API.prototype._extendProcess = function (proc) {
 
 API.prototype.getProcess = function (nameOrID) {
     var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Procs');
-        },
-        function (response) {
-            var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
-            return response.Procs.find(function (proc) {
-                var result = (proc[key] == nameOrID);
-                result && self._extendProcess(proc);
-                return result;
-            });
-        },
-    ]);
+    return self.request('Procs').then(function (response) {
+        var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+        return response.Procs.find(function (proc) {
+            var result = (proc[key] == nameOrID);
+            result && self._extendProcess(proc);
+            return result;
+        });
+    });
 };
 
 API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    return rpmUtil.chainPromises6([
-        function () {
-            return cache._processes ? api.getModifiedAspects() : undefined;
-        },
-        function (modifiedAspects) {
-            return modifiedAspects && !modifiedAspects.contains('ProcList') ? cache._processes : api.getProcesses();
-        },
-        function (processes) {
-            if (Array.isArray(processes)) {
-                cache._processes = processes.toObject('ProcessID');
-            }
-            return cache._processes;
+    var p = Promise.resolve(cache._processes ? api.getModifiedAspects() : undefined);
+    p = p.then(function (modifiedAspects) {
+        return modifiedAspects && !modifiedAspects.contains('ProcList') ? cache._processes : api.getProcesses();
+    });
+    p = p.then(function (processes) {
+        if (Array.isArray(processes)) {
+            cache._processes = processes.toObject('ProcessID');
         }
-    ]);
+        return cache._processes;
+    });
+    return p;
 };
 
 
@@ -141,68 +128,53 @@ API.prototype.trashForm = function (formId) {
 
 function getFields(asObject) {
     var proc = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return proc._api.getFields(proc.ProcessID);
-        },
-        function (response) {
-            if (asObject) {
-                response.Fields = response.Fields.toObject('Name');
-            }
-            response.process = proc;
-            return response;
+    return proc._api.getFields(proc.ProcessID).then(function (response) {
+        if (asObject) {
+            response.Fields = response.Fields.toObject('Name');
         }
-    ]);
+        response.process = proc;
+        return response;
+    });
 }
 
 
 function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
-    return rpmUtil.chainPromises6([
-        function () {
-            if (cache._fields) {
-                return proc.getModifiedAspects();
-            }
-        },
-        function (modifiedAspects) {
-            if (!modifiedAspects || modifiedAspects.contains('ProcFields')) {
-                return proc.getFields();
-            }
-        },
-        function (fields) {
-            if (fields) {
-                cache._fields = fields;
-            }
-            return cache._fields;
+    var p = Promise.resolve(cache._fields ? proc.getModifiedAspects() : undefined);
+    p = p.then(function (modifiedAspects) {
+        if (!modifiedAspects || modifiedAspects.contains('ProcFields')) {
+            return proc.getFields();
         }
-    ]);
+    });
+    p = p.then(function (fields) {
+        if (fields) {
+            cache._fields = fields;
+        }
+        return cache._fields;
+    });
+    return p;
 }
 
 function getAllForms(includeArchived) {
     var process = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return process.getFormList(includeArchived);
-        },
-        function (forms) {
-            var steps = [];
-            var data = [];
-            function addForm(form) {
-                data.push(form);
-            }
-            forms.forEach(function (form) {
-                steps.push(function () {
-                    return process._api.getForm(form.ID);
-                });
-                steps.push(addForm);
-            });
-            steps.push(function () {
-                return data;
-            });
-            return rpmUtil.chainPromises6(steps);
+    return process.getFormList(includeArchived).then(function (forms) {
+        var p = Promise.resolve();
+        var data = [];
+        function addForm(form) {
+            data.push(form);
         }
-    ]);
+        forms.forEach(function (form) {
+            p = p.then(function () {
+                return process._api.getForm(form.ID);
+            });
+            p = p.then(addForm);
+        });
+        p = p.then(function () {
+            return data;
+        });
+        return p;
+    });
 }
 
 
@@ -216,27 +188,16 @@ function getFormList(includeArchived, viewId) {
     if (typeof viewId === 'number') {
         request.ViewID = viewId;
     }
-    return rpmUtil.chainPromises6([
-        function () {
-            return proc._api.request('ProcFormList', request);
-        },
-        function (response) {
-            return response.Forms;
-        }
-    ]);
+    return proc._api.request('ProcFormList', request).then(function (response) {
+        return response.Forms;
+    });
 
 };
 
 API.prototype.getFields = function (processId) {
-    var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('ProcFields', new BaseProcessData(processId));
-        },
-        function (response) {
-            return response.Process;
-        },
-    ]);
+    return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
+        return response.Process;
+    });
 };
 
 API.prototype.getForms = function (processOrId, viewId) {
@@ -287,18 +248,13 @@ API.prototype.getForm = function (processOrFormId, formNumber) {
     } else {
         request = { FormID: processOrFormId };
     }
-    return rpmUtil.chainPromises6([
-        function () {
-            return api.request('ProcForm', request);
-        },
-        function (response) {
-            response.Form.getFieldsAsObject = getFormFieldsAsObject;
-            response.Form.getFieldValue = getFormFieldValue;
-            response.Form.getField = getFormField;
-            response.Form.getFieldByUid = getFormFieldByUid;
-            return response;
-        }
-    ]);
+    return api.request('ProcForm', request).then(function (response) {
+        response.Form.getFieldsAsObject = getFormFieldsAsObject;
+        response.Form.getFieldValue = getFormFieldValue;
+        response.Form.getField = getFormField;
+        response.Form.getFieldByUid = getFormFieldByUid;
+        return response;
+    });
 };
 
 function getFormFieldsAsObject() {
@@ -363,56 +319,39 @@ API.prototype.getHeaders = function () {
 };
 
 API.prototype.getLastModifications = function () {
-    var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Modified');
-        },
-        function (response) {
-            var result = {};
-            response.Modified.forEach(function (modified) {
-                result[modified.Type] = modified.Age;
-            });
-            return result;
-        },
-    ]);
+    return this.request('Modified').then(function (response) {
+        var result = {};
+        response.Modified.forEach(function (modified) {
+            result[modified.Type] = modified.Age;
+        });
+        return result;
+    });
 };
 
 API.prototype.getModifiedAspects = function () {
     var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.getLastModifications();
-        },
-        function (response) {
-            var result = [];
-            if (self._lastKnownModified) {
-                for (var key in self._lastKnownModified) {
-                    var value = self._lastKnownModified[key];
-                    if (response[key] > value) {
-                        result.push(key);
-                    }
+    return self.getLastModifications().then(function (response) {
+        var result = [];
+        if (self._lastKnownModified) {
+            for (var key in self._lastKnownModified) {
+                var value = self._lastKnownModified[key];
+                if (response[key] > value) {
+                    result.push(key);
                 }
             }
-            self._lastKnownModified = response;
-            return result;
         }
-    ]);
+        self._lastKnownModified = response;
+        return result;
+    });
 };
 
 API.prototype.getCustomers = function (asObject) {
-    var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Customers');
-        },
-        function (response) {
-            if (asObject) {
-                response.Customers = response.Customers.toAbject('CustomerID');
-            }
-            return response;
-        },
-    ]);
+    return this.request('Customers').then(function (response) {
+        if (asObject) {
+            response.Customers = response.Customers.toAbject('CustomerID');
+        }
+        return response;
+    });
 };
 
 API.prototype.getCustomer = function (nameOrID) {
@@ -423,33 +362,21 @@ API.prototype.getCustomer = function (nameOrID) {
 };
 
 API.prototype.getSuppliers = function (asObject) {
-    var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Suppliers');
-        },
-        function (response) {
-            if (asObject) {
-                response.Suppliers = response.Suppliers.toObject('SupplierID');
-            }
-            return response;
-        },
-    ]);
+    return this.request('Suppliers').then(function (response) {
+        if (asObject) {
+            response.Suppliers = response.Suppliers.toObject('SupplierID');
+        }
+        return response;
+    });
 };
 
 API.prototype.getAgencies = function (asObject) {
-    var self = this;
-    return rpmUtil.chainPromises6([
-        function () {
-            return self.request('Agencies');
-        },
-        function (response) {
-            if (asObject) {
-                response.Agencies = response.Agencies.toObject('AgencyID');
-            }
-            return response;
-        },
-    ]);
+    return this.request('Agencies').then(function (response) {
+        if (asObject) {
+            response.Agencies = response.Agencies.toObject('AgencyID');
+        }
+        return response;
+    });
 };
 
 
