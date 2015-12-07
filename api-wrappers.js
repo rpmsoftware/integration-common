@@ -102,7 +102,7 @@ API.prototype.getCachedProcesses = function () {
     });
     p = p.then(function (processes) {
         if (processes) {
-            cache._processes = processes.Procs;
+            cache._processes = processes;
         }
         return cache._processes;
     });
