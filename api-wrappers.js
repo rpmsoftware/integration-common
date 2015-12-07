@@ -75,14 +75,18 @@ API.prototype._extendProcess = function (proc) {
     proc.getAllForms = getAllForms;
 };
 
+
 API.prototype.getProcess = function (nameOrID) {
-    var self = this;
-    return self.request('Procs').then(function (response) {
-        var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
-        return response.Procs.find(function (proc) {
-            var result = (proc[key] == nameOrID);
-            result && self._extendProcess(proc);
-            return result;
+    return this.getCachedProcesses().then(function (procs) {
+        var id = +nameOrID;
+        var result;
+        if (!isNaN(id)) {
+            result = procs.find(function (proc) {
+                return proc.ProcessID == id;
+            });
+        }
+        return result || procs.find(function (proc) {
+            return proc.Process == nameOrID;
         });
     });
 };
@@ -98,7 +102,7 @@ API.prototype.getCachedProcesses = function () {
     });
     p = p.then(function (processes) {
         if (processes) {
-            cache._processes = processes;
+            cache._processes = processes.Procs;
         }
         return cache._processes;
     });
