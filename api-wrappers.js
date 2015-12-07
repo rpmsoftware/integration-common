@@ -78,18 +78,13 @@ API.prototype._extendProcess = function (proc) {
 
 API.prototype.getProcess = function (nameOrID) {
     return this.getCachedProcesses().then(function (procs) {
-        var id = +nameOrID;
-        var result;
-        if (!isNaN(id)) {
-            result = procs.find(function (proc) {
-                return proc.ProcessID == id;
-            });
-        }
-        return result || procs.find(function (proc) {
-            return proc.Process == nameOrID;
+        var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+        return procs.find(function (proc) {
+            return proc[key] == nameOrID;
         });
     });
 };
+
 
 API.prototype.getCachedProcesses = function () {
     var api = this;
@@ -147,7 +142,7 @@ function getFields(asObject) {
 function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
-    var p = Promise.resolve(cache._fields ? proc.getModifiedAspects() : undefined);
+    var p = cache._fields ? proc._api.getModifiedAspects() : Promise.resolve();
     p = p.then(function (modifiedAspects) {
         if (!modifiedAspects || modifiedAspects.contains('ProcFields')) {
             return proc.getFields();
