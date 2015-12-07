@@ -857,3 +857,14 @@ exports.REF_DATA_TYPE = {
     HolderProcess: 10600
 
 };
+
+exports.getTableRowValues = function (row) {
+    var values = {};
+    row.Fields.forEach(function (field) {
+        var value = field.Values[0];
+        if (value) {
+            values[field.Uid] = value.Value;
+        }
+    });
+    return values;
+};

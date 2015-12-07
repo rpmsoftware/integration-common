@@ -345,3 +345,24 @@ exports.createObjectSerializer = function (object, fileName) {
     };
 };
 
+exports.singleRun = function (callback) {
+    var running = false;
+
+    function stop() {
+        running = false;
+    }
+
+    return function () {
+        if (running) {
+            console.warn('Already running', callback);
+            return;
+        }
+        running = true;
+        try {
+            callback(stop);
+        } catch (err) {
+            stop();
+            throw err;
+        }
+    };
+};
