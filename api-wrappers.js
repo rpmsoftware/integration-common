@@ -90,13 +90,15 @@ API.prototype.getProcess = function (nameOrID) {
 API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    var p = Promise.resolve(cache._processes ? api.getModifiedAspects() : undefined);
+    var p = cache._processes ? api.getModifiedAspects() : Promise.resolve();
     p = p.then(function (modifiedAspects) {
-        return modifiedAspects && !modifiedAspects.contains('ProcList') ? cache._processes : api.getProcesses();
+        if (!modifiedAspects || modifiedAspects.contains('ProcList')) {
+            return api.getProcesses(true);
+        }
     });
     p = p.then(function (processes) {
-        if (Array.isArray(processes)) {
-            cache._processes = processes.toObject('ProcessID');
+        if (processes) {
+            cache._processes = processes;
         }
         return cache._processes;
     });
