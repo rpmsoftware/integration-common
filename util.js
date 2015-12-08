@@ -366,3 +366,11 @@ exports.singleRun = function (callback) {
         }
     };
 };
+
+exports.normalizeDate = function (date) {
+    var result = date instanceof Date ? date : new Date(date);
+    if (isNaN(result.getTime())) {
+        throw new Error('Invalid date: ' + date);
+    }
+    return result;
+};
