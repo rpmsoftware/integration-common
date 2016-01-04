@@ -374,3 +374,22 @@ exports.normalizeDate = function (date) {
     }
     return result;
 };
+
+exports.ensureDate = function (value) {
+    if (value instanceof Date) {
+        return value;
+    }
+    var temp = new Date(value);
+    if (isNaN(temp.getTime())) {
+        throw new TypeError('Invalid date: ' + value);
+    }
+    return temp;
+};
+
+exports.ensureInteger = function (value) {
+    value = +value;
+    if (typeof value !== 'number' || value % 1) {
+        throw new TypeError('Invalid integer: ' + value);
+    }
+    return value;
+};

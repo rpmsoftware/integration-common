@@ -55,6 +55,34 @@ API.prototype.request = function (endPoint, data) {
     });
 };
 
+API.prototype.createFormAction = function (description, form, due, userID) {
+    if (typeof form === 'object') {
+        form = form.Form || form;
+        if (typeof userID === 'undefined') {
+            userID = form.Participants.find(function (participant) {
+                return participant.Name === form.Owner;
+            });
+            userID = userID && userID.UserID;
+        }
+        form = form.FormID;
+    }
+    var data = {
+        Action: {
+            Description: description,
+            Form: {
+                FormID: rpmUtil.ensureInteger(form)
+            },
+            StaffOnly: true,
+            Due: rpmUtil.ensureDate(due),
+            Assignee: {
+                UserID: rpmUtil.ensureInteger(userID)
+            }
+        }
+    };
+    return this.request('ActionEdit', data);
+};
+
+
 API.prototype.getProcesses = function (includeDisabled) {
     var self = this;
     return self.request('Procs').then(function (response) {
