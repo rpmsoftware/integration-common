@@ -70,12 +70,12 @@ API.prototype.createFormAction = function (description, form, due, userID) {
         Action: {
             Description: description,
             Form: {
-                FormID: rpmUtil.ensureInteger(form)
+                FormID: rpmUtil.normalizeInteger(form)
             },
             StaffOnly: true,
-            Due: rpmUtil.ensureDate(due),
+            Due: rpmUtil.normalizeDate(due),
             Assignee: {
-                UserID: rpmUtil.ensureInteger(userID)
+                UserID: rpmUtil.normalizeInteger(userID)
             }
         }
     };
