@@ -234,8 +234,9 @@ API.prototype.getForms = function (processOrId, viewId) {
     if (viewId) {
         baseRequest.ViewID = viewId;
     }
+    var self = this;
     return new Promise(function (resolve, reject) {
-        this.request('ProcForms', baseRequest).then(
+        self.request('ProcForms', baseRequest).then(
             function (response) {
                 resolve(response);
             }, function (response) {
