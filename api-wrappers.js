@@ -55,6 +55,32 @@ API.prototype.request = function (endPoint, data) {
     });
 };
 
+API.prototype.getViews = function (viewCategory, templateID) {
+    var p = this.request('ProcViews', {
+        'ViewCategory': +viewCategory,
+        'ObjectSpecificID': +templateID
+    });
+    p = p.then(function (result) {
+        return result.Views;
+    });
+    return p;
+};
+
+var VIEW_CATEGORY = {
+    Reps: 1,
+    Customers: 5,
+    Agencies: 200,
+    Accounts: 304,
+    CommissionItems: 311,
+    FormsPerTemplate: 510, // Process views
+    Reconcile: 900,
+    Staff: 3,
+    Suppliers: 203,
+    CustomerLocations: 14,
+    FormActions: 525
+};
+
+
 API.prototype.createFormAction = function (description, form, due, userID) {
     if (typeof form === 'object') {
         form = form.Form || form;
@@ -101,6 +127,7 @@ API.prototype._extendProcess = function (proc) {
     proc.getFormList = getFormList;
     proc.getCachedFields = getCachedFields;
     proc.getAllForms = getAllForms;
+    proc.getViews = getViews;
 };
 
 
@@ -166,6 +193,10 @@ function getFields(asObject) {
     });
 }
 
+function getViews() {
+    var proc = this;
+    return proc._api.getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
+}
 
 function getCachedFields() {
     var proc = this;
