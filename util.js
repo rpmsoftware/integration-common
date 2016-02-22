@@ -383,6 +383,6 @@ exports.normalizeInteger = function (value) {
     return value;
 };
 
-exports.logStackTrace = function (error) {
+exports.logErrorStack = function (error) {
     console.error(error instanceof Error ? error.stack : error);
 };
