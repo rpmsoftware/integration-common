@@ -382,3 +382,7 @@ exports.normalizeInteger = function (value) {
     }
     return value;
 };
+
+exports.logStackTrace = function (error) {
+    console.error(error instanceof Error ? error.stack : error);
+};
