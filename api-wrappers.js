@@ -1,7 +1,7 @@
 /* global Promise */
 'use strict';
 require('string').extendPrototype();
-
+var util = require('util');
 var RESTClient = require('node-rest-client').Client;
 var urlLib = require('url');
 var rpmUtil = require('./util');
@@ -131,12 +131,16 @@ API.prototype._extendProcess = function (proc) {
 };
 
 
-API.prototype.getProcess = function (nameOrID) {
+API.prototype.getProcess = function (nameOrID, demand) {
     return this.getCachedProcesses().then(function (procs) {
         var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
-        return procs.find(function (proc) {
+        var result = procs.find(function (proc) {
             return proc[key] == nameOrID;
         });
+        if(!result) {
+            throw Error(util.format('Process not found %s = %s', key, nameOrID));
+        }
+        return result;
     });
 };
 
