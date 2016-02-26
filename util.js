@@ -251,7 +251,7 @@ var arrayPrototypeExtensions = {
                 throw Error('Property cannot be empty: ' + keyProperty);
             }
             if (result[key]) {
-                throw Error('Duplicate key property: ' + key);
+                throw Error('Duplicate key property value: ' + key);
             }
             result[key] = element;
         });
