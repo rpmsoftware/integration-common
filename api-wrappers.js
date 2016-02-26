@@ -130,20 +130,35 @@ API.prototype._extendProcess = function (proc) {
     proc.getViews = getViews;
 };
 
+var ERR_PROCESS_NOT_FOUND = 'Process not found: %s';
+
+function getProcessSearchKey(nameOrID) {
+    return typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+}
 
 API.prototype.getProcess = function (nameOrID, demand) {
     return this.getCachedProcesses().then(function (procs) {
-        var key = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+        var key = getProcessSearchKey(nameOrID);
         var result = procs.find(function (proc) {
             return proc[key] == nameOrID;
         });
-        if(!result) {
-            throw Error(util.format('Process not found %s = %s', key, nameOrID));
+        if (demand && !result) {
+            throw Error(util.format(ERR_PROCESS_NOT_FOUND, nameOrID));
         }
         return result;
     });
 };
 
+API.prototype.getActiveProcess = function (nameOrID, demand) {
+    return this.getProcess(nameOrID).then(function (result) {
+        if (result && result.Enabled) {
+            return result;
+        }
+        if (demand) {
+            throw Error(util.format(ERR_PROCESS_NOT_FOUND, nameOrID));
+        }
+    });
+};
 
 API.prototype.getCachedProcesses = function () {
     var api = this;
