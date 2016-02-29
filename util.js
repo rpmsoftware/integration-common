@@ -386,9 +386,8 @@ exports.normalizeInteger = function (value) {
 exports.logErrorStack = function (error) {
     if (error instanceof Error) {
         console.error(error.stack);
-    } else if (typeof error === 'object') {
-        console.error('Error: %j', error);
     } else {
-        console.error('Error: ', error);
+        console.error(new Error('Tracking').stack);
+        console.error(typeof error === 'object' ? 'Error: %j' : 'Error: ', error);
     }
 };
