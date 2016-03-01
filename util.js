@@ -384,10 +384,11 @@ exports.normalizeInteger = function (value) {
 };
 
 exports.logErrorStack = function (error) {
-    if (error instanceof Error) {
-        console.error(error.stack);
-    } else {
-        console.error(new Error('Tracking').stack);
-        console.error(typeof error === 'object' ? 'Error: %j' : 'Error: ', error);
+    if (!(error instanceof Error)) {
+        if (typeof error === 'object') {
+            error = util.format('%j', error);
+        }
+        error = new Error(error);
     }
+    console.error(error.stack);
 };
