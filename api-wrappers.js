@@ -56,8 +56,17 @@ API.prototype.request = function (endPoint, data) {
 };
 
 API.prototype.getStaffList = function () {
-    return this.request('StaffList').then(function(result) {
+    return this.request('StaffList').then(function (result) {
         return result.StaffList;
+    });
+};
+
+var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?\d\d):(\d\d)\s*$/;
+
+API.prototype.getTimeZoneOffset = function () {
+    return this.getInfo().then(function (info) {
+        var parts = TIMEZONE_OFFSET_PATTERN.exec(info.TimeOffset);
+        return (+parts[1]) * 60 + (+parts[2]);
     });
 };
 
