@@ -55,6 +55,12 @@ API.prototype.request = function (endPoint, data) {
     });
 };
 
+API.prototype.getStaffList = function () {
+    return this.request('StaffList').then(function(result) {
+        return result.StaffList;
+    });
+};
+
 API.prototype.getViews = function (viewCategory, templateID) {
     var p = this.request('ProcViews', {
         'ViewCategory': +viewCategory,
