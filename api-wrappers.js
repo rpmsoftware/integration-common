@@ -61,12 +61,16 @@ API.prototype.getStaffList = function () {
     });
 };
 
-var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?\d\d):(\d\d)\s*$/;
+var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
 
 var INFO_PROTO = {
     getTimezoneOffset: function () {
         var parts = TIMEZONE_OFFSET_PATTERN.exec(this.TimeOffset);
-        return (+parts[1]) * 60 + (+parts[2]);
+        var offset = (+parts[2]) * 60 + (+parts[3]);
+        if (parts[1] == '-') {
+            offset = -offset;
+        }
+        return offset;
     }
 };
 
