@@ -63,11 +63,11 @@ API.prototype.getStaffList = function () {
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?\d\d):(\d\d)\s*$/;
 
-API.prototype.getTimezoneOffset = function () {
-    return this.getInfo().then(function (info) {
-        var parts = TIMEZONE_OFFSET_PATTERN.exec(info.TimeOffset);
+var INFO_PROTO = {
+    getTimezoneOffset: function () {
+        var parts = TIMEZONE_OFFSET_PATTERN.exec(this.TimeOffset);
         return (+parts[1]) * 60 + (+parts[2]);
-    });
+    }
 };
 
 API.prototype.getViews = function (viewCategory, templateID) {
@@ -195,7 +195,10 @@ API.prototype.getCachedProcesses = function () {
 
 
 API.prototype.getInfo = function () {
-    return this.request('Info');
+    return this.request('Info').then(function (info) {
+        info.__proto__ = INFO_PROTO;
+        return info;
+    });
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
