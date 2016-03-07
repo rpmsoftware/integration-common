@@ -63,7 +63,7 @@ API.prototype.getStaffList = function () {
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?\d\d):(\d\d)\s*$/;
 
-API.prototype.getTimeZoneOffset = function () {
+API.prototype.getTimezoneOffset = function () {
     return this.getInfo().then(function (info) {
         var parts = TIMEZONE_OFFSET_PATTERN.exec(info.TimeOffset);
         return (+parts[1]) * 60 + (+parts[2]);
