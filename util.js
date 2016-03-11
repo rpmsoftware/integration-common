@@ -260,11 +260,11 @@ var arrayPrototypeExtensions = {
 
 };
 
-
 function extendArrayPrototype() {
+    var existing = Object.getOwnPropertyNames(Array.prototype);
     for (var property in arrayPrototypeExtensions) {
-        if (!Array.prototype[property]) {
-            Array.prototype[property] = arrayPrototypeExtensions[property];
+        if (existing.indexOf(property) < 0) {
+            Object.defineProperty(Array.prototype, property, { value: arrayPrototypeExtensions[property] });
         }
     }
 }
