@@ -113,6 +113,15 @@ exports.isEmpty = function (object) {
     return true;
 };
 
+exports.getValues = function (object) {
+    if (typeof object !== 'object') {
+        throw new Error('Object is expected');
+    }
+    return Object.keys(object).map(function(key){
+        return object[key];
+    });
+};
+
 exports.getDeepValue = function (object, keys) {
     if (!Array.isArray(keys)) {
         keys = arguments;
