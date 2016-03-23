@@ -55,6 +55,13 @@ API.prototype.request = function (endPoint, data) {
     });
 };
 
+API.prototype.getUser = function (userName, password) {
+    return this.request('User', {
+        Username: userName,
+        Password: password
+    });
+};
+
 API.prototype.getStaffList = function () {
     return this.request('StaffList').then(function (result) {
         return result.StaffList;
