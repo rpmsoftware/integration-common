@@ -70,14 +70,18 @@ API.prototype.getStaffList = function () {
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
 
+function parseTimezoneOffset(offset) {
+    var parts = TIMEZONE_OFFSET_PATTERN.exec(offset);
+    offset = (+parts[2]) * 60 + (+parts[3]);
+    if (parts[1] == '-') {
+        offset = -offset;
+    }
+    return offset;
+}
+
 var INFO_PROTO = {
     getTimezoneOffset: function () {
-        var parts = TIMEZONE_OFFSET_PATTERN.exec(this.TimeOffset);
-        var offset = (+parts[2]) * 60 + (+parts[3]);
-        if (parts[1] == '-') {
-            offset = -offset;
-        }
-        return offset;
+        return parseTimezoneOffset(this.TimeOffset);
     }
 };
 
@@ -976,3 +980,5 @@ exports.getTableRowValues = function (row) {
     });
     return values;
 };
+
+exports.parseTimezoneOffset = parseTimezoneOffset;
