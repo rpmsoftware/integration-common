@@ -376,10 +376,13 @@ exports.singleRun = function (callback) {
     };
 };
 
-exports.normalizeDate = function (date) {
+exports.normalizeDate = function (date, offset) {
     var result = date instanceof Date ? date : new Date(date);
     if (isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
+    }
+    if(offset) {
+        result.setMinutes(result.getMinutes() + result.getTimezoneOffset() - offset);
     }
     return result;
 };
