@@ -117,7 +117,7 @@ exports.getValues = function (object) {
     if (typeof object !== 'object') {
         throw new Error('Object is expected');
     }
-    return Object.keys(object).map(function(key){
+    return Object.keys(object).map(function (key) {
         return object[key];
     });
 };
@@ -376,13 +376,10 @@ exports.singleRun = function (callback) {
     };
 };
 
-exports.normalizeDate = function (date, offset) {
+exports.normalizeDate = function (date) {
     var result = date instanceof Date ? date : new Date(date);
     if (isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
-    }
-    if(offset) {
-        result.setMinutes(result.getMinutes() + result.getTimezoneOffset() - offset);
     }
     return result;
 };
