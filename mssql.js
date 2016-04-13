@@ -31,6 +31,7 @@ function getMsSqlType(value) {
 
 
 function executeStatement(sqlQuery, parameters, metadataOnly) {
+    var connection = this;
     return new Promise(function (resolve, reject) {
         var rows = [];
         var metadata;
@@ -66,7 +67,7 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
             });
         }
 
-        this.execSql(request);
+        connection.execSql(request);
     });
 }
 
