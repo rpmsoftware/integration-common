@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -10,14 +10,14 @@
     ],
     "license": "ISC",
     "dependencies": {
-        "to-csv": "^0.1.0",
-        "tedious": "~1.11.0",
-        "string": "^3.3.0",
-        "node-rest-client": "^1.4.4"
+        "to-csv": "^0.x.x",
+        "tedious": "^1.x.x",
+        "string": "^3.x.x",
+        "node-rest-client": "^1.x.x"
     },
     "private": true,
     "engines": {
-        "node": ">=0.10.x"
+        "node": ">=0.12.x"
     }
 }
 
