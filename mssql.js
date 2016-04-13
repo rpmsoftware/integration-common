@@ -55,22 +55,24 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
             metadata = columns;
         });
 
-        function columnsToValues(columns) {
-            return columns.map(function (column) {
-                return column.value;
-            });
-        }
-
         if (!metadataOnly) {
             request.on('row', function (columns) {
-                rows.push(columnsToValues(columns));
+                if (Array.isArray(columns)) {
+                    columns = columns.map(function (column) {
+                        return column.value;
+                    });
+                } else {
+                    for (var key in columns) {
+                        columns[key] = columns[key].value;
+                    }
+                }
+                rows.push(columns);
             });
         }
 
         connection.execSql(request);
     });
 }
-
 
 exports.createConnection = function (config) {
     return new Promise(function (resolve, reject) {
