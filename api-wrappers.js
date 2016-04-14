@@ -251,13 +251,19 @@ function getViews() {
     return proc._api.getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
 }
 
-function getView(nameOrId) {
+var ERR_VIEW_NOT_FOUND = 'View not found: %s';
+
+function getView(nameOrId, demand) {
     var proc = this;
     var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
-    return proc.getViews().then(function (views) { 
-        return views.find(function (view) {
+    return proc.getViews().then(function (views) {
+        var result = views.find(function (view) {
             return view[property] === nameOrId;
         });
+        if (demand && !result) {
+            throw Error(util.format(ERR_VIEW_NOT_FOUND, nameOrId));
+        }
+        return result;
     });
 }
 
