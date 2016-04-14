@@ -158,6 +158,7 @@ API.prototype._extendProcess = function (proc) {
     proc.getCachedFields = getCachedFields;
     proc.getAllForms = getAllForms;
     proc.getViews = getViews;
+    proc.getView = getView;
 };
 
 var ERR_PROCESS_NOT_FOUND = 'Process not found: %s';
@@ -248,6 +249,16 @@ function getFields(asObject) {
 function getViews() {
     var proc = this;
     return proc._api.getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
+}
+
+function getView(nameOrId) {
+    var proc = this;
+    var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
+    return proc.getViews().then(function (views) { 
+        return views.find(function (view) {
+            return view[property] === nameOrId;
+        });
+    });
 }
 
 function getCachedFields() {
