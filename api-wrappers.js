@@ -235,6 +235,45 @@ API.prototype.trashForm = function (formId) {
     return this.request('ProcFormTrash', { FormID: formId });
 };
 
+var ERROR_RESPONSE_FORM_NOT_FOUND = 'Form not found';
+
+API.prototype.createFormInfoCache = function () {
+    var api = this;
+    var cache = {};
+    return function (formID, demand) {
+        var result = cache[formID];
+        if (result) {
+            return Promise.resolve(result);
+        }
+        var p = api.getForm(formID);
+        p = p.then(
+            function (form) {
+                return form && api.getFormList(form.ProcessID, true);
+            },
+            function (error) {
+                if (error.Message !== ERROR_RESPONSE_FORM_NOT_FOUND) {
+                    throw error;
+                }
+            });
+        p = p.then(function (result) {
+            if (result) {
+                result.Forms.forEach(function (form) {
+                    cache[form.ID] = {
+                        ProcessID: result.ProcessID,
+                        Number: form.N
+                    };
+                });
+                result = cache[formID];
+            }
+            if (!result && demand) {
+                throw new Error(ERROR_RESPONSE_FORM_NOT_FOUND);
+            }
+            return result;
+        });
+        return p;
+    };
+};
+
 function getFields(asObject) {
     var proc = this;
     return proc._api.getFields(proc.ProcessID).then(function (response) {
