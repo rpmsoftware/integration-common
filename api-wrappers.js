@@ -258,10 +258,8 @@ API.prototype.createFormInfoCache = function () {
         p = p.then(function (result) {
             if (result) {
                 result.Forms.forEach(function (form) {
-                    cache[form.ID] = {
-                        ProcessID: result.ProcessID,
-                        Number: form.N
-                    };
+                    cache[form.ID] = form;
+                    form.ProcessID =  result.ProcessID;
                 });
                 result = cache[formID];
             }
