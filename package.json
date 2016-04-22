@@ -6,7 +6,8 @@
     "files": [
         "api-wrappers.js",
         "mssql.js",
-        "util.js"
+        "util.js",
+        "field-patcher.js"
     ],
     "license": "ISC",
     "dependencies": {
