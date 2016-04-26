@@ -5,9 +5,6 @@ var factories = {};
 factories[rpm.OBJECT_TYPE.CustomField] = {};
 
 factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (field, useUids) {
-    if (field.FieldType !== rpm.OBJECT_TYPE.CustomField || field.SubType !== rpm.DATA_TYPE.FieldTable) {
-        throw new Error(util.format('%j is not a table field', field));
-    }
     var defRow = field.Rows.find(function (row) {
         return row.IsDefinition;
     });
@@ -96,6 +93,11 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                         ID: option.ID,
                         Value: option.Text
                     };
+                } else if (field.FieldType === rpm.OBJECT_TYPE.FormReference) {
+                    value = {
+                        ID: value,
+                    };
+
                 } else {
                     value = {
                         ID: 0,
@@ -132,8 +134,8 @@ module.exports = function (field) {
     if (result) {
         result = result[field.SubType];
     }
-    return (result ||
+    return result ? result.apply(undefined, arguments) :
         function (value) {
             return { Field: field.Name, Value: normalizeValue(value) };
-        }).apply(undefined, arguments);
+        };
 };

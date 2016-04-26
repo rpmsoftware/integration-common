@@ -259,7 +259,7 @@ API.prototype.createFormInfoCache = function () {
             if (result) {
                 result.Forms.forEach(function (form) {
                     cache[form.ID] = form;
-                    form.ProcessID =  result.ProcessID;
+                    form.ProcessID = result.ProcessID;
                 });
                 result = cache[formID];
             }
@@ -406,7 +406,7 @@ API.prototype.getFormList = function (processId, viewId, includeArchived) {
 };
 
 
-API.prototype.getForm = function (processOrFormId, formNumber) {
+API.prototype.demandForm = function (processOrFormId, formNumber) {
     var api = this;
     var request;
     if (arguments.length > 1) {
@@ -422,6 +422,19 @@ API.prototype.getForm = function (processOrFormId, formNumber) {
         response.Form.getFieldByUid = getFormFieldByUid;
         return response;
     });
+};
+
+API.prototype.getForm = function () {
+    return this.demandForm.apply(this, arguments).then(
+        function (form) {
+            return form;
+        },
+        function (error) {
+            if (error.Message != 'Form not found') {
+                throw error;
+            }
+        }
+    );
 };
 
 function getFormFieldsAsObject() {
