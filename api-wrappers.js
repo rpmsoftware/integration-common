@@ -479,19 +479,22 @@ function BaseProcessData(processOrId) {
     };
 }
 
-function addForm(data) {
-    return this._api.addForm(this.ProcessID, data);
+function addForm(fields, status) {
+    return this._api.addForm(this.ProcessID, fields, status);
 };
 
-API.prototype.addForm = function (processId, data) {
+API.prototype.addForm = function (processId, fields, status) {
+    var api = this;
     var request = new BaseProcessData(processId);
     request.Form = {
-        Fields: Array.isArray(data) ? data :
-            Object.keys(data).map(function (key) {
-                return { Field: key, Value: data[key] };
+        Fields: Array.isArray(fields) ? fields :
+            Object.keys(fields).map(function (key) {
+                return { Field: key, Value: fields[key] };
             })
     };
-    return this.request('ProcFormAdd', request);
+    return api.request('ProcFormAdd', request).then(function (form) {
+        return status ? api.editForm(form.Form.FormID, [], { Status: status }) : form;
+    });
 };
 
 API.prototype.getHeaders = function () {
