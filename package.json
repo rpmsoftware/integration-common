@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "0.9.1",
+    "version": "0.9.2",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",

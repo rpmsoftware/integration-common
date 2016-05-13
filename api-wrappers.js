@@ -307,15 +307,18 @@ function getView(nameOrId, demand) {
 function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
-    var p = cache._fields ? proc._api.getModifiedAspects() : Promise.resolve();
-    p = p.then(function (modifiedAspects) {
-        if (!modifiedAspects || modifiedAspects.contains('ProcFields')) {
+    var changed;
+    var p = proc._api.getLastModifications();
+    p = p.then(function (modifications) {
+        changed = modifications.ProcFields;
+        if (!changed || !cache._fields || changed !== cache._fieldsChanged) {
             return proc.getFields();
         }
     });
     p = p.then(function (fields) {
         if (fields) {
             cache._fields = fields;
+            cache._fieldsChanged = changed; 
         }
         return cache._fields;
     });
