@@ -401,3 +401,55 @@ exports.logErrorStack = function (error) {
     }
     console.error(error.stack);
 };
+
+var PARALLEL_REQUESTS = 20;
+
+exports.createParallelRunner = function (parallelRequests) {
+    if (typeof parallelRequests !== 'number' || parallelRequests < 1) {
+        parallelRequests = PARALLEL_REQUESTS;
+        console.log('Using default number of parallel requests: ', PARALLEL_REQUESTS);
+    }
+    var queue = [];
+    var running = 0;
+
+    function shift() {
+        if (queue.length > 0 && running < parallelRequests) {
+            ++running;
+            var cb = queue.shift();
+            cb();
+        }
+    }
+
+    return function (callback) {
+        if (typeof callback !== 'function') {
+            throw new Error('Function expected');
+        }
+
+
+        var promise = new Promise(function (resolve, reject) {
+            function res(result) {
+                resolve(result);
+                --running;
+                shift();
+            };
+            function rej(error) {
+                queue = [];
+                reject(error);
+                --running;
+            };
+            queue.push(function () {
+                try {
+                    var result = callback();
+                    result instanceof Promise ? result.then(res, rej) : res(result);
+                } catch (error) {
+                    rej(error);
+                }
+            });
+        });
+        setTimeout(shift, 0);
+        return promise;
+
+    }
+
+
+};

@@ -20,6 +20,7 @@ function API(url, key, name) {
     this.key = key;
     this.name = name;
     this._requestClient = new RESTClient();
+    this.parallelRunner = rpmUtil.createParallelRunner();
 }
 
 API.prototype.getUrl = function (endPoint) {
@@ -318,7 +319,7 @@ function getCachedFields() {
     p = p.then(function (fields) {
         if (fields) {
             cache._fields = fields;
-            cache._fieldsChanged = changed; 
+            cache._fieldsChanged = changed;
         }
         return cache._fields;
     });
@@ -531,12 +532,96 @@ API.prototype.getModifiedAspects = function () {
     });
 };
 
-API.prototype.getCustomers = function (asObject) {
-    return this.request('Customers').then(function (response) {
-        if (asObject) {
-            response.Customers = response.Customers.toAbject('CustomerID');
+API.prototype.getCustomers = function () {
+    var api = this;
+    var cache = rpmUtil.getCache(api);
+    var p = cache._customers ? api.getModifiedAspects() : Promise.resolve();
+    p = p.then(function (modifiedAspects) {
+        if (!modifiedAspects || modifiedAspects.contains('CustomerAndAliasList')) {
+            return api.request('Customers');
         }
+    });
+    p = p.then(function (response) {
+        if (response) {
+            var duplicates = {};
+            response.Customers = response.Customers.filter(function (customer) {
+                if (duplicates[customer.CustomerID]) {
+                    return false;
+                }
+                duplicates[customer.CustomerID] = true;
+                customer.CustomerID = +customer.CustomerID;
+                tweakDates(customer);
+                return true;
+            });
+            cache._customers = response;
+        }
+        return cache._customers;
+    });
+    return p;
+};
+
+function tweakDates(object) {
+    object.Added = rpmUtil.normalizeDate(object.Added);
+    object.Modified = object.Modified ? rpmUtil.normalizeDate(object.Modified) : object.Added;
+    return object;
+}
+
+API.prototype.getCustomerAccounts = function (nameOrID) {
+    var req = {};
+    req[typeof nameOrID === 'number' ? 'CustomerID' : 'Customer'] = nameOrID;
+    return this.request('Accounts', req).then(function (response) {
+        response.Accounts.forEach(tweakDates);
         return response;
+    });
+};
+
+API.prototype.getSupplierAccounts = function (nameOrID) {
+    var req = {};
+    req[typeof nameOrID === 'number' ? 'SupplierID' : 'Supplier'] = nameOrID;
+    return this.request('Accounts', req).then(function (response) {
+        response.Accounts.forEach(tweakDates);
+        return response;
+    });
+};
+
+API.prototype.getAccount = function (nameOrID) {
+    var req = {};
+    req[typeof nameOrID === 'number' ? 'AccountID' : 'Account'] = nameOrID;
+    return this.request('Account', req).then(tweakDates);;
+};
+
+API.prototype.getAccounts = function () {
+    var api = this;
+    return Promise.all([api.getCustomers(), api.getSuppliers()]).then(function (responses) {
+        var customers = responses[0].Customers;
+        var suppliers = responses[1].Suppliers;
+
+        var parentObjects, f, idProperty;
+        if (customers.length > suppliers.length) {
+            parentObjects = suppliers;
+            f = api.getSupplierAccounts;
+            idProperty = 'SupplierID';
+        } else {
+            parentObjects = customers;
+            f = api.getCustomerAccounts;
+            idProperty = 'CustomerID';
+        }
+        f = f.bind(api);
+        var result = [];
+        var promises = [];
+        parentObjects.forEach(function (parent) {
+            promises.push(api.parallelRunner(function () {
+                return f(+parent[idProperty]);
+            }).then(function (accounts) {
+                accounts.Accounts.forEach(function (account) {
+                    tweakDates(account);
+                    result.push(account);
+                });
+            }));
+        });
+        return Promise.all(promises).then(function () {
+            return { Accounts: result };
+        });
     });
 };
 
@@ -544,27 +629,34 @@ API.prototype.getCustomer = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
-    return api.request('Customer', request);
+    return api.request('Customer', request).then(tweakDates);
 };
 
-API.prototype.getSuppliers = function (asObject) {
-    return this.request('Suppliers').then(function (response) {
-        if (asObject) {
-            response.Suppliers = response.Suppliers.toObject('SupplierID');
-        }
-        return response;
+API.prototype.getSuppliers = function () {
+    return Promise.all([this.request('Suppliers'), this.getLastModifications()]).then(function (results) {
+        var modified = new Date(results[1].Suppliers * 1000);
+        var result = results[0];
+        result.Suppliers.forEach(function (supplier) {
+            supplier.Modified = modified;
+        })
+        return result;
     });
 };
 
-API.prototype.getAgencies = function (asObject) {
+
+API.prototype.getAgencies = function () {
     return this.request('Agencies').then(function (response) {
-        if (asObject) {
-            response.Agencies = response.Agencies.toObject('AgencyID');
-        }
+        response.Agencies.forEach(tweakDates);
         return response;
     });
 };
 
+API.prototype.getAgency = function (nameOrID) {
+    var api = this;
+    var request = {};
+    request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
+    return api.request('Agency', request).then(tweakDates);
+};
 
 exports.RpmApi = API;
 
