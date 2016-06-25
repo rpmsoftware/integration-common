@@ -5,6 +5,7 @@ var util = require('util');
 var RESTClient = require('node-rest-client').Client;
 var urlLib = require('url');
 var rpmUtil = require('./util');
+var norm = require('./normalizers');
 
 function API(url, key, name) {
     if (!arguments) {
@@ -273,9 +274,17 @@ API.prototype.createFormInfoCache = function () {
     };
 };
 
+
+var PROCESS_FIELD_PROTO = {
+    getValue: function (formField) {
+        return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
+    }
+}
+
 function getFields(asObject) {
     var proc = this;
     return proc._api.getFields(proc.ProcessID).then(function (response) {
+
         if (asObject) {
             response.Fields = response.Fields.toObject('Name');
         }
@@ -366,6 +375,9 @@ function getFormList(includeArchived, viewId) {
 
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
+        response.Process.Fields.forEach(function (field) {
+            field.__proto__ = PROCESS_FIELD_PROTO;
+        });
         return response.Process;
     });
 };
@@ -532,6 +544,7 @@ API.prototype.getModifiedAspects = function () {
     });
 };
 
+
 API.prototype.getCustomers = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
@@ -561,7 +574,7 @@ API.prototype.getCustomers = function () {
 };
 
 function tweakDates(object) {
-    object.Added = rpmUtil.normalizeDate(object.Added);
+    object.Added = object.Added && rpmUtil.normalizeDate(object.Added);
     object.Modified = object.Modified ? rpmUtil.normalizeDate(object.Modified) : object.Added;
     return object;
 }
@@ -633,9 +646,8 @@ API.prototype.getCustomer = function (nameOrID) {
 };
 
 API.prototype.getSuppliers = function () {
-    return Promise.all([this.request('Suppliers'), this.getLastModifications()]).then(function (results) {
-        var modified = new Date(results[1].Suppliers * 1000);
-        var result = results[0];
+    return this.request('Suppliers').then(function (result) {
+        var modified = new Date(result.Age * 1000);
         result.Suppliers.forEach(function (supplier) {
             supplier.Modified = modified;
         })
@@ -651,12 +663,32 @@ API.prototype.getAgencies = function () {
     });
 };
 
+
+function fixAgency(agency) {
+    if(typeof agency.Contact!=='object') {
+        var contact = agency.Contact = {};
+        ["ContactID","Email","FirstName","LastName","PhoneNumbers","Salutation","Title"].forEach(function (property){
+            contact[property] = agency[property];
+            delete agency[property];
+        });
+    }
+    return agency;    
+}
+
 API.prototype.getAgency = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    return api.request('Agency', request).then(tweakDates);
+    return api.request('Agency', request).then(tweakDates).then(fixAgency);
 };
+
+API.prototype.getRep = function (nameOrID) {
+    var api = this;
+    var request = {};
+    request[(typeof nameOrID === 'number') ? 'RepID' : 'Rep'] = nameOrID;
+    return api.request('Rep', request).then(tweakDates);
+};
+
 
 exports.RpmApi = API;
 
@@ -710,7 +742,7 @@ DataCache.prototype.getProcessInfo = function (processId) {
 
 exports.DataCache = DataCache;
 
-exports.DATA_TYPE = {
+var DATA_TYPE = exports.DATA_TYPE = {
     NA: 0,
     Text: 1,
     Http: 2,   // This is a fixed link
@@ -761,7 +793,8 @@ exports.DATA_TYPE = {
     FormulaField: 47
 };
 
-exports.OBJECT_TYPE = {
+
+var OBJECT_TYPE = exports.OBJECT_TYPE = {
     NA: 0,
     AgentRep: 1,
     SubscriberSupport: 2,
@@ -946,7 +979,7 @@ exports.OBJECT_TYPE = {
     HolderProcess: 10600
 };
 
-exports.REF_DATA_TYPE = {
+var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
     NA: 0,
     AgentRep: 1,
     SubscriberSupport: 2,
@@ -1135,6 +1168,26 @@ exports.REF_DATA_TYPE = {
 
 };
 
+
+var FIELD_TYPE = exports.FIELD_TYPE = (function () {
+    var fieldTypes = {};
+    for (var name in OBJECT_TYPE) {
+        fieldTypes[name] = { value: OBJECT_TYPE[name], subTypes: {} }
+    }
+
+    var subTypes = fieldTypes.CustomField.subTypes;
+    for (var name in DATA_TYPE) {
+        subTypes[name] = { value: DATA_TYPE[name] };
+    }
+    subTypes = fieldTypes.FormReference.subTypes;
+    for (var name in REF_DATA_TYPE) {
+        subTypes[name] = { value: REF_DATA_TYPE[name] };
+    }
+
+    Object.seal(fieldTypes);
+    return fieldTypes;
+})();
+
 exports.getTableRowValues = function (row) {
     var values = {};
     row.Fields.forEach(function (field) {
@@ -1147,3 +1200,123 @@ exports.getTableRowValues = function (row) {
 };
 
 exports.parseTimezoneOffset = parseTimezoneOffset;
+
+
+var assert = require('assert');
+
+var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
+
+(function () {
+
+    var f, subTypes, st;
+
+    f = function (formField) {
+        return formField.ID || null;
+    };
+
+    st = FIELD_ACCESSORS[FIELD_TYPE.FormReference.value] = {};
+    subTypes = FIELD_TYPE.FormReference.subTypes;
+    for (var name in subTypes) {
+        st[subTypes[name].value] = { getValue: f };
+    };
+
+    st = FIELD_ACCESSORS[FIELD_TYPE.CustomField.value] = {};
+    subTypes = FIELD_TYPE.CustomField.subTypes;
+
+    f = function (formField) {
+        return norm.normalizeDate(formField.Value);
+    };
+    ['Date', 'DateTime'].forEach(function (name) {
+        st[subTypes[name].value] = { getValue: f };
+    });
+
+    st[subTypes.YesNo.value] = {
+        getValue: function (formField) {
+            return norm.normalizeBoolean(formField.Value);
+        }
+    };
+
+    f = function (formField) {
+        return norm.normalizeNumber(formField.Value);
+    };
+
+    ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal'
+        , 'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea'
+        , 'MeasureWeight', 'Force', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
+        .forEach(function (name) {
+            st[subTypes[name].value] = { getValue: f };
+        });
+
+
+    st[subTypes.List.value] = {
+        getValue: function (formField, processField) {
+            if (!processField) {
+                return formField.Value;
+            }
+            assert.equal(formField.Uid, processField.Uid);
+            return formField.Value ? processField.Options.find(function (option) {
+                return option.Text == formField.Value;
+            }).ID : null;
+        }
+    };
+
+    var MULTI_LIST_DELIMITER = ', ';
+    st[subTypes.ListMultiSelect.value] = {
+        getValue: function (formField, processField) {
+            var result = formField.Value.split(MULTI_LIST_DELIMITER);
+            if (!processField) {
+                return result;
+            }
+            assert.equal(formField.Uid, processField.Uid);
+            result = result.filter(function(value){
+                return value;
+            }).map(function (value) {
+                return processField.Options.find(function (option) {
+                    return option.Text == value;
+                }).ID;
+            });
+            return result;
+        }
+    };
+
+
+    var DEPRICATED_TABLE_COL_DELIMITER = '%%';
+    var DEPRICATED_TABLE_ROW_DELIMITER = '||';
+
+    st[subTypes.DeprecatedTable.value] = {
+        getValue: function (formField, processField) {
+            assert.equal(formField.Uid, processField.Uid);
+            var result = [];
+            formField.Value.split(DEPRICATED_TABLE_ROW_DELIMITER).forEach(function (row) {
+                var normalizedRow = {};
+                row.split(DEPRICATED_TABLE_COL_DELIMITER).forEach(function (value, idx) {
+                    value = value.trim();
+                    if (value) {
+                        normalizedRow[processField.Options[idx].Text] = value;
+                    }
+                });
+                !rpmUtil.isEmpty(normalizedRow) && result.push(normalizedRow);
+            });
+            return result;
+        }
+    };
+
+    f = function (formField) {
+        return formField.Value;
+    };
+
+    ['Text', 'Http', 'Description', 'TextArea', 'Link', 'SpecialPhone', 'LocationLatLong', 'LocationUTM', 'LocationDLS', 'LocationNTS', 'WellUWI', 'WellAPI', 'Html']
+        .forEach(function (name) {
+            st[subTypes[name].value] = { getValue: f };
+        });
+})();
+
+
+Object.seal(DATA_TYPE);
+Object.seal(OBJECT_TYPE);
+Object.seal(REF_DATA_TYPE);
+
+exports.isListField = function (field) {
+    var customField = FIELD_TYPE.CustomField;
+    return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
+};
