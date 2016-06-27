@@ -3,6 +3,7 @@ var assert = require('assert');
 var tedious = require('tedious');
 var util = require('util');
 var rpmUtil = require('./util');
+var logger = rpmUtil.logger;
 var TYPES = exports.TYPES = tedious.TYPES;
 var Request = tedious.Request;
 var Connection = tedious.Connection;
@@ -46,9 +47,6 @@ function getMsSqlType(value) {
 }
 
 function SqlTypedValue(value, type) {
-    if (!type.normalize) {
-        console.log(type);
-    }
     this.value = norm.isNull(value) ? null : type.normalize(value);
     this.type = type;
 }
@@ -57,6 +55,7 @@ exports.SqlTypedValue = SqlTypedValue;
 
 function executeStatement(sqlQuery, parameters, metadataOnly) {
     var connection = this;
+    logger.debug(sqlQuery);
     return new Promise(function (resolve, reject) {
         var rows = [];
         var metadata;
@@ -164,37 +163,64 @@ function getColumnTypes(table) {
 
 var PARAMETER_PREFIX = 'param';
 
-exports.getInsertQuery = function (table, values) {
+function buildParameters(values) {
+
     var result = {
-        params: {}
+        columns: {},
+        parameters: {}
     };
+
     var ii = 0;
+
+    for (var columnName in values) {
+        var parameter = PARAMETER_PREFIX + ii;
+        result.columns[columnName] = parameter;
+        result.parameters[parameter] = values[columnName];
+        ++ii;
+    }
+    return result;
+
+}
+exports.buildParameters = buildParameters;
+
+
+function Query(values) {
+    this.columns = {};
+    this.parameters = {}
+    var ii = 0;
+    for (var columnName in values) {
+        var parameter = PARAMETER_PREFIX + ii;
+        this.columns[columnName] = parameter;
+        this.parameters[parameter] = values[columnName];
+        ++ii;
+    }
+}
+
+Query.prototype.execute = function (connection) {
+    return connection.execute(this.sql, this.parameters);
+}
+
+exports.Query = Query;
+
+exports.getInsertQuery = function (table, values) {
+    var result = new Query(values);
     var names = [];
     var keys = [];
-    for (var name in values) {
-        var param = PARAMETER_PREFIX + ii;
-        result.params[param] = values[name];
-        names.push('[' + name + ']');
-        keys.push('@' + param);
-        ++ii;
+    for (var column in result.columns) {
+        names.push('[' + column + ']');
+        keys.push('@' + result.columns[column]);
     }
     result.sql = `insert into ${table} (${names.join(',')}) values (${keys.join(',')})`;
     return result;
 };
 
 exports.getUpdateQuery = function (table, values) {
-    var result = {
-        params: {}
-    };
-    var ii = 0;
+    var result = new Query(values);
     var pairs = [];
-
-    for (var name in values) {
-        var param = PARAMETER_PREFIX + ii;
-        result.params[param] = values[name];
-        pairs.push(`[${name}]=@${param}`);
-        ++ii;
+    for (var column in result.columns) {
+        pairs.push(`[${column}]=@${result.columns[column]}`);
     }
     result.sql = `update ${table} set ${pairs.join(',')}`;
     return result;
 };
+

@@ -453,3 +453,24 @@ exports.createParallelRunner = function (parallelRequests) {
 
 
 };
+
+(function /*init logger */() {
+    try {
+        var winston = require('winston');
+        exports.logger = {
+            error: winston.error,
+            warn: winston.warn,
+            info: winston.info,
+            debug: winston.debug,
+            trace: winston.trace
+        };
+    } catch (e) {
+        exports.logger = {
+            error: console.error,
+            warn: console.warn,
+            info: console.info,
+            debug: console.log,
+            trace: console.trace
+        };
+    }
+})();

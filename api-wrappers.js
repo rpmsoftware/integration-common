@@ -5,6 +5,7 @@ var util = require('util');
 var RESTClient = require('node-rest-client').Client;
 var urlLib = require('url');
 var rpmUtil = require('./util');
+var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
 function API(url, key, name) {
@@ -33,10 +34,7 @@ API.prototype.request = function (endPoint, data) {
     var url = this.getUrl(endPoint);
     var self = this;
     return new Promise(function (resolve, reject) {
-        console.log('\nPOST ' + url);
-        if (data) {
-            console.log(JSON.stringify(data));
-        }
+        logger.debug(`POST ${url} ${data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
         function callback(data, response) {
             var responseTime = new Date();
@@ -214,7 +212,7 @@ API.prototype.getCachedProcesses = function () {
 
 API.prototype.getInfo = function () {
     return this.request('Info').then(function (info) {
-        info.__proto__ = INFO_PROTO;
+        Object.assign(info, INFO_PROTO);
         return info;
     });
 };
@@ -376,7 +374,7 @@ function getFormList(includeArchived, viewId) {
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
         response.Process.Fields.forEach(function (field) {
-            field.__proto__ = PROCESS_FIELD_PROTO;
+            Object.assign(field, PROCESS_FIELD_PROTO);
         });
         return response.Process;
     });
@@ -665,14 +663,14 @@ API.prototype.getAgencies = function () {
 
 
 function fixAgency(agency) {
-    if(typeof agency.Contact!=='object') {
+    if (typeof agency.Contact !== 'object') {
         var contact = agency.Contact = {};
-        ["ContactID","Email","FirstName","LastName","PhoneNumbers","Salutation","Title"].forEach(function (property){
+        ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(function (property) {
             contact[property] = agency[property];
             delete agency[property];
         });
     }
-    return agency;    
+    return agency;
 }
 
 API.prototype.getAgency = function (nameOrID) {
@@ -1268,7 +1266,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
                 return result;
             }
             assert.equal(formField.Uid, processField.Uid);
-            result = result.filter(function(value){
+            result = result.filter(function (value) {
                 return value;
             }).map(function (value) {
                 return processField.Options.find(function (option) {
@@ -1278,7 +1276,6 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
             return result;
         }
     };
-
 
     var DEPRICATED_TABLE_COL_DELIMITER = '%%';
     var DEPRICATED_TABLE_ROW_DELIMITER = '||';
