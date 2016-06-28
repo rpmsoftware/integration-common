@@ -662,29 +662,29 @@ API.prototype.getAgencies = function () {
 };
 
 
-function fixAgency(agency) {
-    if (typeof agency.Contact !== 'object') {
-        var contact = agency.Contact = {};
+function extractContact(object) {
+    if (typeof object.Contact !== 'object') {
+        var contact = object.Contact = {};
         ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(function (property) {
-            contact[property] = agency[property];
-            delete agency[property];
+            contact[property] = object[property];
+            delete object[property];
         });
     }
-    return agency;
+    return object;
 }
 
 API.prototype.getAgency = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    return api.request('Agency', request).then(tweakDates).then(fixAgency);
+    return api.request('Agency', request).then(tweakDates).then(extractContact);
 };
 
 API.prototype.getRep = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'RepID' : 'Rep'] = nameOrID;
-    return api.request('Rep', request).then(tweakDates);
+    return api.request('Rep', request).then(tweakDates).then(extractContact);
 };
 
 
