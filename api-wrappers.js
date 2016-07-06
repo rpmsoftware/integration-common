@@ -1,9 +1,7 @@
 /* global Promise */
-'use strict';
 require('string').extendPrototype();
 var util = require('util');
 var RESTClient = require('node-rest-client').Client;
-var urlLib = require('url');
 var rpmUtil = require('./util');
 var logger = rpmUtil.logger;
 var norm = require('./normalizers');
@@ -36,7 +34,7 @@ API.prototype.request = function (endPoint, data) {
     return new Promise(function (resolve, reject) {
         logger.debug(`POST ${url} ${data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
-        function callback(data, response) {
+        function callback(data) {
             var responseTime = new Date();
             var doneData;
             var isError = false;
@@ -277,7 +275,7 @@ var PROCESS_FIELD_PROTO = {
     getValue: function (formField) {
         return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
     }
-}
+};
 
 function getFields(asObject) {
     var proc = this;
@@ -357,7 +355,7 @@ function getAllForms(includeArchived) {
 
 function getForms(viewId) {
     return this._api.getForms(this.ProcessID, viewId);
-};
+}
 
 function getFormList(includeArchived, viewId) {
     var proc = this;
@@ -369,7 +367,7 @@ function getFormList(includeArchived, viewId) {
         return response.Forms;
     });
 
-};
+}
 
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
@@ -490,12 +488,12 @@ function BaseProcessData(processOrId) {
         this.ProcessID = processOrId;
     } else {
         this.Process = processOrId + '';
-    };
+    }
 }
 
 function addForm(fields, status) {
     return this._api.addForm(this.ProcessID, fields, status);
-};
+}
 
 API.prototype.addForm = function (processId, fields, status) {
     var api = this;
@@ -598,7 +596,7 @@ API.prototype.getSupplierAccounts = function (nameOrID) {
 API.prototype.getAccount = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'AccountID' : 'Account'] = nameOrID;
-    return this.request('Account', req).then(tweakDates);;
+    return this.request('Account', req).then(tweakDates);
 };
 
 API.prototype.getAccounts = function () {
@@ -648,7 +646,7 @@ API.prototype.getSuppliers = function () {
         var modified = new Date(result.Age * 1000);
         result.Suppliers.forEach(function (supplier) {
             supplier.Modified = modified;
-        })
+        });
         return result;
     });
 };
@@ -1169,16 +1167,17 @@ var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
 
 var FIELD_TYPE = exports.FIELD_TYPE = (function () {
     var fieldTypes = {};
-    for (var name in OBJECT_TYPE) {
-        fieldTypes[name] = { value: OBJECT_TYPE[name], subTypes: {} }
+    var name;
+    for (name in OBJECT_TYPE) {
+        fieldTypes[name] = { value: OBJECT_TYPE[name], subTypes: {} };
     }
 
     var subTypes = fieldTypes.CustomField.subTypes;
-    for (var name in DATA_TYPE) {
+    for (name in DATA_TYPE) {
         subTypes[name] = { value: DATA_TYPE[name] };
     }
     subTypes = fieldTypes.FormReference.subTypes;
-    for (var name in REF_DATA_TYPE) {
+    for (name in REF_DATA_TYPE) {
         subTypes[name] = { value: REF_DATA_TYPE[name] };
     }
 
@@ -1216,7 +1215,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
     subTypes = FIELD_TYPE.FormReference.subTypes;
     for (var name in subTypes) {
         st[subTypes[name].value] = { getValue: f };
-    };
+    }
 
     st = FIELD_ACCESSORS[FIELD_TYPE.CustomField.value] = {};
     subTypes = FIELD_TYPE.CustomField.subTypes;
@@ -1238,9 +1237,9 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
         return norm.normalizeNumber(formField.Value);
     };
 
-    ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal'
-        , 'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea'
-        , 'MeasureWeight', 'Force', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
+    ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal',
+        'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea',
+        'MeasureWeight', 'Force', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
         .forEach(function (name) {
             st[subTypes[name].value] = { getValue: f };
         });
@@ -1292,7 +1291,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
                         normalizedRow[processField.Options[idx].Text] = value;
                     }
                 });
-                !rpmUtil.isEmpty(normalizedRow) && result.push(normalizedRow);
+                if (!rpmUtil.isEmpty(normalizedRow)) result.push(normalizedRow);
             });
             return result;
         }

@@ -21,7 +21,7 @@ Range.prototype.within = function (value) {
 };
 
 exports.isInteger = function (value) {
-    return typeof value === 'number' && !(value % 1);
+    return typeof value === 'number' && value % 1 === 0;
 };
 
 exports.Range = Range;
@@ -176,12 +176,13 @@ function matchObjects(obj1, obj2, matcher) {
 
     matcher = matcher || dummy;
 
-    for (var key in obj1) {
+    var key;
+    for (key in obj1) {
         matcher(obj1[key], getEager(obj2, key));
         names[key] = true;
     }
 
-    for (var key in obj2) {
+    for (key in obj2) {
         if (!names[key]) {
             matcher(getEager(obj1, key), obj2[key]);
         }
@@ -249,7 +250,7 @@ var arrayPrototypeExtensions = {
             if (callback(element, ii)) {
                 return element;
             }
-        };
+        }
     },
 
     toObject: function (keyProperty) {
@@ -431,16 +432,16 @@ exports.createParallelRunner = function (parallelRequests) {
                 resolve(result);
                 --running;
                 shift();
-            };
+            }
             function rej(error) {
                 queue = [];
                 reject(error);
                 --running;
-            };
+            }
             queue.push(function () {
                 try {
                     var result = callback();
-                    result instanceof Promise ? result.then(res, rej) : res(result);
+                    (result instanceof Promise) ? result.then(res, rej) : res(result);
                 } catch (error) {
                     rej(error);
                 }
@@ -449,7 +450,7 @@ exports.createParallelRunner = function (parallelRequests) {
         setTimeout(shift, 0);
         return promise;
 
-    }
+    };
 
 
 };

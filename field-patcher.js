@@ -1,4 +1,3 @@
-var util = require('util');
 var rpm = require('./api-wrappers');
 
 var factories = {};
@@ -111,7 +110,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
         });
 
         var id;
-        while (id = getRowID()) {
+        while ((id = getRowID())) {
             add(id);
         }
 

@@ -47,6 +47,10 @@ function getMsSqlType(value) {
 }
 
 function SqlTypedValue(value, type) {
+    if (!type) {
+        throw new Error('Type is required');
+    }
+
     this.value = norm.isNull(value) ? null : type.normalize(value);
     this.type = type;
 }
@@ -79,7 +83,7 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
                     type = getMsSqlType(value);
                 }
                 request.addParameter(key, type, value);
-            };
+            }
         }
 
         request.on('columnMetadata', function (columns) {
@@ -134,7 +138,7 @@ function getObjectID(object, demand) {
 
 }
 
-var nullableSubstitutions = {}
+var nullableSubstitutions = {};
 nullableSubstitutions[TYPES.BitN.name] = TYPES.Bit;
 nullableSubstitutions[TYPES.IntN.name] = TYPES.Int;
 nullableSubstitutions[TYPES.DateN.name] = TYPES.Date;
@@ -186,7 +190,7 @@ exports.buildParameters = buildParameters;
 
 function Query(values) {
     this.columns = {};
-    this.parameters = {}
+    this.parameters = {};
     var ii = 0;
     for (var columnName in values) {
         var parameter = PARAMETER_PREFIX + ii;
@@ -198,7 +202,7 @@ function Query(values) {
 
 Query.prototype.execute = function (connection) {
     return connection.execute(this.sql, this.parameters);
-}
+};
 
 exports.Query = Query;
 

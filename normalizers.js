@@ -31,4 +31,4 @@ module.exports = {
     trim: trim,
     isNull: isNull
 
-}
+};
