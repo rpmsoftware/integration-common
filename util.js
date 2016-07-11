@@ -213,6 +213,14 @@ function throwError(message, name, data) {
 exports.throwError = throwError;
 
 var arrayPrototypeExtensions = {
+    demandIndexOf: function (element) {
+        var result = this.indexOf(element);
+        if (result < 0) {
+            throw new Error('Array element not found: ' + element);
+        }
+        return result;
+    },
+
     equals: function (another) {
         if (this.length != another.length) {
             return false;
