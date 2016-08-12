@@ -19,8 +19,9 @@ function API(url, key, name) {
     this.url = url.ensureRight('Api2.svc/');
     this.key = key;
     this.name = name;
-    this._requestClient = new RESTClient();
+    this._restClient = new RESTClient();
     this.parallelRunner = rpmUtil.createParallelRunner();
+    this.modifiedTTL = 0;
 }
 
 API.prototype.getUrl = function (endPoint) {
@@ -49,7 +50,7 @@ API.prototype.request = function (endPoint, data) {
             doneData.responseTime = responseTime;
             (isError ? reject : resolve)(doneData);
         }
-        self._requestClient.post(url, args, callback);
+        self._restClient.post(url, args, callback);
     });
 };
 
@@ -222,7 +223,7 @@ API.prototype.editForm = function (formId, fields, properties) {
         Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
         });
-    return this.request('ProcFormEdit', { Form: properties });
+    return this.request('ProcFormEdit', { OverwriteWithNull: true, Form: properties });
 };
 
 API.prototype.setFormArchived = function (archived, formId) {
@@ -514,11 +515,16 @@ API.prototype.getHeaders = function () {
 };
 
 API.prototype.getLastModifications = function () {
-    return this.request('Modified').then(function (response) {
+    var api = this;
+    return api._cachedModified ? Promise.resolve(api._cachedModified) : api.request('Modified').then(function (response) {
         var result = {};
         response.Modified.forEach(function (modified) {
             result[modified.Type] = modified.Age;
         });
+        api._cachedModified = result;
+        setTimeout(function () {
+            api._cachedModified = undefined;
+        }, api.modifiedTTL > 0 ? api.modifiedTTL * 1000 : 0);
         return result;
     });
 };

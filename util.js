@@ -114,6 +114,9 @@ exports.isEmpty = function (object) {
 };
 
 exports.getValues = function (object) {
+    if (Array.isArray(object)) {
+        return object;
+    }
     if (typeof object !== 'object') {
         throw new Error('Object is expected');
     }
