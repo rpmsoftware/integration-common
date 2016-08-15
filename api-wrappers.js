@@ -110,22 +110,22 @@ var VIEW_CATEGORY = {
 };
 
 
-API.prototype.createFormAction = function (description, form, due, userID) {
-    if (typeof form === 'object') {
-        form = form.Form || form;
+API.prototype.createFormAction = function (description, formOrID, due, userID) {
+    if (typeof formOrID === 'object') {
+        formOrID = formOrID.Form || formOrID;
         if (typeof userID === 'undefined') {
-            userID = form.Participants.find(function (participant) {
-                return participant.Name === form.Owner;
+            userID = formOrID.Participants.find(function (participant) {
+                return participant.Name === formOrID.Owner;
             });
             userID = userID && userID.UserID;
         }
-        form = form.FormID;
+        formOrID = formOrID.FormID;
     }
     var data = {
         Action: {
             Description: description,
             Form: {
-                FormID: rpmUtil.normalizeInteger(form)
+                FormID: rpmUtil.normalizeInteger(formOrID)
             },
             StaffOnly: true,
             Due: rpmUtil.normalizeDate(due),
@@ -193,9 +193,9 @@ API.prototype.getActiveProcess = function (nameOrID, demand) {
 API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    var p = cache._processes ? api.getModifiedAspects() : Promise.resolve();
+    var p = api.getModifiedAspects();
     p = p.then(function (modifiedAspects) {
-        if (!modifiedAspects || modifiedAspects.contains('ProcList')) {
+        if (!cache._processes || modifiedAspects.contains('ProcList')) {
             return api.getProcesses(true);
         }
     });
@@ -223,7 +223,7 @@ API.prototype.editForm = function (formId, fields, properties) {
         Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
         });
-    return this.request('ProcFormEdit', { OverwriteWithNull: true, Form: properties });
+    return this.request('ProcFormEdit', { Form: properties });
 };
 
 API.prototype.setFormArchived = function (archived, formId) {
