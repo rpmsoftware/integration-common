@@ -516,15 +516,16 @@ API.prototype.getHeaders = function () {
 
 API.prototype.getLastModifications = function () {
     var api = this;
-    return api._cachedModified ? Promise.resolve(api._cachedModified) : api.request('Modified').then(function (response) {
+    if (api._cachedModified && api._modifiedRequested && Date.now() - api._modifiedRequested < api.modifiedTTL * 1000) {
+        return Promise.resolve(api._cachedModified)
+    }
+    return api.request('Modified').then(function (response) {
+        api._modifiedRequested = response.responseTime.getTime();
         var result = {};
         response.Modified.forEach(function (modified) {
             result[modified.Type] = modified.Age;
         });
         api._cachedModified = result;
-        setTimeout(function () {
-            api._cachedModified = undefined;
-        }, api.modifiedTTL > 0 ? api.modifiedTTL * 1000 : 0);
         return result;
     });
 };
@@ -1204,6 +1205,31 @@ exports.getTableRowValues = function (row) {
 
 exports.parseTimezoneOffset = parseTimezoneOffset;
 
+function validateFieldType(field, fieldTypeName, subTypeName) {
+    var t = FIELD_TYPE[fieldTypeName];
+    if (!t) {
+        throw new Error('Unknown FieldType: ' + fieldTypeName);
+    }
+    if (field.FieldType !== t.value) {
+        throw new Error(`Incorrect FieldType ${field.FieldType}. ${t.value} (${fieldTypeName}) expected`);
+    }
+    t = t.subTypes[subTypeName];
+    if (!t) {
+        throw new Error(`Unknown SubType '${subTypeName}' for FieldType '${fieldTypeName}' subType`);
+    }
+    if (field.SubType !== t.value) {
+        throw new Error(`Incorrect SubType ${field.SubType}. ${t.value} (${subTypeName}) expected`);
+    }
+    return field;
+}
+
+function validateProcessReference(field, processID) {
+    return validateFieldType(field, 'FormReference', 'RestrictedReference');
+}
+
+
+exports.validateFieldType = validateFieldType;
+exports.validateProcessReference = validateProcessReference;
 
 var assert = require('assert');
 
