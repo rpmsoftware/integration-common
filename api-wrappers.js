@@ -54,6 +54,30 @@ API.prototype.request = function (endPoint, data) {
     });
 };
 
+API.prototype.createFormNumberCache = function () {
+    var api = this;
+    var formNumberCache = {};
+    var queue = Promise.resolve();
+    return function (formID) {
+        if (!formID) {
+            return;
+        }
+        var p = queue = queue.then(function () {
+            var cached = formNumberCache[formID];
+            return cached === undefined ? api.getForm(formID).then(function (form) {
+                if (!form) {
+                    formNumberCache[formID] = false;
+                    return;
+                }
+                form = form.Form;
+                formNumberCache[form.FormID] = form.Number;
+                return form.Number;
+            }) : Promise.resolve(cached || undefined);
+        });
+        return p;
+    };
+};
+
 API.prototype.getUser = function (userName, password) {
     return this.request('User', {
         Username: userName,
