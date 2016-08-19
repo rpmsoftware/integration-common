@@ -1224,12 +1224,26 @@ function validateFieldType(field, fieldTypeName, subTypeName) {
 }
 
 function validateProcessReference(field, processID) {
-    return validateFieldType(field, 'FormReference', 'RestrictedReference');
+    field = validateFieldType(field, 'FormReference', 'RestrictedReference');
+    if (processID !== undefined && field.ProcessID !== processID) {
+        throw new Error(`Field "${field.Name}" is referring to process ProcessID=${field.ProcessID}. ProcessID=${processID} is expected`);
+    }
+    return field;
+}
+
+function isProcessReference(field, processID) {
+    try {
+        validateProcessReference(field, processID);
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 
 exports.validateFieldType = validateFieldType;
 exports.validateProcessReference = validateProcessReference;
+exports.isProcessReference = isProcessReference;
 
 var assert = require('assert');
 
