@@ -22,6 +22,7 @@ function API(url, key, name) {
     this._restClient = new RESTClient();
     this.parallelRunner = rpmUtil.createParallelRunner();
     this.modifiedTTL = 0;
+    this._formNumbers = {};
 }
 
 API.prototype.getUrl = function (endPoint) {
@@ -442,6 +443,24 @@ API.prototype.getFormList = function (processId, viewId, includeArchived) {
     return this.request('ProcFormList', baseRequest);
 };
 
+var FORM_NUMBER_TTL = 15 * 60 * 1000; // 15 minutes
+
+API.prototype._saveFormNumber = function (formID, formNumber) {
+    this._formNumbers[formID] = { FormID: formID, Number: formNumber, Updated: Date.now() };
+};
+
+API.prototype.getFormNumber = function (formID) {
+    var api = this;
+    var result = api._formNumbers[formID];
+    if (result && Date.now() - result.Updated < FORM_NUMBER_TTL) {
+        return Promise.resolve(result.Number);
+    }
+    return api.demandForm(+formID).then(function (form) {
+        result = api._formNumbers[formID];
+        assert(result && Date.now() - result.Updated < FORM_NUMBER_TTL);
+        return result.Number;
+    });
+};
 
 API.prototype.demandForm = function (processOrFormId, formNumber) {
     var api = this;
@@ -453,10 +472,12 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
         request = { FormID: processOrFormId };
     }
     return api.request('ProcForm', request).then(function (response) {
-        response.Form.getFieldsAsObject = getFormFieldsAsObject;
-        response.Form.getFieldValue = getFormFieldValue;
-        response.Form.getField = getFormField;
-        response.Form.getFieldByUid = getFormFieldByUid;
+        var form = response.Form;
+        api._saveFormNumber(form.FormID, form.Number);
+        form.getFieldsAsObject = getFormFieldsAsObject;
+        form.getFieldValue = getFormFieldValue;
+        form.getField = getFormField;
+        form.getFieldByUid = getFormFieldByUid;
         return response;
     });
 };
