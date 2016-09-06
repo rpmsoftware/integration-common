@@ -178,6 +178,7 @@ API.prototype._extendProcess = function (proc) {
     proc.getFields = getFields;
     proc.getForms = getForms;
     proc.addForm = addForm;
+    proc.createForm = createForm;
     proc.getFormList = getFormList;
     proc.getCachedFields = getCachedFields;
     proc.getAllForms = getAllForms;
@@ -242,6 +243,10 @@ API.prototype.getInfo = function () {
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
+    if (typeof formId === 'object') {
+        formId = formId.Form || formId;
+        formId = formId.FormID;
+    }
     properties = properties || {};
     properties.FormID = formId;
     properties.Fields = Array.isArray(fields) ? fields :
@@ -542,17 +547,38 @@ function addForm(fields, status) {
 }
 
 API.prototype.addForm = function (processId, fields, status) {
+    console.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
     var api = this;
-    var request = new BaseProcessData(processId);
-    request.Form = {
-        Fields: Array.isArray(fields) ? fields :
-            Object.keys(fields).map(function (key) {
-                return { Field: key, Value: fields[key] };
-            })
-    };
-    return api.request('ProcFormAdd', request).then(function (form) {
-        return status ? api.editForm(form.Form.FormID, [], { Status: status }) : form;
-    });
+    return this.createForm(processId, fields, { Status: status });
+};
+
+function createForm(fields, properties) {
+    return this._api.createForm(this.ProcessID, fields, properties);
+}
+
+API.prototype.createForm = function (processOrId, fields, properties) {
+    var api = this;
+    properties = properties || {};
+    var status = properties.Status || properties.StatusID || undefined;
+    properties = { Form: properties };
+    properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
+    properties.Form.Fields = Array.isArray(fields) ? fields :
+        Object.keys(fields).map(function (key) {
+            return { Field: key, Value: fields[key] };
+        });
+    var p = this.request('ProcFormAdd', properties);
+    if (status) {
+        p = p.then(function (form) {
+            return api.setFormStatus(form, status);
+        });
+    }
+    return p;
+};
+
+API.prototype.setFormStatus = function (form, status) {
+    var properties = {};
+    properties[typeof status === 'number' ? 'StatusID' : 'Status'] = status;
+    return this.editForm(form, [], properties);
 };
 
 API.prototype.getHeaders = function () {
