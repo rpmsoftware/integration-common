@@ -402,10 +402,13 @@ function getFormList(includeArchived, viewId) {
 
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
-        response.Process.Fields.forEach(function (field) {
+        response = response.Process;
+        response.Fields.forEach(function (field) {
             Object.assign(field, PROCESS_FIELD_PROTO);
         });
-        return response.Process;
+        response.getField = getField;
+        response.getFieldByUid = getFieldByUid;
+        return response;
     });
 };
 
@@ -481,8 +484,8 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
         api._saveFormNumber(form.FormID, form.Number);
         form.getFieldsAsObject = getFormFieldsAsObject;
         form.getFieldValue = getFormFieldValue;
-        form.getField = getFormField;
-        form.getFieldByUid = getFormFieldByUid;
+        form.getField = getField;
+        form.getFieldByUid = getFieldByUid;
         return response;
     });
 };
@@ -514,22 +517,22 @@ function getFormFieldValue(fieldName, eager) {
     return field && field.Value;
 }
 
-function getFormField(fieldName, eager) {
+function getField(fieldName, eager) {
     var result = this.Fields.find(function (field) {
-        return field.Field === fieldName;
+        return (field.Field || field.Name) === fieldName;
     });
     if (!result && eager) {
-        throw new Error('Unknown form field:' + fieldName);
+        throw new Error('Unknown field: ' + fieldName);
     }
     return result;
 }
 
-function getFormFieldByUid(uid, eager) {
+function getFieldByUid(uid, eager) {
     var result = this.Fields.find(function (field) {
         return field.Uid === uid;
     });
     if (!result && eager) {
-        throw new Error('Unknown form field. Uid:' + uid);
+        throw new Error('Unknown field. Uid: ' + uid);
     }
     return result;
 }
