@@ -680,38 +680,11 @@ API.prototype.getAccount = function (nameOrID) {
     return this.request('Account', req).then(tweakDates);
 };
 
-API.prototype.getAccounts = function () {
-    var api = this;
-    return Promise.all([api.getCustomers(), api.getSuppliers()]).then(function (responses) {
-        var customers = responses[0].Customers;
-        var suppliers = responses[1].Suppliers;
-
-        var parentObjects, f, idProperty;
-        if (customers.length > suppliers.length) {
-            parentObjects = suppliers;
-            f = api.getSupplierAccounts;
-            idProperty = 'SupplierID';
-        } else {
-            parentObjects = customers;
-            f = api.getCustomerAccounts;
-            idProperty = 'CustomerID';
-        }
-        f = f.bind(api);
-        var result = [];
-        var promises = [];
-        parentObjects.forEach(function (parent) {
-            promises.push(api.parallelRunner(function () {
-                return f(+parent[idProperty]);
-            }).then(function (accounts) {
-                accounts.Accounts.forEach(function (account) {
-                    tweakDates(account);
-                    result.push(account);
-                });
-            }));
-        });
-        return Promise.all(promises).then(function () {
-            return { Accounts: result };
-        });
+API.prototype.getAccounts = function (modifiedAfter) {
+    modifiedAfter = modifiedAfter ? rpmUtil.normalizeDate(modifiedAfter) : new Date(0);
+    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(function (response) {
+        response.Accounts.forEach(tweakDates);
+        return response;
     });
 };
 
