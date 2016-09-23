@@ -1406,19 +1406,3 @@ exports.isListField = function (field) {
     var customField = FIELD_TYPE.CustomField;
     return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
 };
-
-exports.normalizeDate = function (timeZone) {
-    if (!timeZone) {
-        return rpmUtil.normalizeDate;
-    }
-    var moment = require('moment-timezone');
-    if (!moment.tz.zone(timeZone)) {
-        throw new Error('Unknown time zone: ' + timeZone);
-    }
-    return function (date) {
-        date = rpmUtil.normalizeDate(date);
-        date.setMinutes(date.getMinutes() + moment(date).utcOffset() - moment().tz(timeZone).utcOffset());
-        return date;
-    }
-};
-

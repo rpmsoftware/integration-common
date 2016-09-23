@@ -63,6 +63,21 @@ exports.toBoolean = function (value) {
     }
 };
 
+exports.createDateNormalizer = function (timeZone) {
+    if (!timeZone) {
+        return normalizeDate;
+    }
+    var moment = require('moment-timezone');
+    if (!moment.tz.zone(timeZone)) {
+        throw new Error('Unknown time zone: ' + timeZone);
+    }
+    return function (date) {
+        date = normalizeDate(date);
+        date.setMinutes(date.getMinutes() + moment(date).utcOffset() - moment().tz(timeZone).utcOffset());
+        return date;
+    }
+};
+
 exports.indexOf = function (array, value) {
     var result = array.indexOf(value);
     if (result < 0) {
@@ -388,13 +403,15 @@ exports.singleRun = function (callback) {
     };
 };
 
-exports.normalizeDate = function (date) {
+function normalizeDate(date) {
     var result = date instanceof Date ? date : new Date(date);
     if (isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
     }
     return result;
-};
+}
+
+exports.normalizeDate = normalizeDate;
 
 exports.normalizeInteger = function (value) {
     value = +value;
