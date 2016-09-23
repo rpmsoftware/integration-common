@@ -7,9 +7,6 @@ var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
 function API(url, key, name) {
-    if (!arguments) {
-        return;
-    }
     if (typeof url === 'object') {
         key = url.key;
         name = url.name;
@@ -42,7 +39,7 @@ API.prototype.request = function (endPoint, data) {
             var isError = false;
             if (data.Result) {
                 isError = data.Result.Error;
-                doneData = isError ? data.Result.Error : (data.Result || data);
+                doneData = isError || data.Result || data;
             } else {
                 isError = true;
                 doneData = data;
@@ -1409,3 +1406,19 @@ exports.isListField = function (field) {
     var customField = FIELD_TYPE.CustomField;
     return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
 };
+
+exports.normalizeDate = function (timeZone) {
+    if (!timeZone) {
+        return rpmUtil.normalizeDate;
+    }
+    var moment = require('moment-timezone');
+    if (!moment.tz.zone(timeZone)) {
+        throw new Error('Unknown time zone: ' + timeZone);
+    }
+    return function (date) {
+        date = rpmUtil.normalizeDate(date);
+        date.setMinutes(date.getMinutes() + moment(date).utcOffset() - moment().tz(timeZone).utcOffset());
+        return date;
+    }
+};
+

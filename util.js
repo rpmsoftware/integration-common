@@ -267,7 +267,7 @@ var arrayPrototypeExtensions = {
     toObject: function (keyProperty) {
         var result = {};
         this.forEach(function (element) {
-            var key = keyProperty ? element[keyProperty] : element;
+            var key = keyProperty === undefined ? element : element[keyProperty];
             if (key === undefined) {
                 throw Error('Property cannot be empty: ' + keyProperty);
             }
