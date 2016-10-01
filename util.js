@@ -270,11 +270,11 @@ var arrayPrototypeExtensions = {
 
     },
 
-    find: function (callback) {
+    find: function (callback, includeIndex) {
         for (var ii = 0; ii < this.length; ii++) {
             var element = this[ii];
             if (callback(element, ii)) {
-                return element;
+                return includeIndex ? { value: element, index: ii } : element;
             }
         }
     },

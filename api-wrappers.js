@@ -524,6 +524,8 @@ function getField(fieldName, eager) {
     return result;
 }
 
+exports.getField = getField;
+
 function getFieldByUid(uid, eager) {
     var result = this.Fields.find(function (field) {
         return field.Uid === uid;
@@ -1236,12 +1238,12 @@ var FIELD_TYPE = exports.FIELD_TYPE = (function () {
     return fieldTypes;
 })();
 
-exports.getTableRowValues = function (row) {
+exports.getTableRowValues = function (row, valueExtractor) {
     var values = {};
     row.Fields.forEach(function (field) {
         var value = field.Values[0];
         if (value) {
-            values[field.Uid] = value.Value;
+            values[field.Uid] = valueExtractor && valueExtractor(value) || value.Value;
         }
     });
     return values;
