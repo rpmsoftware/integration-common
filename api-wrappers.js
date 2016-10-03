@@ -592,15 +592,22 @@ API.prototype.getLastModifications = function () {
     if (api._cachedModified && api._modifiedRequested && Date.now() - api._modifiedRequested < api.modifiedTTL * 1000) {
         return Promise.resolve(api._cachedModified)
     }
-    return api.request('Modified').then(function (response) {
-        api._modifiedRequested = response.responseTime.getTime();
-        var result = {};
-        response.Modified.forEach(function (modified) {
-            result[modified.Type] = modified.Age;
+    if (!api._modifiedPromise) {
+        api._modifiedPromise = api.request('Modified').then(function (response) {
+            api._modifiedRequested = response.responseTime.getTime();
+            var result = {};
+            response.Modified.forEach(function (modified) {
+                result[modified.Type] = modified.Age;
+            });
+            api._cachedModified = result;
+            delete api._modifiedPromise;
+            return result;
+        }, function (error) {
+            delete api._modifiedPromise;
+            throw error;
         });
-        api._cachedModified = result;
-        return result;
-    });
+    }
+    return api._modifiedPromise;
 };
 
 API.prototype.getModifiedAspects = function () {
