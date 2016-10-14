@@ -250,7 +250,7 @@ API.prototype.editForm = function (formId, fields, properties) {
         Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
         });
-    return this.request('ProcFormEdit', { Form: properties });
+    return this.request('ProcFormEdit', { Form: properties }).then(this._extendForm.bind(this));
 };
 
 API.prototype.setFormArchived = function (archived, formId) {
@@ -476,16 +476,18 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
     } else {
         request = { FormID: processOrFormId };
     }
-    return api.request('ProcForm', request).then(function (response) {
-        var form = response.Form;
-        api._saveFormNumber(form.FormID, form.Number);
-        form.getFieldsAsObject = getFormFieldsAsObject;
-        form.getFieldValue = getFormFieldValue;
-        form.getField = getField;
-        form.getFieldByUid = getFieldByUid;
-        return response;
-    });
+    return api.request('ProcForm', request).then(api._extendForm.bind(api));
 };
+
+API.prototype._extendForm = function (form) {
+    var frm = form.Form || form;
+    this._saveFormNumber(frm.FormID, frm.Number);
+    frm.getFieldsAsObject = getFormFieldsAsObject;
+    frm.getFieldValue = getFormFieldValue;
+    frm.getField = getField;
+    frm.getFieldByUid = getFieldByUid;
+    return form;
+}
 
 API.prototype.getForm = function () {
     return this.demandForm.apply(this, arguments).then(
@@ -574,7 +576,7 @@ API.prototype.createForm = function (processOrId, fields, properties) {
             return api.setFormStatus(form, status);
         });
     }
-    return p;
+    return p.then(api._extendForm.bind(api));
 };
 
 API.prototype.setFormStatus = function (form, status) {
@@ -1255,6 +1257,7 @@ exports.getTableRowValues = function (row, valueExtractor) {
     });
     return values;
 };
+
 
 exports.parseTimezoneOffset = parseTimezoneOffset;
 
