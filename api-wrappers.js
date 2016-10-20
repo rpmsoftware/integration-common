@@ -159,15 +159,19 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     return this.request('ActionEdit', data);
 };
 
-
 API.prototype.getProcesses = function (includeDisabled) {
-    var self = this;
-    return self.request('Procs').then(function (response) {
-        return response.Procs.filter(function (proc) {
-            self._extendProcess(proc);
-            return (includeDisabled || proc.Enabled);
+    var api = this;
+    if (!api._promiseProcs) {
+        api._promiseProcs = api.request('Procs').then(response => {
+            var result = response.Procs.map(api._extendProcess.bind(api));
+            delete api._promiseProcs;
+            return result;
+        }, error => {
+            delete api._promiseProcs;
+            throw error;
         });
-    });
+    }
+    return api._promiseProcs.then(procs => includeDisabled ? procs : procs.filter(proc => proc.Enabled));
 };
 
 API.prototype._extendProcess = function (proc) {
@@ -181,6 +185,7 @@ API.prototype._extendProcess = function (proc) {
     proc.getAllForms = getAllForms;
     proc.getViews = getViews;
     proc.getView = getView;
+    return proc;
 };
 
 var ERR_PROCESS_NOT_FOUND = 'Process not found: %s';
