@@ -255,7 +255,7 @@ API.prototype.editForm = function (formId, fields, properties) {
         Object.keys(fields).map(function (key) {
             return { Field: key, Value: fields[key] };
         });
-    return this.request('ProcFormEdit', { Form: properties }).then(this._extendForm.bind(this));
+    return this.request('ProcFormEdit', { Form: properties, OverwriteWithNull: true }).then(this._extendForm.bind(this));
 };
 
 API.prototype.setFormArchived = function (archived, formId) {
@@ -542,6 +542,7 @@ function getFieldByUid(uid, eager) {
     }
     return result;
 }
+exports.getFieldByUid = getFieldByUid;
 
 function BaseProcessData(processOrId) {
     if (typeof processOrId === 'number') {
