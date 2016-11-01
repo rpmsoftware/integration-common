@@ -51,10 +51,12 @@ exports.toBoolean = function (value) {
     switch (value.trim().toLowerCase()) {
         case 'true':
         case 'yes':
+        case 'y':
         case '1':
             return true;
         case 'false':
         case 'no':
+        case 'n':
         case '0':
         case '':
             return false;
