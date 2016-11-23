@@ -4,6 +4,7 @@
     "version": "2.2.0",
     "author": "Dmitriy Serdyukov",
     "files": [
+        "dependencies.json",
         "api-wrappers.js",
         "mssql.js",
         "util.js",
