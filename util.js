@@ -142,21 +142,35 @@ exports.getValues = function (object) {
     });
 };
 
-exports.getDeepValue = function (object, keys) {
-    if (!Array.isArray(keys)) {
-        keys = arguments;
-        keys.shift();
+function demandDeepValue(object, keys) {
+    function goDeeper(key) {
+        if (!object || !object.hasOwnProperty(key)) {
+            throw new TypeError('No property: ' + key);
+        }
+        object = object[key];
+
     }
+    if (Array.isArray(keys)) {
+        keys.forEach(goDeeper);
+    } else {
+        delete arguments['0'];
+        for (var key in arguments) {
+            goDeeper(arguments[key]);
+        }
+    }
+    return object;
+};
+
+exports.demandDeepValue = demandDeepValue;
+
+exports.getDeepValue = function (object, keys) {
     try {
-        keys.forEach(function (key) {
-            object = object[key];
-        });
+        return demandDeepValue(object, keys);
     } catch (error) {
         if (!(error instanceof TypeError)) {
             throw error;
         }
     }
-    return object;
 };
 
 exports.getOrCreate = function (object, key, defaultValue) {
