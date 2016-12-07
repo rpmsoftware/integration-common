@@ -165,7 +165,7 @@ exports.demandDeepValue = demandDeepValue;
 
 exports.getDeepValue = function (object, keys) {
     try {
-        return demandDeepValue(object, keys);
+        return demandDeepValue.apply(undefined, arguments);
     } catch (error) {
         if (!(error instanceof TypeError)) {
             throw error;
