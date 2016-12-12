@@ -262,8 +262,11 @@ API.prototype.setFormArchived = function (archived, formId) {
     return this.request(archived ? 'ProcFormArchive' : 'ProcFormUnarchive', { FormID: formId });
 };
 
-API.prototype.trashForm = function (formId) {
-    return this.request('ProcFormTrash', { FormID: formId });
+API.prototype.trashForm = function (formID) {
+    if (typeof formID === 'object') {
+        formID = (formID.Form || formID).FormID;
+    }
+    return this.request('ProcFormTrash', { FormID: formID });
 };
 
 var ERROR_RESPONSE_FORM_NOT_FOUND = 'Form not found';
@@ -485,12 +488,9 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
 };
 
 API.prototype._extendForm = function (form) {
+    form = extendForm(form);
     var frm = form.Form || form;
     this._saveFormNumber(frm.FormID, frm.Number);
-    frm.getFieldsAsObject = getFormFieldsAsObject;
-    frm.getFieldValue = getFormFieldValue;
-    frm.getField = getField;
-    frm.getFieldByUid = getFieldByUid;
     return form;
 }
 
@@ -566,6 +566,7 @@ function createForm(fields, properties) {
     return this._api.createForm(this.ProcessID, fields, properties);
 }
 
+
 API.prototype.createForm = function (processOrId, fields, properties) {
     var api = this;
     properties = properties || {};
@@ -584,6 +585,32 @@ API.prototype.createForm = function (processOrId, fields, properties) {
     }
     return p.then(api._extendForm.bind(api));
 };
+
+
+function extendForm(form) {
+    var frm = form.Form || form;
+    frm.getFieldsAsObject = getFormFieldsAsObject;
+    frm.getFieldValue = getFormFieldValue;
+    frm.getField = getField;
+    frm.getFieldByUid = getFieldByUid;
+    return form;
+}
+
+
+API.prototype.createFormSet = function (parentFormID, fields) {
+    if (typeof parentFormID === 'object') {
+        parentFormID = (parentFormID.Form || parentFormID).FormID;
+    }
+    return this.request('ProcFormSetAdd', {
+        Form: {
+            FormID: parentFormID,
+            Fields: Array.isArray(fields) ? fields :
+                Object.keys(fields).map(function (key) {
+                    return { Field: key, Value: fields[key] };
+                })
+        }
+    }).then(extendForm);
+}
 
 API.prototype.setFormStatus = function (form, status) {
     var properties = {};
