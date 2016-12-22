@@ -114,7 +114,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
             add(id);
         }
 
-        return { Field: field.Name, Rows: result };
+        return { Field: field.Name, Uid: field.Uid, Rows: result };
 
     };
 };
@@ -135,6 +135,6 @@ module.exports = function (field) {
     }
     return result ? result.apply(undefined, arguments) :
         function (value) {
-            return { Field: field.Name, Value: normalizeValue(value) };
+            return { Field: field.Name, Uid: field.Uid, Value: normalizeValue(value) };
         };
 };
