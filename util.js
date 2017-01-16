@@ -77,7 +77,7 @@ exports.createDateNormalizer = function (timeZone) {
         date = normalizeDate(date);
         date.setMinutes(date.getMinutes() + moment(date).utcOffset() - moment().tz(timeZone).utcOffset());
         return date;
-    }
+    };
 };
 
 exports.indexOf = function (array, value) {
@@ -159,11 +159,11 @@ function demandDeepValue(object, keys) {
         }
     }
     return object;
-};
+}
 
 exports.demandDeepValue = demandDeepValue;
 
-exports.getDeepValue = function (object, keys) {
+exports.getDeepValue = function () {
     try {
         return demandDeepValue.apply(undefined, arguments);
     } catch (error) {
@@ -429,13 +429,16 @@ function normalizeDate(date) {
 
 exports.normalizeDate = normalizeDate;
 
-exports.normalizeInteger = function (value) {
+
+function normalizeInteger(value) {
     value = +value;
     if (typeof value !== 'number' || value % 1) {
         throw new TypeError('Invalid integer: ' + value);
     }
     return value;
-};
+}
+
+exports.normalizeInteger = normalizeInteger;
 
 exports.logErrorStack = function (error) {
     if (!(error instanceof Error)) {
@@ -519,3 +522,46 @@ exports.createParallelRunner = function (parallelRequests) {
         };
     }
 })();
+
+var MONTHS = {};
+['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+    .forEach((month, idx) => MONTHS[month] = idx);
+
+var DAYS = {};
+['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    .forEach((day, idx) => DAYS[day] = idx);
+
+exports.createDateMatcher = function (config) {
+    var conf = {};
+    if (config.day) {
+        conf._day = {};
+        (Array.isArray(config.day) ? config.day : [config.day]).forEach(d =>
+            conf._day[normalizeInteger(typeof d === 'string' ? DAYS[d.trim().toLowerCase()] : d) % 7] = true);
+    }
+    if (config.month) {
+        conf._month = {};
+        (Array.isArray(config.month) ? config.month : [config.month]).forEach(d =>
+            conf._month[normalizeInteger(typeof d === 'string' ? MONTHS[d.trim().toLowerCase()] : d) % 12] = true);
+    }
+
+    if (config.date) {
+        conf._date = {};
+        (Array.isArray(config.date) ? config.date : [config.date]).forEach(
+            d => conf._date[normalizeInteger(d) % 32] = true);
+    }
+
+    if (config.hour) {
+        conf._hour = {};
+        (Array.isArray(config.hour) ? config.hour : [config.hour]).forEach(
+            d => conf._hour[normalizeInteger(d) % 24] = true);
+    }
+    return function (date) {
+        date = normalizeDate(date);
+        return !(
+            conf._day && !conf._day[date.getDay()] ||
+            conf._date && !conf._date[date.getDate()] ||
+            conf._month && !conf._month[date.getMonth()] ||
+            conf._hour && !conf._hour[date.getHours()]
+        );
+    };
+};
