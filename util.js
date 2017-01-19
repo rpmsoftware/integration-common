@@ -137,9 +137,7 @@ exports.getValues = function (object) {
     if (typeof object !== 'object') {
         throw new Error('Object is expected');
     }
-    return Object.keys(object).map(function (key) {
-        return object[key];
-    });
+    return Object.keys(object).map(key => object[key]);
 };
 
 function demandDeepValue(object, keys) {
@@ -297,7 +295,7 @@ var arrayPrototypeExtensions = {
 
     toObject: function (keyProperty) {
         var result = {};
-        this.forEach(function (element) {
+        this.forEach(element => {
             var key = keyProperty === undefined ? element : element[keyProperty];
             if (key === undefined) {
                 throw Error('Property cannot be empty: ' + keyProperty);
@@ -376,7 +374,7 @@ exports.createObjectSerializer = function (object, fileName) {
     function doSave() {
         triggered = false;
         console.log('Saving state');
-        fs.writeFile(fileName, JSON.stringify(object), function (err) {
+        fs.writeFile(fileName, JSON.stringify(object), err => {
             running = false;
             if (err) {
                 console.error(err);
@@ -474,7 +472,7 @@ exports.createParallelRunner = function (parallelRequests) {
         }
 
 
-        var promise = new Promise(function (resolve, reject) {
+        var promise = new Promise((resolve, reject) => {
             function res(result) {
                 resolve(result);
                 --running;
@@ -502,7 +500,7 @@ exports.createParallelRunner = function (parallelRequests) {
 
 };
 
-(function /*init logger */() {
+( /*init logger */() => {
     try {
         var winston = require('winston');
         exports.logger = {
@@ -563,5 +561,22 @@ exports.createDateMatcher = function (config) {
             conf._month && !conf._month[date.getMonth()] ||
             conf._hour && !conf._hour[date.getHours()]
         );
+    };
+};
+
+exports.promiseFinally = function (callback) {
+    return function (promise) {
+        return promise.then(result => {
+            var cbResult = callback();
+            return cbResult instanceof Promise ? cbResult.then(() => result) : result;
+        }, error => {
+            var cbResult = callback();
+            if (cbResult instanceof Promise) {
+                return cbResult.then(() => {
+                    throw error;
+                });
+            }
+            throw error;
+        });
     };
 };
