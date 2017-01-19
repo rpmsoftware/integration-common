@@ -60,7 +60,7 @@ API.prototype.createFormNumberCache = function () {
         if (!formID) {
             return;
         }
-        var p = queue = queue.then(function () {
+        queue = queue.then(function () {
             var cached = formNumberCache[formID];
             return cached === undefined ? api.getForm(formID).then(function (form) {
                 if (!form) {
@@ -72,7 +72,7 @@ API.prototype.createFormNumberCache = function () {
                 return form.Number;
             }) : Promise.resolve(cached || undefined);
         });
-        return p;
+        return queue;
     };
 };
 
@@ -405,6 +405,19 @@ function getFormList(includeArchived, viewId) {
 
 }
 
+function getStatus(nameOrID, demand) {
+    var property = typeof nameOrID === 'number' ? 'ID' : 'Text';
+    var result = this.StatusLevels.find(st => st[property] === nameOrID);
+    if (!result && demand) {
+        throw new Error('Unknown status: ' + nameOrID);
+    }
+    return result;
+}
+
+API.prototype.getCachedFields = function (processNameOrId) {
+    return this.getActiveProcess(processNameOrId, true).then(proc => proc.getCachedFields());
+};
+
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
         response = response.Process;
@@ -412,6 +425,7 @@ API.prototype.getFields = function (processId) {
             Object.assign(field, PROCESS_FIELD_PROTO);
         });
         response.getField = getField;
+        response.getStatus = getStatus;
         response.getFieldByUid = getFieldByUid;
         return response;
     });
@@ -468,7 +482,7 @@ API.prototype.getFormNumber = function (formID) {
     if (result && Date.now() - result.Updated < FORM_NUMBER_TTL) {
         return Promise.resolve(result.Number);
     }
-    return api.demandForm(+formID).then(function (form) {
+    return api.demandForm(+formID).then(function () {
         result = api._formNumbers[formID];
         assert(result && Date.now() - result.Updated < FORM_NUMBER_TTL);
         return result.Number;
@@ -492,7 +506,7 @@ API.prototype._extendForm = function (form) {
     var frm = form.Form || form;
     this._saveFormNumber(frm.FormID, frm.Number);
     return form;
-}
+};
 
 API.prototype.getForm = function () {
     return this.demandForm.apply(this, arguments).then(
@@ -558,7 +572,6 @@ function addForm(fields, status) {
 
 API.prototype.addForm = function (processId, fields, status) {
     console.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
-    var api = this;
     return this.createForm(processId, fields, { Status: status });
 };
 
@@ -610,7 +623,7 @@ API.prototype.createFormSet = function (parentFormID, fields) {
                 })
         }
     }).then(extendForm);
-}
+};
 
 API.prototype.setFormStatus = function (form, status) {
     var properties = {};
@@ -625,7 +638,7 @@ API.prototype.getHeaders = function () {
 API.prototype.getLastModifications = function () {
     var api = this;
     if (api._cachedModified && api._modifiedRequested && Date.now() - api._modifiedRequested < api.modifiedTTL * 1000) {
-        return Promise.resolve(api._cachedModified)
+        return Promise.resolve(api._cachedModified);
     }
     if (!api._modifiedPromise) {
         api._modifiedPromise = api.request('Modified').then(function (response) {
