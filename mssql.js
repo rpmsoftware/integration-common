@@ -60,11 +60,11 @@ exports.SqlTypedValue = SqlTypedValue;
 function executeStatement(sqlQuery, parameters, metadataOnly) {
     var connection = this;
     logger.debug(sqlQuery);
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
         var rows = [];
         var metadata;
 
-        var request = new Request(sqlQuery, function (err, rowCount) {
+        var request = new Request(sqlQuery, (err, rowCount) => {
             if (err) {
                 err.sqlQuery = sqlQuery;
                 reject(err);
@@ -86,16 +86,12 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
             }
         }
 
-        request.on('columnMetadata', function (columns) {
-            metadata = columns;
-        });
+        request.on('columnMetadata', columns => metadata = columns);
 
         if (!metadataOnly) {
-            request.on('row', function (columns) {
+            request.on('row', columns => {
                 if (Array.isArray(columns)) {
-                    columns = columns.map(function (column) {
-                        return column.value;
-                    });
+                    columns = columns.map(column => column.value);
                 } else {
                     for (var key in columns) {
                         columns[key] = columns[key].value;
@@ -110,9 +106,9 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
 }
 
 exports.createConnection = function (config) {
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
         var connection = new Connection(config);
-        connection.on('connect', function (err) {
+        connection.on('connect', err => {
             if (err) {
                 connection.close();
                 reject(err);
@@ -128,7 +124,7 @@ exports.createConnection = function (config) {
 
 
 function getObjectID(object, demand) {
-    return this.execute(util.format("select object_id('%s')", object)).then(function (result) {
+    return this.execute(util.format("select object_id('%s')", object)).then(result => {
         result = result.rows[0][0];
         if (!result && demand) {
             throw new Error('No OBJECT_ID for ' + object);
@@ -152,9 +148,9 @@ nullableSubstitutions[TYPES.FloatN.name] = TYPES.Float;
 nullableSubstitutions[TYPES.MoneyN.name] = TYPES.Money;
 
 function getColumnTypes(table) {
-    return this.execute(util.format("select top 0 * from %s", table), undefined, true).then(function (response) {
+    return this.execute(util.format("select top 0 * from %s", table), undefined, true).then(response => {
         var result = {};
-        response.metadata.forEach(function (column) {
+        response.metadata.forEach(column => {
             var type = nullableSubstitutions[column.type.name] || column.type;
             assert.equal(typeof type.validate, 'function', 'validate() is absent for ' + type.name);
             assert.equal(typeof type.normalize, 'function', 'normalize() is absent for ' + type.name);

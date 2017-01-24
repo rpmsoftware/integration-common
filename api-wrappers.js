@@ -6,6 +6,8 @@ var rpmUtil = require('./util');
 var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
+const MAX_PARALLEL_CALLS = 20;
+
 function API(url, key, name) {
     if (typeof url === 'object') {
         key = url.key;
@@ -17,10 +19,17 @@ function API(url, key, name) {
     this.key = key;
     this.name = name;
     this._restClient = new RESTClient();
-    this.parallelRunner = rpmUtil.createParallelRunner();
-    this.modifiedTTL = 0;
+    this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
 }
+
+rpmUtil.defineStandardProperty(API.prototype, 'parallelRunner', () => {
+    if (!this._parallelRunner) {
+        this._parallelRunner = rpmUtil.createParallelRunner(MAX_PARALLEL_CALLS);
+    }
+    return this._parallelRunner;
+});
+
 
 API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
@@ -30,7 +39,7 @@ API.prototype.request = function (endPoint, data) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
     var self = this;
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
         logger.debug(`POST ${url} ${data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
         function callback(data) {
@@ -60,9 +69,9 @@ API.prototype.createFormNumberCache = function () {
         if (!formID) {
             return;
         }
-        queue = queue.then(function () {
+        queue = queue.then(() => {
             var cached = formNumberCache[formID];
-            return cached === undefined ? api.getForm(formID).then(function (form) {
+            return cached === undefined ? api.getForm(formID).then(form => {
                 if (!form) {
                     formNumberCache[formID] = false;
                     return;
@@ -84,9 +93,7 @@ API.prototype.getUser = function (userName, password) {
 };
 
 API.prototype.getStaffList = function () {
-    return this.request('StaffList').then(function (result) {
-        return result.StaffList;
-    });
+    return this.request('StaffList').then(result => result.StaffList);
 };
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
@@ -107,14 +114,10 @@ var INFO_PROTO = {
 };
 
 API.prototype.getViews = function (viewCategory, templateID) {
-    var p = this.request('ProcViews', {
+    return this.request('ProcViews', {
         'ViewCategory': +viewCategory,
         'ObjectSpecificID': +templateID
-    });
-    p = p.then(function (result) {
-        return result.Views;
-    });
-    return p;
+    }).then(result => result.Views);
 };
 
 var VIEW_CATEGORY = {
@@ -136,9 +139,7 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     if (typeof formOrID === 'object') {
         formOrID = formOrID.Form || formOrID;
         if (typeof userID === 'undefined') {
-            userID = formOrID.Participants.find(function (participant) {
-                return participant.Name === formOrID.Owner;
-            });
+            userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
             userID = userID && userID.UserID;
         }
         formOrID = formOrID.FormID;
@@ -195,11 +196,9 @@ function getProcessSearchKey(nameOrID) {
 }
 
 API.prototype.getProcess = function (nameOrID, demand) {
-    return this.getCachedProcesses().then(function (procs) {
+    return this.getCachedProcesses().then(procs => {
         var key = getProcessSearchKey(nameOrID);
-        var result = procs.find(function (proc) {
-            return proc[key] == nameOrID;
-        });
+        var result = procs.find(proc => proc[key] == nameOrID);
         if (demand && !result) {
             throw Error(util.format(ERR_PROCESS_NOT_FOUND, nameOrID));
         }
@@ -208,7 +207,7 @@ API.prototype.getProcess = function (nameOrID, demand) {
 };
 
 API.prototype.getActiveProcess = function (nameOrID, demand) {
-    return this.getProcess(nameOrID).then(function (result) {
+    return this.getProcess(nameOrID).then(result => {
         if (result && result.Enabled) {
             return result;
         }
@@ -221,27 +220,19 @@ API.prototype.getActiveProcess = function (nameOrID, demand) {
 API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    var p = api.getModifiedAspects();
-    p = p.then(function (modifiedAspects) {
-        if (!cache._processes || modifiedAspects.contains('ProcList')) {
-            return api.getProcesses(true);
-        }
-    });
-    p = p.then(function (processes) {
-        if (processes) {
-            cache._processes = processes;
-        }
-        return cache._processes;
-    });
-    return p;
+    return api.getModifiedAspects()
+        .then(modifiedAspects => (!cache._processes || modifiedAspects.contains('ProcList')) && api.getProcesses(true))
+        .then(processes => {
+            if (processes) {
+                cache._processes = processes;
+            }
+            return cache._processes;
+        });
 };
 
 
 API.prototype.getInfo = function () {
-    return this.request('Info').then(function (info) {
-        Object.assign(info, INFO_PROTO);
-        return info;
-    });
+    return this.request('Info').then(info => Object.assign(info, INFO_PROTO));
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
@@ -251,10 +242,7 @@ API.prototype.editForm = function (formId, fields, properties) {
     }
     properties = properties || {};
     properties.FormID = formId;
-    properties.Fields = Array.isArray(fields) ? fields :
-        Object.keys(fields).map(function (key) {
-            return { Field: key, Value: fields[key] };
-        });
+    properties.Fields = Array.isArray(fields) ? fields : Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
     return this.request('ProcFormEdit', { Form: properties, OverwriteWithNull: true }).then(this._extendForm.bind(this));
 };
 
@@ -289,9 +277,9 @@ API.prototype.createFormInfoCache = function () {
                     throw error;
                 }
             });
-        p = p.then(function (result) {
+        p = p.then(result => {
             if (result) {
-                result.Forms.forEach(function (form) {
+                result.Forms.forEach(form => {
                     cache[form.ID] = form;
                     form.ProcessID = result.ProcessID;
                 });
@@ -315,8 +303,7 @@ var PROCESS_FIELD_PROTO = {
 
 function getFields(asObject) {
     var proc = this;
-    return proc._api.getFields(proc.ProcessID).then(function (response) {
-
+    return proc._api.getFields(proc.ProcessID).then(response => {
         if (asObject) {
             response.Fields = response.Fields.toObject('Name');
         }
@@ -335,10 +322,8 @@ var ERR_VIEW_NOT_FOUND = 'View not found: %s';
 function getView(nameOrId, demand) {
     var proc = this;
     var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
-    return proc.getViews().then(function (views) {
-        var result = views.find(function (view) {
-            return view[property] === nameOrId;
-        });
+    return proc.getViews().then(views => {
+        var result = views.find(view => view[property] === nameOrId);
         if (demand && !result) {
             throw Error(util.format(ERR_VIEW_NOT_FOUND, nameOrId));
         }
@@ -350,41 +335,28 @@ function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
     var changed;
-    var p = proc._api.getLastModifications();
-    p = p.then(function (modifications) {
+    return proc._api.getLastModifications().then(modifications => {
         changed = modifications.ProcFields;
         if (!changed || !cache._fields || changed !== cache._fieldsChanged) {
             return proc.getFields();
         }
-    });
-    p = p.then(function (fields) {
+    }).then(fields => {
         if (fields) {
             cache._fields = fields;
             cache._fieldsChanged = changed;
         }
         return cache._fields;
     });
-    return p;
+
 }
 
 function getAllForms(includeArchived) {
     var process = this;
-    return process.getFormList(includeArchived).then(function (forms) {
-        var p = Promise.resolve();
+    return process.getFormList(includeArchived).then(forms => {
         var data = [];
-        function addForm(form) {
-            data.push(form);
-        }
-        forms.forEach(function (form) {
-            p = p.then(function () {
-                return process._api.getForm(form.ID);
-            });
-            p = p.then(addForm);
-        });
-        p = p.then(function () {
-            return data;
-        });
-        return p;
+        var p = Promise.resolve();
+        forms.forEach(form => p = p.then(() => process._api.getForm(form.ID)).then(form => data.push(form)));
+        return p.then(() => data);
     });
 }
 
@@ -399,9 +371,7 @@ function getFormList(includeArchived, viewId) {
     if (typeof viewId === 'number') {
         request.ViewID = viewId;
     }
-    return proc._api.request('ProcFormList', request).then(function (response) {
-        return response.Forms;
-    });
+    return proc._api.request('ProcFormList', request).then(response => response.Forms);
 
 }
 
@@ -419,11 +389,9 @@ API.prototype.getCachedFields = function (processNameOrId) {
 };
 
 API.prototype.getFields = function (processId) {
-    return this.request('ProcFields', new BaseProcessData(processId)).then(function (response) {
+    return this.request('ProcFields', new BaseProcessData(processId)).then(response => {
         response = response.Process;
-        response.Fields.forEach(function (field) {
-            Object.assign(field, PROCESS_FIELD_PROTO);
-        });
+        response.Fields.forEach(field => Object.assign(field, PROCESS_FIELD_PROTO));
         response.getField = getField;
         response.getStatus = getStatus;
         response.getFieldByUid = getFieldByUid;
@@ -437,18 +405,17 @@ API.prototype.getForms = function (processOrId, viewId) {
         baseRequest.ViewID = viewId;
     }
     var self = this;
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
         self.request('ProcForms', baseRequest).then(
-            function (response) {
-                resolve(response);
-            }, function (response) {
-                if (response.Message === 'No forms') {
-                    response = new BaseProcessData(processOrId);
-                    response.Columns = [];
-                    response.Forms = [];
-                    resolve(response);
+            response => resolve(response),
+            error => {
+                if (error.Message === 'No forms') {
+                    error = new BaseProcessData(processOrId);
+                    error.Columns = [];
+                    error.Forms = [];
+                    resolve(error);
                 } else {
-                    reject(response);
+                    reject(error);
                 }
             });
     });
@@ -482,7 +449,7 @@ API.prototype.getFormNumber = function (formID) {
     if (result && Date.now() - result.Updated < FORM_NUMBER_TTL) {
         return Promise.resolve(result.Number);
     }
-    return api.demandForm(+formID).then(function () {
+    return api.demandForm(+formID).then(() => {
         result = api._formNumbers[formID];
         assert(result && Date.now() - result.Updated < FORM_NUMBER_TTL);
         return result.Number;
@@ -524,9 +491,7 @@ API.prototype.getForm = function () {
 function getFormFieldsAsObject() {
     var form = this;
     var obj = {};
-    form.Fields.forEach(function (pair) {
-        obj[pair.Field] = pair.Value;
-    });
+    form.Fields.forEach(pair => obj[pair.Field] = pair.Value);
     return obj;
 }
 
@@ -536,9 +501,7 @@ function getFormFieldValue(fieldName, eager) {
 }
 
 function getField(fieldName, eager) {
-    var result = this.Fields.find(function (field) {
-        return (field.Field || field.Name) === fieldName;
-    });
+    var result = this.Fields.find(field => (field.Field || field.Name) === fieldName);
     if (!result && eager) {
         throw new Error('Unknown field: ' + fieldName);
     }
@@ -548,9 +511,7 @@ function getField(fieldName, eager) {
 exports.getField = getField;
 
 function getFieldByUid(uid, eager) {
-    var result = this.Fields.find(function (field) {
-        return field.Uid === uid;
-    });
+    var result = this.Fields.find(field => field.Uid === uid);
     if (!result && eager) {
         throw new Error('Unknown field. Uid: ' + uid);
     }
@@ -587,14 +548,10 @@ API.prototype.createForm = function (processOrId, fields, properties) {
     properties = { Form: properties };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
     properties.Form.Fields = Array.isArray(fields) ? fields :
-        Object.keys(fields).map(function (key) {
-            return { Field: key, Value: fields[key] };
-        });
+        Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
     var p = this.request('ProcFormAdd', properties);
     if (status) {
-        p = p.then(function (form) {
-            return api.setFormStatus(form, status);
-        });
+        p = p.then(form => api.setFormStatus(form, status));
     }
     return p.then(api._extendForm.bind(api));
 };
@@ -617,10 +574,7 @@ API.prototype.createFormSet = function (parentFormID, fields) {
     return this.request('ProcFormSetAdd', {
         Form: {
             FormID: parentFormID,
-            Fields: Array.isArray(fields) ? fields :
-                Object.keys(fields).map(function (key) {
-                    return { Field: key, Value: fields[key] };
-                })
+            Fields: Array.isArray(fields) ? fields : Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }))
         }
     }).then(extendForm);
 };
@@ -641,16 +595,14 @@ API.prototype.getLastModifications = function () {
         return Promise.resolve(api._cachedModified);
     }
     if (!api._modifiedPromise) {
-        api._modifiedPromise = api.request('Modified').then(function (response) {
+        api._modifiedPromise = api.request('Modified').then(response => {
             api._modifiedRequested = response.responseTime.getTime();
             var result = {};
-            response.Modified.forEach(function (modified) {
-                result[modified.Type] = modified.Age;
-            });
+            response.Modified.forEach(modified => result[modified.Type] = modified.Age);
             api._cachedModified = result;
             delete api._modifiedPromise;
             return result;
-        }, function (error) {
+        }, error => {
             delete api._modifiedPromise;
             throw error;
         });
@@ -660,7 +612,7 @@ API.prototype.getLastModifications = function () {
 
 API.prototype.getModifiedAspects = function () {
     var self = this;
-    return self.getLastModifications().then(function (response) {
+    return self.getLastModifications().then(response => {
         var result = [];
         if (self._lastKnownModified) {
             for (var key in self._lastKnownModified) {
@@ -679,29 +631,25 @@ API.prototype.getModifiedAspects = function () {
 API.prototype.getCustomers = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
-    var p = cache._customers ? api.getModifiedAspects() : Promise.resolve();
-    p = p.then(function (modifiedAspects) {
-        if (!modifiedAspects || modifiedAspects.contains('CustomerAndAliasList')) {
-            return api.request('Customers');
-        }
-    });
-    p = p.then(function (response) {
-        if (response) {
-            var duplicates = {};
-            response.Customers = response.Customers.filter(function (customer) {
-                if (duplicates[customer.CustomerID]) {
-                    return false;
-                }
-                duplicates[customer.CustomerID] = true;
-                customer.CustomerID = +customer.CustomerID;
-                tweakDates(customer);
-                return true;
-            });
-            cache._customers = response;
-        }
-        return cache._customers;
-    });
-    return p;
+    return (cache._customers ? api.getModifiedAspects() : Promise.resolve())
+        .then(modifiedAspects => (!modifiedAspects || modifiedAspects.contains('CustomerAndAliasList')) && api.request('Customers'))
+        .then(response => {
+            if (response) {
+                var duplicates = {};
+                response.Customers = response.Customers.filter(customer => {
+                    if (duplicates[customer.CustomerID]) {
+                        return false;
+                    }
+                    duplicates[customer.CustomerID] = true;
+                    customer.CustomerID = +customer.CustomerID;
+                    tweakDates(customer);
+                    return true;
+                });
+                cache._customers = response;
+            }
+            return cache._customers;
+        });
+
 };
 
 function tweakDates(object) {
@@ -713,7 +661,7 @@ function tweakDates(object) {
 API.prototype.getCustomerAccounts = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'CustomerID' : 'Customer'] = nameOrID;
-    return this.request('Accounts', req).then(function (response) {
+    return this.request('Accounts', req).then(response => {
         response.Accounts.forEach(tweakDates);
         return response;
     });
@@ -722,7 +670,7 @@ API.prototype.getCustomerAccounts = function (nameOrID) {
 API.prototype.getSupplierAccounts = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'SupplierID' : 'Supplier'] = nameOrID;
-    return this.request('Accounts', req).then(function (response) {
+    return this.request('Accounts', req).then(response => {
         response.Accounts.forEach(tweakDates);
         return response;
     });
@@ -736,7 +684,7 @@ API.prototype.getAccount = function (nameOrID) {
 
 API.prototype.getAccounts = function (modifiedAfter) {
     modifiedAfter = modifiedAfter ? rpmUtil.normalizeDate(modifiedAfter) : new Date(0);
-    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(function (response) {
+    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(response => {
         response.Accounts.forEach(tweakDates);
         return response;
     });
@@ -750,18 +698,16 @@ API.prototype.getCustomer = function (nameOrID) {
 };
 
 API.prototype.getSuppliers = function () {
-    return this.request('Suppliers').then(function (result) {
+    return this.request('Suppliers').then(result => {
         var modified = new Date(result.Age * 1000);
-        result.Suppliers.forEach(function (supplier) {
-            supplier.Modified = modified;
-        });
+        result.Suppliers.forEach(supplier => supplier.Modified = modified);
         return result;
     });
 };
 
 
 API.prototype.getAgencies = function () {
-    return this.request('Agencies').then(function (response) {
+    return this.request('Agencies').then(response => {
         response.Agencies.forEach(tweakDates);
         return response;
     });
@@ -771,7 +717,7 @@ API.prototype.getAgencies = function () {
 function extractContact(object) {
     if (typeof object.Contact !== 'object') {
         var contact = object.Contact = {};
-        ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(function (property) {
+        ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(property => {
             contact[property] = object[property];
             delete object[property];
         });
@@ -803,15 +749,14 @@ function DataCache(api) {
 
 DataCache.prototype.refreshers = {
     ProcList: function () {
-        this.api.getProcesses().then(function (response) {
-            this.processCache = response;
-        }.bind(this));
+        var self = this;
+        self.api.getProcesses().then(response => self.processCache = response);
     }
 };
 
 DataCache.prototype.checkModified = function () {
     var self = this;
-    this.api.getLastModifications().then(function (response) {
+    this.api.getLastModifications().then(response => {
         var update, changed = false;
         if (self.lastModifications) {
             update = function (key) {
@@ -839,9 +784,7 @@ DataCache.prototype.checkModified = function () {
 DataCache.prototype.getProcessInfo = function (processId) {
     this.checkModified();
     var key = (typeof processId === 'number') ? 'ProcessID' : 'Process';
-    return this.processCache.reduce(function (a, b) {
-        return a || (b[key] === processId ? b : undefined);
-    });
+    return this.processCache.reduce((a, b) => a || (b[key] === processId ? b : undefined));
 };
 
 exports.DataCache = DataCache;
@@ -1273,7 +1216,7 @@ var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
 };
 
 
-var FIELD_TYPE = exports.FIELD_TYPE = (function () {
+var FIELD_TYPE = exports.FIELD_TYPE = (() => {
     var fieldTypes = {};
     var name;
     for (name in OBJECT_TYPE) {
@@ -1295,7 +1238,7 @@ var FIELD_TYPE = exports.FIELD_TYPE = (function () {
 
 exports.getTableRowValues = function (row, valueExtractor) {
     var values = {};
-    row.Fields.forEach(function (field) {
+    row.Fields.forEach(field => {
         var value = field.Values[0];
         if (value) {
             values[field.Uid] = valueExtractor && valueExtractor(value) || value.Value;
@@ -1351,7 +1294,7 @@ var assert = require('assert');
 
 var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
 
-(function () {
+(() => {
 
     var f, subTypes, st;
 
@@ -1371,9 +1314,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
     f = function (formField) {
         return norm.normalizeDate(formField.Value);
     };
-    ['Date', 'DateTime'].forEach(function (name) {
-        st[subTypes[name].value] = { getValue: f };
-    });
+    ['Date', 'DateTime'].forEach(name => st[subTypes[name].value] = { getValue: f });
 
     st[subTypes.YesNo.value] = {
         getValue: function (formField) {
@@ -1388,9 +1329,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
     ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal',
         'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea',
         'MeasureWeight', 'Force', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
-        .forEach(function (name) {
-            st[subTypes[name].value] = { getValue: f };
-        });
+        .forEach(name => st[subTypes[name].value] = { getValue: f });
 
 
     st[subTypes.List.value] = {
@@ -1399,9 +1338,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
                 return formField.Value;
             }
             assert.equal(formField.Uid, processField.Uid);
-            return formField.Value ? processField.Options.find(function (option) {
-                return option.Text == formField.Value;
-            }).ID : null;
+            return formField.Value ? processField.Options.find(option => option.Text == formField.Value).ID : null;
         }
     };
 
@@ -1413,14 +1350,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
                 return result;
             }
             assert.equal(formField.Uid, processField.Uid);
-            result = result.filter(function (value) {
-                return value;
-            }).map(function (value) {
-                return processField.Options.find(function (option) {
-                    return option.Text == value;
-                }).ID;
-            });
-            return result;
+            return result.filter(value => value).map(value => processField.Options.find(option => option.Text == value).ID);
         }
     };
 
@@ -1431,9 +1361,9 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
         getValue: function (formField, processField) {
             assert.equal(formField.Uid, processField.Uid);
             var result = [];
-            formField.Value.split(DEPRICATED_TABLE_ROW_DELIMITER).forEach(function (row) {
+            formField.Value.split(DEPRICATED_TABLE_ROW_DELIMITER).forEach(row => {
                 var normalizedRow = {};
-                row.split(DEPRICATED_TABLE_COL_DELIMITER).forEach(function (value, idx) {
+                row.split(DEPRICATED_TABLE_COL_DELIMITER).forEach((value, idx) => {
                     value = value.trim();
                     if (value) {
                         normalizedRow[processField.Options[idx].Text] = value;
@@ -1450,9 +1380,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
     };
 
     ['Text', 'Http', 'Description', 'TextArea', 'Link', 'SpecialPhone', 'LocationLatLong', 'LocationUTM', 'LocationDLS', 'LocationNTS', 'WellUWI', 'WellAPI', 'Html']
-        .forEach(function (name) {
-            st[subTypes[name].value] = { getValue: f };
-        });
+        .forEach(name => st[subTypes[name].value] = { getValue: f });
 })();
 
 

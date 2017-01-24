@@ -483,7 +483,7 @@ exports.createParallelRunner = function (parallelRequests) {
                 reject(error);
                 --running;
             }
-            queue.push(function () {
+            queue.push(() => {
                 try {
                     var result = callback();
                     (result instanceof Promise) ? result.then(res, rej) : res(result);
