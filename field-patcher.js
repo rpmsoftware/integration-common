@@ -4,12 +4,10 @@ var factories = {};
 factories[rpm.OBJECT_TYPE.CustomField] = {};
 
 factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (field, useUids) {
-    var defRow = field.Rows.find(function (row) {
-        return row.IsDefinition;
-    });
+    var defRow = field.Rows.find(row => row.IsDefinition);
     defRow.fieldsByName = {};
     var prop = useUids ? 'Uid' : 'Name';
-    defRow.Fields.forEach(function (field) {
+    defRow.Fields.forEach(field => {
         defRow.fieldsByName[field[prop]] = field;
         field.Options = field.Options && field.Options.toObject('Text');
     });
@@ -27,16 +25,12 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
 
         if (form) {
             form = form.Form || form;
-            var formTableField = form.Fields.find(function (f) {
-                return f.Uid === field.Uid;
-            });
+            var formTableField = form.Fields.find(f => f.Uid === field.Uid);
             if (!formTableField) {
                 throw new Error('Form does not contain table field ' + field.Name);
             }
             existingRows = formTableField.Rows.slice();
-            var existingDefRow = existingRows.find(function (row) {
-                return row.IsDefinition;
-            });
+            var existingDefRow = existingRows.find(row => row.IsDefinition);
             if (existingDefRow && existingDefRow.RowID !== defRow.ID) {
                 throw new Error('Incompatible rows');
             }
@@ -46,12 +40,10 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
             IsDefinition: true,
             IsLabelRow: defRow.IsLabelRow,
             IsShown: defRow.IsShown,
-            Fields: defRow.Fields.map(function (field) {
-                return {
-                    Values: [],
-                    Uid: field.Uid
-                };
-            })
+            Fields: defRow.Fields.map(field => ({
+                Values: [],
+                Uid: field.Uid
+            }))
         };
 
 
@@ -63,7 +55,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                 IsDefinition: false,
                 IsLabelRow: false,
                 IsShown: true,
-                Fields: newDefRow.Fields.map(function (field) {
+                Fields: newDefRow.Fields.map(field => {
                     var result = row && row[field.Uid];
                     return {
                         Values: result ? [result] : [],
@@ -74,7 +66,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
 
         }
 
-        rows.forEach(function (object) {
+        rows.forEach(object => {
             var row;
             row = {};
             for (var fieldNameOrUid in object) {

@@ -267,17 +267,11 @@ API.prototype.createFormInfoCache = function () {
         if (result) {
             return Promise.resolve(result);
         }
-        var p = api.getForm(formID);
-        p = p.then(
-            function (form) {
-                return form && api.getFormList(form.ProcessID, true);
-            },
-            function (error) {
-                if (error.Message !== ERROR_RESPONSE_FORM_NOT_FOUND) {
-                    throw error;
-                }
-            });
-        p = p.then(result => {
+        return api.getForm(formID).then(form => form && api.getFormList(form.ProcessID, true), error => {
+            if (error.Message !== ERROR_RESPONSE_FORM_NOT_FOUND) {
+                throw error;
+            }
+        }).then(result => {
             if (result) {
                 result.Forms.forEach(form => {
                     cache[form.ID] = form;
@@ -290,7 +284,6 @@ API.prototype.createFormInfoCache = function () {
             }
             return result;
         });
-        return p;
     };
 };
 
@@ -476,16 +469,11 @@ API.prototype._extendForm = function (form) {
 };
 
 API.prototype.getForm = function () {
-    return this.demandForm.apply(this, arguments).then(
-        function (form) {
-            return form;
-        },
-        function (error) {
-            if (error.Message != 'Form not found') {
-                throw error;
-            }
+    return this.demandForm.apply(this, arguments).then(form => form, function (error) {
+        if (error.Message != 'Form not found') {
+            throw error;
         }
-    );
+    });
 };
 
 function getFormFieldsAsObject() {
