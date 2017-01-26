@@ -429,11 +429,11 @@ exports.normalizeDate = normalizeDate;
 
 
 function normalizeInteger(value) {
-    value = +value;
-    if (typeof value !== 'number' || value % 1) {
+    var intValue = +value;
+    if (isNaN(intValue) || intValue % 1) {
         throw new TypeError('Invalid integer: ' + value);
     }
-    return value;
+    return intValue;
 }
 
 exports.normalizeInteger = normalizeInteger;
@@ -579,4 +579,8 @@ exports.promiseFinally = function (callback) {
             throw error;
         });
     };
+};
+
+exports.pause = function (timeout, value) {
+    return new Promise(resolve => setTimeout(() => resolve(value), normalizeInteger(timeout)));
 };
