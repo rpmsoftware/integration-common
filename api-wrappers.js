@@ -630,29 +630,33 @@ API.prototype.getModifiedAspects = function () {
     });
 };
 
-
-API.prototype.getCustomers = function () {
+API.prototype.getCachedCustomers = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
     return (cache._customers ? api.getModifiedAspects() : Promise.resolve())
-        .then(modifiedAspects => (!modifiedAspects || modifiedAspects.contains('CustomerAndAliasList')) && api.request('Customers'))
+        .then(modifiedAspects => (!modifiedAspects || modifiedAspects.contains('CustomerAndAliasList')) && api.getCustomers())
         .then(response => {
             if (response) {
-                var duplicates = {};
-                response.Customers = response.Customers.filter(customer => {
-                    if (duplicates[customer.CustomerID]) {
-                        return false;
-                    }
-                    duplicates[customer.CustomerID] = true;
-                    customer.CustomerID = +customer.CustomerID;
-                    tweakDates(customer);
-                    return true;
-                });
                 cache._customers = response;
             }
             return cache._customers;
         });
+};
 
+API.prototype.getCustomers = function () {
+    return this.request('Customers').then(response => {
+        var duplicates = {};
+        response.Customers = response.Customers.filter(customer => {
+            if (duplicates[customer.CustomerID]) {
+                return false;
+            }
+            duplicates[customer.CustomerID] = true;
+            customer.CustomerID = +customer.CustomerID;
+            tweakDates(customer);
+            return true;
+        });
+        return response;
+    });
 };
 
 function tweakDates(object) {
@@ -669,6 +673,7 @@ API.prototype.getCustomerAccounts = function (nameOrID) {
         return response;
     });
 };
+
 
 API.prototype.getSupplierAccounts = function (nameOrID) {
     var req = {};
