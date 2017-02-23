@@ -185,7 +185,7 @@ exports.getCache = function (object) {
     if (!object[CACHE_PROPERTY]) {
         object[CACHE_PROPERTY] = {};
     }
-    return object._cache;
+    return object[CACHE_PROPERTY];
 };
 
 exports.deleteCache = function (object) {
