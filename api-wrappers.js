@@ -1,4 +1,3 @@
-/* global Promise */
 require('string').extendPrototype();
 var util = require('util');
 var RESTClient = require('node-rest-client').Client;
@@ -7,6 +6,7 @@ var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
 const MAX_PARALLEL_CALLS = 20;
+const PROP_REST_CLIENT = Symbol();
 
 function API(url, key, name) {
     if (typeof url === 'object') {
@@ -18,7 +18,6 @@ function API(url, key, name) {
     this.url = url.ensureRight('Api2.svc/');
     this.key = key;
     this.name = name;
-    this._restClient = new RESTClient();
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
 }
@@ -38,7 +37,10 @@ API.prototype.getUrl = function (endPoint) {
 API.prototype.request = function (endPoint, data) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
-    var self = this;
+    var client = this[PROP_REST_CLIENT];
+    if (!client) {
+        client = this[PROP_REST_CLIENT] = new RESTClient();
+    }
     return new Promise((resolve, reject) => {
         logger.debug(`POST ${url} ${data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
@@ -57,7 +59,7 @@ API.prototype.request = function (endPoint, data) {
             doneData.responseTime = responseTime;
             (isError ? reject : resolve)(doneData);
         }
-        self._restClient.post(url, args, callback);
+        client.post(url, args, callback);
     });
 };
 
@@ -160,32 +162,40 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     return this.request('ActionEdit', data);
 };
 
+const PROC_PROMISE_PROPERTY = Symbol();
+
 API.prototype.getProcesses = function (includeDisabled) {
     var api = this;
-    if (!api._promiseProcs) {
-        api._promiseProcs = api.request('Procs').then(response => {
+    if (!api[PROC_PROMISE_PROPERTY]) {
+        api[PROC_PROMISE_PROPERTY] = api.request('Procs').then(response => {
             var result = response.Procs.map(api._extendProcess.bind(api));
-            delete api._promiseProcs;
+            delete api[PROC_PROMISE_PROPERTY];
             return result;
         }, error => {
-            delete api._promiseProcs;
+            delete api[PROC_PROMISE_PROPERTY];
             throw error;
         });
     }
-    return api._promiseProcs.then(procs => includeDisabled ? procs : procs.filter(proc => proc.Enabled));
+    return api[PROC_PROMISE_PROPERTY].then(procs => includeDisabled ? procs : procs.filter(proc => proc.Enabled));
 };
 
+const PROCESS_PROTO = {
+    getFields,
+    getForms,
+    addForm,
+    createForm,
+    getFormList,
+    getCachedFields,
+    getAllForms,
+    getViews,
+    getView
+}
+
+const API_PROPERTY = Symbol();
+
 API.prototype._extendProcess = function (proc) {
-    proc._api = this;
-    proc.getFields = getFields;
-    proc.getForms = getForms;
-    proc.addForm = addForm;
-    proc.createForm = createForm;
-    proc.getFormList = getFormList;
-    proc.getCachedFields = getCachedFields;
-    proc.getAllForms = getAllForms;
-    proc.getViews = getViews;
-    proc.getView = getView;
+    proc[API_PROPERTY] = this;
+    Object.setPrototypeOf(proc, PROCESS_PROTO);
     return proc;
 };
 
@@ -230,9 +240,8 @@ API.prototype.getCachedProcesses = function () {
         });
 };
 
-
 API.prototype.getInfo = function () {
-    return this.request('Info').then(info => Object.assign(info, INFO_PROTO));
+    return this.request('Info').then(info => Object.setPrototypeOf(info, INFO_PROTO));
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
@@ -296,7 +305,7 @@ var PROCESS_FIELD_PROTO = {
 
 function getFields(asObject) {
     var proc = this;
-    return proc._api.getFields(proc.ProcessID).then(response => {
+    return proc[API_PROPERTY].getFields(proc.ProcessID).then(response => {
         if (asObject) {
             response.Fields = response.Fields.toObject('Name');
         }
@@ -307,7 +316,7 @@ function getFields(asObject) {
 
 function getViews() {
     var proc = this;
-    return proc._api.getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
+    return proc[API_PROPERTY].getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
 }
 
 var ERR_VIEW_NOT_FOUND = 'View not found: %s';
@@ -328,7 +337,7 @@ function getCachedFields() {
     var proc = this;
     var cache = rpmUtil.getCache(proc);
     var changed;
-    return proc._api.getLastModifications().then(modifications => {
+    return proc[API_PROPERTY].getLastModifications().then(modifications => {
         changed = modifications.ProcFields;
         if (!changed || !cache._fields || changed !== cache._fieldsChanged) {
             return proc.getFields();
@@ -348,14 +357,14 @@ function getAllForms(includeArchived) {
     return process.getFormList(includeArchived).then(forms => {
         var data = [];
         var p = Promise.resolve();
-        forms.forEach(form => p = p.then(() => process._api.getForm(form.ID)).then(form => data.push(form)));
+        forms.forEach(form => p = p.then(() => process[API_PROPERTY].getForm(form.ID)).then(form => data.push(form)));
         return p.then(() => data);
     });
 }
 
 
 function getForms(viewId) {
-    return this._api.getForms(this.ProcessID, viewId);
+    return this[API_PROPERTY].getForms(this.ProcessID, viewId);
 }
 
 function getFormList(includeArchived, viewId) {
@@ -364,7 +373,7 @@ function getFormList(includeArchived, viewId) {
     if (typeof viewId === 'number') {
         request.ViewID = viewId;
     }
-    return proc._api.request('ProcFormList', request).then(response => response.Forms);
+    return proc[API_PROPERTY].request('ProcFormList', request).then(response => response.Forms);
 
 }
 
@@ -516,7 +525,7 @@ function BaseProcessData(processOrId) {
 }
 
 function addForm(fields, status) {
-    return this._api.addForm(this.ProcessID, fields, status);
+    return this[API_PROPERTY].addForm(this.ProcessID, fields, status);
 }
 
 API.prototype.addForm = function (processId, fields, status) {
@@ -525,7 +534,7 @@ API.prototype.addForm = function (processId, fields, status) {
 };
 
 function createForm(fields, properties) {
-    return this._api.createForm(this.ProcessID, fields, properties);
+    return this[API_PROPERTY].createForm(this.ProcessID, fields, properties);
 }
 
 
@@ -577,40 +586,46 @@ API.prototype.getHeaders = function () {
     return { RpmApiKey: this.key };
 };
 
+const PROP_CACHED_MODIFIED = Symbol();
+const PROP_MODIFIED_PROMISE = Symbol();
+const PROP_MODIFIED_TIMESTAMP = Symbol();
+
 API.prototype.getLastModifications = function () {
     var api = this;
-    if (api._cachedModified && api._modifiedRequested && Date.now() - api._modifiedRequested < api.modifiedTTL * 1000) {
-        return Promise.resolve(api._cachedModified);
+    if (api[PROP_CACHED_MODIFIED] && api[PROP_MODIFIED_TIMESTAMP] && Date.now() - api[PROP_MODIFIED_TIMESTAMP] < api.modifiedTTL * 1000) {
+        return Promise.resolve(api[PROP_CACHED_MODIFIED]);
     }
-    if (!api._modifiedPromise) {
-        api._modifiedPromise = api.request('Modified').then(response => {
-            api._modifiedRequested = response.responseTime.getTime();
+    if (!api[PROP_MODIFIED_PROMISE]) {
+        api[PROP_MODIFIED_PROMISE] = api.request('Modified').then(response => {
+            api[PROP_MODIFIED_TIMESTAMP] = response.responseTime.getTime();
             var result = {};
             response.Modified.forEach(modified => result[modified.Type] = modified.Age);
-            api._cachedModified = result;
-            delete api._modifiedPromise;
+            api[PROP_CACHED_MODIFIED] = result;
+            delete api[PROP_MODIFIED_PROMISE];
             return result;
         }, error => {
-            delete api._modifiedPromise;
+            delete api[PROP_MODIFIED_PROMISE];
             throw error;
         });
     }
-    return api._modifiedPromise;
+    return api[PROP_MODIFIED_PROMISE];
 };
+
+const PROP_LAST_KNOWN_MODIFIED = Symbol();
 
 API.prototype.getModifiedAspects = function () {
     var self = this;
     return self.getLastModifications().then(response => {
         var result = [];
-        if (self._lastKnownModified) {
-            for (var key in self._lastKnownModified) {
-                var value = self._lastKnownModified[key];
+        if (self[PROP_LAST_KNOWN_MODIFIED]) {
+            for (var key in self[PROP_LAST_KNOWN_MODIFIED]) {
+                var value = self[PROP_LAST_KNOWN_MODIFIED][key];
                 if (response[key] > value) {
                     result.push(key);
                 }
             }
         }
-        self._lastKnownModified = response;
+        self[PROP_LAST_KNOWN_MODIFIED] = response;
         return result;
     });
 };
@@ -828,6 +843,25 @@ var DATA_TYPE = exports.DATA_TYPE = {
     FormulaField: 47
 };
 
+const PROCESS_PERMISSIONS = exports.PROCESS_PERMISSIONS = Object.seal({
+    HideAll: 1,
+    Edit: 3,
+    EditOwnHideOthers: 8,
+    ReadOwnHideOthers: 10,
+    ReadAll: 11,
+    Start: 12,
+    StartOwnHideOthers: 13,
+    EditOwnReadOthers: 14,
+    StartOwnReadOthers: 15,
+    StartHideAll: 17
+});
+
+const PHONE_TYPES = exports.PHONE_TYPES = Object.seal({
+    Business: 1,
+    Home: 2,
+    Fax: 3,
+    Other: 6
+});
 
 var OBJECT_TYPE = exports.OBJECT_TYPE = {
     NA: 0,

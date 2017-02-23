@@ -1,4 +1,3 @@
-/* global process */
 'use strict';
 var util = require('util');
 var fs = require('fs');
@@ -179,10 +178,12 @@ exports.getOrCreate = function (object, key, defaultValue) {
     return result;
 };
 
+const CACHE_PROPERTY = Symbol();
+
 exports.getCache = function (object) {
     object = object || this;
-    if (!object._cache) {
-        object._cache = {};
+    if (!object[CACHE_PROPERTY]) {
+        object[CACHE_PROPERTY] = {};
     }
     return object._cache;
 };
