@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.3.0",
+    "version": "3.3.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dependencies.json",

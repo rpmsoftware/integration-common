@@ -1,6 +1,7 @@
 'use strict';
 var util = require('util');
 var fs = require('fs');
+var moment = require('moment');
 
 exports.readConfig = function (envName, fileName) {
     var config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'ascii');
@@ -419,7 +420,7 @@ exports.singleRun = function (callback) {
 };
 
 function normalizeDate(date) {
-    var result = date instanceof Date ? date : new Date(date);
+    var result = date instanceof Date ? date : moment(date).toDate(date);
     if (isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
     }
