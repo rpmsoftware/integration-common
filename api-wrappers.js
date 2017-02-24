@@ -34,15 +34,18 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
-API.prototype.request = function (endPoint, data) {
+API.prototype.request = function (endPoint, data, log) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
     var client = this[PROP_REST_CLIENT];
     if (!client) {
         client = this[PROP_REST_CLIENT] = new RESTClient();
     }
+    if (log === undefined) {
+        log = true;
+    }
     return new Promise((resolve, reject) => {
-        logger.debug(`POST ${url} ${data ? '\n' + JSON.stringify(data) : ''}`);
+        logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
         function callback(data) {
             var responseTime = new Date();
@@ -87,11 +90,12 @@ API.prototype.createFormNumberCache = function () {
     };
 };
 
-API.prototype.getUser = function (userName, password) {
-    return this.request('User', {
-        Username: userName,
-        Password: password
-    });
+API.prototype.getUser = function (userName) {
+    return this.request('User', { Username: userName });
+};
+
+API.prototype.checkUserPassword = function (userName, password) {
+    return this.request('UserPasswordCheck', { Username: userName, Password: password }, false);
 };
 
 API.prototype.getStaffList = function () {
@@ -189,7 +193,7 @@ const PROCESS_PROTO = {
     getAllForms,
     getViews,
     getView
-}
+};
 
 const API_PROPERTY = Symbol();
 
@@ -848,7 +852,7 @@ var DATA_TYPE = exports.DATA_TYPE = {
     FormulaField: 47
 };
 
-const PROCESS_PERMISSIONS = exports.PROCESS_PERMISSIONS = Object.seal({
+exports.PROCESS_PERMISSIONS = Object.seal({
     HideAll: 1,
     Edit: 3,
     EditOwnHideOthers: 8,
@@ -861,7 +865,7 @@ const PROCESS_PERMISSIONS = exports.PROCESS_PERMISSIONS = Object.seal({
     StartHideAll: 17
 });
 
-const PHONE_TYPES = exports.PHONE_TYPES = Object.seal({
+exports.PHONE_TYPES = Object.seal({
     Business: 1,
     Home: 2,
     Fax: 3,
