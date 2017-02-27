@@ -648,7 +648,8 @@ API.prototype.getCachedCustomers = function () {
 };
 
 API.prototype.getCustomers = function () {
-    return this.request('Customers').then(response => {
+    var api = this;
+    return api.request('Customers').then(response => {
         var duplicates = {};
         response.Customers = response.Customers.filter(customer => {
             if (duplicates[customer.CustomerID]) {
@@ -656,24 +657,25 @@ API.prototype.getCustomers = function () {
             }
             duplicates[customer.CustomerID] = true;
             customer.CustomerID = +customer.CustomerID;
-            tweakDates(customer);
+            api.tweakDates(customer);
             return true;
         });
         return response;
     });
 };
 
-function tweakDates(object) {
+API.prototype.tweakDates = function (object) {
     object.Added = object.Added && rpmUtil.normalizeDate(object.Added);
     object.Modified = object.Modified ? rpmUtil.normalizeDate(object.Modified) : object.Added;
     return object;
-}
+};
 
 API.prototype.getCustomerAccounts = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'CustomerID' : 'Customer'] = nameOrID;
-    return this.request('Accounts', req).then(response => {
-        response.Accounts.forEach(tweakDates);
+    var api = this;
+    return api.request('Accounts', req).then(response => {
+        response.Accounts.forEach(a => api.tweakDates(a));
         return response;
     });
 };
@@ -682,8 +684,9 @@ API.prototype.getCustomerAccounts = function (nameOrID) {
 API.prototype.getSupplierAccounts = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'SupplierID' : 'Supplier'] = nameOrID;
-    return this.request('Accounts', req).then(response => {
-        response.Accounts.forEach(tweakDates);
+    var api = this;
+    return api.request('Accounts', req).then(response => {
+        response.Accounts.forEach(a => api.tweakDates(a));
         return response;
     });
 };
@@ -691,13 +694,15 @@ API.prototype.getSupplierAccounts = function (nameOrID) {
 API.prototype.getAccount = function (nameOrID) {
     var req = {};
     req[typeof nameOrID === 'number' ? 'AccountID' : 'Account'] = nameOrID;
-    return this.request('Account', req).then(tweakDates);
+    var api = this;
+    return api.request('Account', req).then(a => api.tweakDates(a));
 };
 
 API.prototype.getAccounts = function (modifiedAfter) {
     modifiedAfter = modifiedAfter ? rpmUtil.normalizeDate(modifiedAfter) : new Date(0);
-    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(response => {
-        response.Accounts.forEach(tweakDates);
+    var api = this;
+    return api.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(response => {
+        response.Accounts.forEach(a => api.tweakDates(a));
         return response;
     });
 };
@@ -706,7 +711,7 @@ API.prototype.getCustomer = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
-    return api.request('Customer', request).then(tweakDates);
+    return api.request('Customer', request).then(c => api.tweakDates(c));
 };
 
 API.prototype.getSuppliers = function () {
@@ -719,8 +724,9 @@ API.prototype.getSuppliers = function () {
 
 
 API.prototype.getAgencies = function () {
-    return this.request('Agencies').then(response => {
-        response.Agencies.forEach(tweakDates);
+    var api = this;
+    return api.request('Agencies').then(response => {
+        response.Agencies.forEach(a => api.tweakDates(a));
         return response;
     });
 };
@@ -741,14 +747,14 @@ API.prototype.getAgency = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    return api.request('Agency', request).then(tweakDates).then(extractContact);
+    return api.request('Agency', request).then(a => api.tweakDates(a)).then(extractContact);
 };
 
 API.prototype.getRep = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'RepID' : 'Rep'] = nameOrID;
-    return api.request('Rep', request).then(tweakDates).then(extractContact);
+    return api.request('Rep', request).then(r => api.tweakDates(r)).then(extractContact);
 };
 
 
