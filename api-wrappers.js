@@ -34,8 +34,8 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
-var PROP_REQUEST_TIME = Symbol();
-var PROP_RESPONSE_TIME = Symbol();
+const PROP_REQUEST_TIME = Symbol();
+const PROP_RESPONSE_TIME = Symbol();
 
 var RESPONSE_PROTO = {
     getRequestTime: function () {
@@ -704,9 +704,14 @@ API.prototype.getSupplierAccounts = function (nameOrID) {
     });
 };
 
-API.prototype.getAccount = function (nameOrID) {
+API.prototype.getAccount = function (account, supplier) {
     var req = {};
-    req[typeof nameOrID === 'number' ? 'AccountID' : 'Account'] = nameOrID;
+    if (typeof account === 'number') {
+        req.AccountID = account;
+    } else {
+        req.Account = account;
+        req[typeof supplier === 'number' ? 'SupplierID' : 'Supplier'] = supplier;
+    }
     var api = this;
     return api.request('Account', req).then(a => api.tweakDates(a));
 };
