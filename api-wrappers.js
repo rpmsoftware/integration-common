@@ -34,6 +34,18 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
+var PROP_REQUEST_TIME = Symbol();
+var PROP_RESPONSE_TIME = Symbol();
+
+var RESPONSE_PROTO = {
+    getRequestTime: function () {
+        return this[PROP_REQUEST_TIME];
+    },
+    getResponseTime: function () {
+        return this[PROP_RESPONSE_TIME];
+    }
+};
+
 API.prototype.request = function (endPoint, data, log) {
     var args = { headers: this.getHeaders(), data: data };
     var url = this.getUrl(endPoint);
@@ -58,8 +70,9 @@ API.prototype.request = function (endPoint, data, log) {
                 isError = true;
                 doneData = data;
             }
-            doneData.requestTime = requestTime;
-            doneData.responseTime = responseTime;
+            doneData[PROP_REQUEST_TIME] = requestTime;
+            doneData[PROP_RESPONSE_TIME] = responseTime;
+            Object.setPrototypeOf(doneData, RESPONSE_PROTO);
             (isError ? reject : resolve)(doneData);
         }
         client.post(url, args, callback);
