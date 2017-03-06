@@ -614,7 +614,7 @@ API.prototype.getLastModifications = function () {
     }
     if (!api[PROP_MODIFIED_PROMISE]) {
         api[PROP_MODIFIED_PROMISE] = api.request('Modified').then(response => {
-            api[PROP_MODIFIED_TIMESTAMP] = response.responseTime.getTime();
+            api[PROP_MODIFIED_TIMESTAMP] = response.getResponseTime().getTime();
             var result = {};
             response.Modified.forEach(modified => result[modified.Type] = modified.Age);
             api[PROP_CACHED_MODIFIED] = result;
