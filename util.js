@@ -420,11 +420,15 @@ exports.singleRun = function (callback) {
 };
 
 function normalizeDate(date) {
-    var result = date;
-    if (typeof result === 'string') {
-        result = result.toUpperCase().indexOf('T') < 0 ? new Date(result) : moment(result).toDate();
+    var result;
+    if (date instanceof Date) {
+        result = date;
+    } else if (typeof result === 'string' && result.toUpperCase().indexOf('T') >= 0) {
+        result = moment(result).toDate();
+    } else {
+        result = new Date(date);
     }
-    if (!(result instanceof Date) || isNaN(result.getTime())) {
+    if (isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
     }
     return result;
