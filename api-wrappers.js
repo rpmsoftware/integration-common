@@ -768,10 +768,15 @@ API.prototype.getAgency = function (nameOrID) {
     return api.request('Agency', request).then(a => api.tweakDates(a)).then(extractContact);
 };
 
-API.prototype.getRep = function (nameOrID) {
+API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
     var api = this;
     var request = {};
-    request[(typeof nameOrID === 'number') ? 'RepID' : 'Rep'] = nameOrID;
+    if (typeof repNameOrID === 'number') {
+        request.RepID = repNameOrID;
+    } else {
+        request.Rep = repNameOrID;
+        request[typeof agencyNameOrID === 'number' ? 'AgencyID' : 'Agency'] = agencyNameOrID;
+    }
     return api.request('Rep', request).then(r => api.tweakDates(r)).then(extractContact);
 };
 
@@ -1442,6 +1447,8 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
 Object.seal(DATA_TYPE);
 Object.seal(OBJECT_TYPE);
 Object.seal(REF_DATA_TYPE);
+
+exports.REP_TYPES = Object.seal(['Rep', 'Manager']);
 
 exports.isListField = function (field) {
     var customField = FIELD_TYPE.CustomField;
