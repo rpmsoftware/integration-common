@@ -156,15 +156,16 @@ var VIEW_CATEGORY = {
 
 API.prototype.createFormAction = function (description, formOrID, due, userID) {
     var api = this;
-    if (typeof formOrID !== 'object') {
-        return api.demandForm(formOrID).then(form => this.createFormAction(description, form, due, userID));
+    if (!userID && typeof formOrID !== 'object') {
+        return api.demandForm(formOrID).then(form => api.createFormAction(description, form, due, userID));
     }
-    formOrID = formOrID.Form || formOrID;
     if (!userID) {
+        assert.equal(typeof formOrID, 'object');
+        formOrID = formOrID.Form || formOrID;
         userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
         userID = userID && userID.UserID;
+        formOrID = formOrID.FormID;
     }
-    formOrID = formOrID.FormID;
     var data = {
         Action: {
             Description: description,
