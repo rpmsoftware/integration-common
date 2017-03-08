@@ -155,14 +155,16 @@ var VIEW_CATEGORY = {
 
 
 API.prototype.createFormAction = function (description, formOrID, due, userID) {
-    if (typeof formOrID === 'object') {
-        formOrID = formOrID.Form || formOrID;
-        if (typeof userID === 'undefined') {
-            userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
-            userID = userID && userID.UserID;
-        }
-        formOrID = formOrID.FormID;
+    var api = this;
+    if (typeof formOrID !== 'object') {
+        return api.demandForm(formOrID).then(form => this.createFormAction(description, form, due, userID));
     }
+    formOrID = formOrID.Form || formOrID;
+    if (!userID) {
+        userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
+        userID = userID && userID.UserID;
+    }
+    formOrID = formOrID.FormID;
     var data = {
         Action: {
             Description: description,
@@ -176,7 +178,7 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
             }
         }
     };
-    return this.request('ActionEdit', data);
+    return api.request('ActionEdit', data);
 };
 
 const PROC_PROMISE_PROPERTY = Symbol();
