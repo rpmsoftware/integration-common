@@ -768,7 +768,7 @@ API.prototype.getAgency = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    return api.request('Agency', request).then(a => api.tweakDates(a)).then(extractContact);
+    return api.request('Agency', request).then(a => extractContact(api.tweakDates(a)));
 };
 
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
@@ -780,7 +780,16 @@ API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
         request.Rep = repNameOrID;
         request[typeof agencyNameOrID === 'number' ? 'AgencyID' : 'Agency'] = agencyNameOrID;
     }
-    return api.request('Rep', request).then(r => api.tweakDates(r)).then(extractContact);
+    return api.request('Rep', request).then(r => extractContact(api.tweakDates(r)));
+};
+
+API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {
+    var api = this;
+    var request = {
+        AssignmentCode: assignCode
+    };
+    request[typeof supplierNameOrID === 'number' ? 'SupplierID' : 'Supplier'] = supplierNameOrID;
+    return api.request('Rep', request).then(r => extractContact(api.tweakDates(r)));
 };
 
 
