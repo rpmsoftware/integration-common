@@ -771,6 +771,22 @@ API.prototype.getAgency = function (nameOrID) {
     return api.request('Agency', request).then(a => extractContact(api.tweakDates(a)));
 };
 
+API.prototype.createAgency = function (data) {
+    if (typeof data !== 'object') {
+        data = { Agency: data };
+    }
+    return this.request('AgencyAdd', { Agency: data }).then(a => extractContact(this.tweakDates(a)));
+};
+
+API.prototype.editAgency = function (id, data) {
+    data = data || id;
+    assert.equal(typeof data, 'object');
+    if (typeof id === 'number') {
+        data.AgencyID = id;
+    }
+    return this.request('AgencyEdit', { Agency: data }).then(a => extractContact(this.tweakDates(a)));
+};
+
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
     var api = this;
     var request = {};
@@ -841,6 +857,55 @@ DataCache.prototype.getProcessInfo = function (processId) {
 };
 
 exports.DataCache = DataCache;
+
+exports.FIELD_FORMAT = Object.seal({
+    String: 1,    // Account, Role, Supplier, [list field]
+    Money: 2,    // Net billed, Payout, [money 2], [money 4], [formula 2], [formula 4]
+    Date: 3,    // Action due, Last logon, [date field]
+    Boolean: 4,    // Yes/no, [yesno field]
+    Integer: 5,    // Number of accounts, Files, Qty
+    Percent: 6,    // Decimal percent, like 0.5 for 50%
+    Text: 7,    // [text field], [description field], [list multi-select]
+    Email: 8,    // Email (from contacts)
+    Phone: 9,    // Phone (from contacts)
+    View: 10,   // View link column - or other "controls" that are links
+    SmallText: 11,   // Special text
+    Http: 12,   // Website from company, [link field], [link (fixed)]. Value is a URL like http://google.com
+    Divider: 13,   // [divider field]
+    Misc: 14,   // ? phone + email?
+    BigInt: 15,   // NOT USED
+    TextArea: 16,   // Paragraph, [text area field]
+    IntegerLink: 17,   // Items link
+    Table: 18,   // [table field]
+    Number: 20,   // [number field], [number (fixed)]
+    PercentCustom: 21,   // "whole number", like 50 for 50% [percent field] 
+    SpecialPhone: 22,   // [npa-nxxx]
+    LocationLatLong: 23,   // [lat/long]
+    GoogleMapLink: 24,   // Map column
+    DateTime: 25,   // A formatted Date and time string
+    Money4: 26,   // 4 decimal money type
+    TimeDate: 27,   // A Time and date in the format (3:39 PM Aug 30, 2010)
+    YMAsDate: 28,   // The underlying data is a YM string that needs to be formatted as a date.
+    NumberDouble: 29,   // A decimal number type.
+    IntegerRaw: 30,   // A format that corresponds to the integer digits and nothing else (no commas).
+    General: 31,   // For Excel, this equates with "No formatting".  This is needed for situations where we would use Text, but there are many return feeds which causes the cell not to display properly (Case 5069)
+    Label: 32,   // Label Custom field.  Used (so far) for multi-form printing.
+    Description: 33,   // Description Custom field.  Used (so far) for multi-form printing.
+    DateTimeFormatted: 34,   // A DateTime that is ready for display. compared to 25 which is really like a "DateTimeRaw"
+    LinkEl: 35,   // Contains a link element in html
+    RpmObjLink: 36,   // Not used yet, but will have a way to have type id, obj id, and name given and JS will make the link 
+    RpmObjLinkSubtle: 37,   // Above but only show link on hover (give the anchor element css class="gridLink")
+    DateTimeISOShort: 38,   // An ISO date format:  [YYYY]-[MM]-[DD]T[hh]:[mm]
+    LocationDLS: 39,   // A DLS location
+    LocationNTS: 40,   // A NTS
+    LocationUTM: 41,   // A UTM
+    WellUWI: 42,   // A Well UWI
+    WellAPI: 43,   // A Well API
+    DescriptionTable: 44,   // A description table decoration field.
+    WellColumn: 45,   // A Well Data
+    MeasurementField: 46,   // One of the measurement fields: 1:11 is "11 mm"
+    YesNoList: 47    // A YesNo field list
+});
 
 var DATA_TYPE = exports.DATA_TYPE = {
     NA: 0,
