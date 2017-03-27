@@ -1,4 +1,3 @@
-require('string').extendPrototype();
 var util = require('util');
 var RESTClient = require('node-rest-client').Client;
 var rpmUtil = require('./util');
@@ -728,11 +727,38 @@ API.prototype.getAccounts = function (modifiedAfter) {
     });
 };
 
+API.prototype.createAccount = function (name, customer, supplier, location, group, fields) {
+    var data = { Name: name, Fields: fields || [] };
+    customer = customer && (customer.CustomerID || customer.Customer || customer);
+    supplier = supplier && (supplier.SupplierID || supplier.Supplier || supplier);
+    location = location && (location.LocationID || location.Name || location);
+    group = group && (group.AccountGroupID || group.AccountGroup || group);
+
+    data[typeof customer === 'number' ? 'CustomerID' : 'CustomerName'] = customer;
+    data[typeof supplier === 'number' ? 'SupplierID' : 'SupplierName'] = supplier;
+    data[typeof location === 'number' ? 'LocationID' : 'LocationName'] = location;
+    data[typeof group === 'number' ? 'AccountGroupID' : 'AccountGroupName'] = group;
+    if (fields) {
+
+    }
+    return this.request('AccountAdd', { Account: data });
+};
+
 API.prototype.getCustomer = function (nameOrID) {
     var api = this;
     var request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
     return api.request('Customer', request).then(c => api.tweakDates(c));
+};
+
+API.prototype.createCustomer = function (data) {
+    if (typeof data !== 'object') {
+        data = {
+            Name: data
+        };
+    }
+    data = data.Customer || data;
+    return this.request('CustomerAdd', { Customer: data });
 };
 
 API.prototype.getSuppliers = function () {
