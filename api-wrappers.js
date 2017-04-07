@@ -744,11 +744,20 @@ API.prototype.createAccount = function (name, customer, supplier, location, grou
     return this.request('AccountAdd', { Account: data });
 };
 
+function objectToId(nameOrID, property) {
+    return typeof nameOrID === 'object' ? +nameOrID[property] : nameOrID;
+}
+
 API.prototype.getCustomer = function (nameOrID) {
-    var api = this;
+    nameOrID = objectToId(nameOrID, 'CustomerID');
     var request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
-    return api.request('Customer', request).then(c => api.tweakDates(c));
+    return this.request('Customer', request).then(c => this._normalizeCustomer(c));
+};
+
+API.prototype._normalizeCustomer = function (result) {
+    result.Age = result.Age || 0;
+    return this.tweakDates(result);
 };
 
 API.prototype.createCustomer = function (data) {
@@ -758,7 +767,50 @@ API.prototype.createCustomer = function (data) {
         };
     }
     data = data.Customer || data;
-    return this.request('CustomerAdd', { Customer: data });
+    return this.request('CustomerAdd', { Customer: data }).then(result => this._normalizeCustomer(result));
+};
+
+API.prototype.editCustomer = function (nameOrID, data) {
+    nameOrID = objectToId(nameOrID, 'CustomerID');
+    if (typeof data !== 'object') {
+        data = {
+            Name: data
+        };
+    }
+    data = data.Customer || data;
+    if (typeof nameOrID === 'number') {
+        data.CustomerID = nameOrID;
+    } else if (data.Name) {
+        throw new Error('CustomerID has to be integer');
+    } else {
+        data.Name = nameOrID;
+    }
+    return this.request('CustomerEdit', { Customer: data }).then(result => this._normalizeCustomer(result));
+};
+
+API.prototype.addCustomerContact = function (customerID, contact, primary) {
+    customerID = objectToId(customerID, 'CustomerID');
+    return this.request('CustomerContactAdd', {
+        CustomerID: customerID,
+        IsPrimary: !!primary,
+        Contact: contact.Contact || contact
+    }).then(result => result.Contact);
+};
+
+API.prototype.editCustomerContact = function (customerID, contactID, data, primary) {
+    customerID = objectToId(customerID, 'CustomerID');
+    if (typeof contactID === 'object') {
+        primary = data;
+        data = contactID;
+    } else {
+        data = data || {};
+        data.ContactID = contactID;
+    }
+    return this.request('CustomerContactEdit', {
+        CustomerID: customerID,
+        IsPrimary: !!primary,
+        Contact: data
+    }).then(result => result.Contact);
 };
 
 API.prototype.getSuppliers = function () {
