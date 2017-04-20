@@ -745,7 +745,7 @@ API.prototype.createAccount = function (name, customer, supplier, location, grou
 };
 
 function objectToId(nameOrID, property) {
-    return typeof nameOrID === 'object' ? +nameOrID[property] : nameOrID;
+    return typeof nameOrID === 'object' ? nameOrID[property] : nameOrID;
 }
 
 API.prototype.getCustomer = function (nameOrID) {
@@ -753,6 +753,14 @@ API.prototype.getCustomer = function (nameOrID) {
     var request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
     return this.request('Customer', request).then(c => this._normalizeCustomer(c));
+};
+
+API.prototype.searchCustomers = function (field, value) {
+    if (value === undefined) {
+        value = field;
+        field = undefined;
+    }
+    return this.request('CustomerSearch', { Field: field, Search: value });
 };
 
 API.prototype._normalizeCustomer = function (result) {
@@ -811,6 +819,31 @@ API.prototype.editCustomerContact = function (customerID, contactID, data, prima
         IsPrimary: !!primary,
         Contact: data
     }).then(result => result.Contact);
+};
+
+API.prototype.addCustomerLocation = function (customerID, location) {
+    if (typeof location !== 'object') {
+        location = {
+            Name: location
+        };
+    }
+    return this.request('CustomerLocationAdd', {
+        CustomerID: objectToId(customerID, 'CustomerID'),
+        Location: location.Location || location
+    });
+};
+
+API.prototype.editCustomerLocation = function (customerID, locationID, location) {
+    if (typeof locationID === 'object') {
+        location = locationID.Location || locationID;
+    } else {
+        location = typeof location === 'object' ? location.Location || location : { Name: location };
+        location.LocationID = locationID;
+    }
+    return this.request('CustomerLocationEdit', {
+        CustomerID: objectToId(customerID, 'CustomerID'),
+        Location: location
+    });
 };
 
 API.prototype.getSuppliers = function () {
