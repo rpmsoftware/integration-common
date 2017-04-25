@@ -409,14 +409,17 @@ API.prototype.getCachedFields = function (processNameOrId) {
     return this.getActiveProcess(processNameOrId, true).then(proc => proc.getCachedFields());
 };
 
+const PROCESS_FIELDS_PROTO = {
+    getField,
+    getStatus,
+    getFieldByUid
+};
+
 API.prototype.getFields = function (processId) {
-    return this.request('ProcFields', new BaseProcessData(processId)).then(response => {
+    return this.request('ProcFields', { ProcessID: processId.ProcessID || processId }).then(response => {
         response = response.Process;
-        response.Fields.forEach(field => Object.assign(field, PROCESS_FIELD_PROTO));
-        response.getField = getField;
-        response.getStatus = getStatus;
-        response.getFieldByUid = getFieldByUid;
-        return response;
+        response.Fields.forEach(field => Object.setPrototypeOf(field, PROCESS_FIELD_PROTO));
+        return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
 };
 
