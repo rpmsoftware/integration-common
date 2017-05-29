@@ -138,6 +138,10 @@ API.prototype.getViews = function (viewCategory, templateID) {
     }).then(result => result.Views);
 };
 
+API.prototype.getProcessViews = function (processID) {
+    return this.getViews(VIEW_CATEGORY.FormsPerTemplate, processID.ProcessID || processID);
+};
+
 var VIEW_CATEGORY = {
     Reps: 1,
     Customers: 5,
@@ -152,6 +156,13 @@ var VIEW_CATEGORY = {
     FormActions: 525
 };
 
+API.prototype.getAgentUsers = function () {
+    return this.request('AgentUsers');
+};
+
+API.prototype.getCustomerUsers = function () {
+    return this.request('CustomerUsers');
+};
 
 API.prototype.createFormAction = function (description, formOrID, due, userID) {
     var api = this;
@@ -203,11 +214,30 @@ const PROCESS_PROTO = {
     getForms,
     addForm,
     createForm,
-    getFormList,
+    getFormList: function (includeArchived, viewId) {
+        return this[API_PROPERTY].getFormList(this, viewId, includeArchived).then(result => result.Forms);
+    },
     getCachedFields,
     getAllForms,
-    getViews,
-    getView
+    getViews: function () {
+        return this[API_PROPERTY].getProcessViews(this);
+    },
+    getView: function (nameOrId, demand) {
+        var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
+        return this.getViews().then(views => {
+            var result = views.find(view => view[property] === nameOrId);
+            if (demand && !result) {
+                throw new Error(`View not found: ${nameOrId}`);
+            }
+            return result;
+        });
+    },
+    getSecurity: function () {
+        return this[API_PROPERTY].getProcessSecurity(this);
+    },
+    getActionTypes: function () {
+        return this[API_PROPERTY].getActionTypes(this);
+    }
 };
 
 const API_PROPERTY = Symbol();
@@ -261,6 +291,10 @@ API.prototype.getCachedProcesses = function () {
 
 API.prototype.getInfo = function () {
     return this.request('Info').then(info => Object.setPrototypeOf(info, INFO_PROTO));
+};
+
+API.prototype.getRoles = function () {
+    return this.request('Roles');
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
@@ -328,27 +362,8 @@ function getFields(asObject) {
         if (asObject) {
             response.Fields = response.Fields.toObject('Name');
         }
-        response.process = proc;
+        response[PROCESS_PROP] = proc;
         return response;
-    });
-}
-
-function getViews() {
-    var proc = this;
-    return proc[API_PROPERTY].getViews(VIEW_CATEGORY.FormsPerTemplate, proc.ProcessID);
-}
-
-var ERR_VIEW_NOT_FOUND = 'View not found: %s';
-
-function getView(nameOrId, demand) {
-    var proc = this;
-    var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
-    return proc.getViews().then(views => {
-        var result = views.find(view => view[property] === nameOrId);
-        if (demand && !result) {
-            throw Error(util.format(ERR_VIEW_NOT_FOUND, nameOrId));
-        }
-        return result;
     });
 }
 
@@ -386,16 +401,6 @@ function getForms(viewId) {
     return this[API_PROPERTY].getForms(this.ProcessID, viewId);
 }
 
-function getFormList(includeArchived, viewId) {
-    var proc = this;
-    var request = { ProcessID: proc.ProcessID, IncludeArchived: Boolean(includeArchived) };
-    if (typeof viewId === 'number') {
-        request.ViewID = viewId;
-    }
-    return proc[API_PROPERTY].request('ProcFormList', request).then(response => response.Forms);
-
-}
-
 function getStatus(nameOrID, demand) {
     var property = typeof nameOrID === 'number' ? 'ID' : 'Text';
     var result = this.StatusLevels.find(st => st[property] === nameOrID);
@@ -415,12 +420,27 @@ const PROCESS_FIELDS_PROTO = {
     getFieldByUid
 };
 
+const PROCESS_PROP = Symbol();
+
+rpmUtil.defineStandardProperty(PROCESS_FIELDS_PROTO, 'process', function () {
+    return this[PROCESS_PROP];
+});
+
+
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', { ProcessID: processId.ProcessID || processId }).then(response => {
         response = response.Process;
         response.Fields.forEach(field => Object.setPrototypeOf(field, PROCESS_FIELD_PROTO));
         return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
+};
+
+API.prototype.getProcessSecurity = function (processId) {
+    return this.request('ProcSecurity', { ProcessID: processId.ProcessID || processId });
+};
+
+API.prototype.getActionTypes = function (processId) {
+    return this.request('ActionTypes', { ProcessID: processId.ProcessID || processId });
 };
 
 API.prototype.getForms = function (processOrId, viewId) {
@@ -451,14 +471,14 @@ API.prototype.getFormList = function (processId, viewId, includeArchived) {
         includeArchived = viewId;
         viewId = undefined;
     }
-    var baseRequest = { ProcessID: processId };
+    var request = { ProcessID: processId.ProcessID || processId };
     if (viewId) {
-        baseRequest.ViewID = viewId;
+        request.ViewID = viewId;
     }
     if (includeArchived) {
-        baseRequest.IncludeArchived = true;
+        request.IncludeArchived = true;
     }
-    return this.request('ProcFormList', baseRequest);
+    return this.request('ProcFormList', request);
 };
 
 var FORM_NUMBER_TTL = 15 * 60 * 1000; // 15 minutes
@@ -730,8 +750,32 @@ API.prototype.getAccounts = function (modifiedAfter) {
     });
 };
 
+API.prototype.getAllAccounts = function () {
+    return this.getAccounts(new Date(0));
+};
+
+API.prototype.getAccountGroupsInUse = function () {
+    return this.getAllAccounts().then(accounts => {
+        var result = {};
+        accounts.Accounts.forEach(acc => {
+            if (!acc.AccountGroupID || result[acc.AccountGroupID]) {
+                return;
+            }
+            result[acc.AccountGroupID] = {
+                AccountGroupID: acc.AccountGroupID,
+                AccountGroup: acc.AccountGroup,
+                SupplierID: acc.SupplierID
+            };
+        });
+        return rpmUtil.getValues(result);
+    });
+};
+
 API.prototype.createAccount = function (name, customer, supplier, location, group, fields) {
-    var data = { Name: name, Fields: fields || [] };
+    var data = { Name: name };
+    if (fields) {
+        data.Fields = fields;
+    }
     customer = customer && (customer.CustomerID || customer.Customer || customer);
     supplier = supplier && (supplier.SupplierID || supplier.Supplier || supplier);
     location = location && (location.LocationID || location.Name || location);
@@ -1058,18 +1102,22 @@ var DATA_TYPE = exports.DATA_TYPE = {
     MeasurePressure: 33,
     MeasureArea: 34,
     MeasureWeight: 35,
-    Force: 36,
+    MeasureForce: 36,
     MeasureDensity: 37,
     MeasureFlow: 38,
     MeasureTemperature: 39,
     DeprecatedFormulaQuantity: 40,
     YesNoList: 41,
-    ListScore: 42, // WTF?
+    ListScore: 42,
     Html: 43, // Fixed
     LocationList: 44,
     FieldTable: 45,
     FieldTableDefinedRow: 46,
-    FormulaField: 47
+    FormulaField: 47,
+    MeasureVolumeSmall: 48,
+    MeasureVolumeMedium: 49,
+    MeasureVolumeLarge: 50,
+    MeasureLengthLarge: 51
 };
 
 exports.PROCESS_PERMISSIONS = Object.seal({
@@ -1341,6 +1389,7 @@ var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
     CustomFieldListSelectedItem: 502,
     FormField: 503,
     TableFieldRow: 504,
+    FieldReference: 505,
     PMTemplate: 510,
     PMStatus: 511,
     PMTemplateReference: 512,  // To be phased out.  This type is redundant with 522 for our purposes.
@@ -1466,6 +1515,15 @@ var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
 
 };
 
+var SHARED_FIELD_SUBTYPES = exports.SHARED_FIELD_SUBTYPES = {
+    CustomField: 500,
+    Reference: 522,
+    Owner: 523,
+    Status: 511,
+    Customer: 10100,
+    Modified: 10076,
+    Started: 10201,
+};
 
 var FIELD_TYPE = exports.FIELD_TYPE = (() => {
     var fieldTypes = {};
@@ -1481,6 +1539,11 @@ var FIELD_TYPE = exports.FIELD_TYPE = (() => {
     subTypes = fieldTypes.FormReference.subTypes;
     for (name in REF_DATA_TYPE) {
         subTypes[name] = { value: REF_DATA_TYPE[name] };
+    }
+
+    subTypes = fieldTypes.SharedField.subTypes;
+    for (name in SHARED_FIELD_SUBTYPES) {
+        subTypes[name] = { value: SHARED_FIELD_SUBTYPES[name] };
     }
 
     Object.seal(fieldTypes);
@@ -1579,7 +1642,7 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
 
     ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal',
         'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea',
-        'MeasureWeight', 'Force', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
+        'MeasureWeight', 'MeasureForce', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
         .forEach(name => st[subTypes[name].value] = { getValue: f });
 
 
@@ -1605,8 +1668,8 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
         }
     };
 
-    var DEPRICATED_TABLE_COL_DELIMITER = '%%';
-    var DEPRICATED_TABLE_ROW_DELIMITER = '||';
+    var DEPRICATED_TABLE_COL_DELIMITER = ' %%';
+    var DEPRICATED_TABLE_ROW_DELIMITER = ' ||';
 
     st[subTypes.DeprecatedTable.value] = {
         getValue: function (formField, processField) {
@@ -1630,8 +1693,10 @@ var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
         return formField.Value;
     };
 
-    ['Text', 'Http', 'Description', 'TextArea', 'Link', 'SpecialPhone', 'LocationLatLong', 'LocationUTM', 'LocationDLS', 'LocationNTS', 'WellUWI', 'WellAPI', 'Html']
+    ['Text', 'Http', 'Description', 'TextArea', 'Link', 'SpecialPhone', 'LocationLatLong',
+        'LocationUTM', 'LocationDLS', 'LocationNTS', 'WellUWI', 'WellAPI', 'Html']
         .forEach(name => st[subTypes[name].value] = { getValue: f });
+
 })();
 
 

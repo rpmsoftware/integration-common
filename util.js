@@ -360,14 +360,13 @@ var HEROKU_ENVIRONMENT = {
     NODE_HOME: '/app/.heroku/node',
 };
 
-exports.defineStandardProperty = function (replicator, name, getter, setter) {
-    var property = {
+exports.defineStandardProperty = function (obj, name, getter, setter) {
+    return Object.defineProperty(obj, name, {
         get: getter,
         set: setter || undefined,
         enumerable: true,
         configurable: true
-    };
-    Object.defineProperty(replicator, name, property);
+    });
 };
 
 exports.createObjectSerializer = function (object, fileName) {
