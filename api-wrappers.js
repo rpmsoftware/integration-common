@@ -14,11 +14,12 @@ function API(url, key, name) {
         url = url.url;
     }
     url = url.toLowerCase().ensureRight('/');
-    this.url = url.ensureRight('Api2.svc/');
+    this.url = url.ensureRight('Api2.svc/').toString();
     this.key = key;
     this.name = name;
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
+    this.throwNoForms = false;
 }
 
 rpmUtil.defineStandardProperty(API.prototype, 'parallelRunner', () => {
@@ -35,27 +36,31 @@ API.prototype.getUrl = function (endPoint) {
 
 const PROP_REQUEST_TIME = Symbol();
 const PROP_RESPONSE_TIME = Symbol();
+const PROP_API = Symbol();
 
-var RESPONSE_PROTO = {
-    getRequestTime: function () {
-        return this[PROP_REQUEST_TIME];
-    },
-    getResponseTime: function () {
-        return this[PROP_RESPONSE_TIME];
+const API_BASED_PROTO = {
+    getApi: function () {
+        return this[PROP_API];
     }
 };
 
-API.prototype.request = function (endPoint, data, log) {
-    var args = { headers: this.getHeaders(), data: data };
-    var url = this.getUrl(endPoint);
-    var client = this[PROP_REST_CLIENT];
-    if (!client) {
-        client = this[PROP_REST_CLIENT] = new RESTClient();
-    }
-    if (log === undefined) {
-        log = true;
-    }
+const RESPONSE_PROTO = Object.create(API_BASED_PROTO);
+RESPONSE_PROTO.getRequestTime = function () {
+    return this[PROP_REQUEST_TIME];
+};
+RESPONSE_PROTO.getResponseTime = function () {
+    return this[PROP_RESPONSE_TIME];
+};
+
+
+API.prototype.request = function (endPoint, data) {
+    var api = this;
     return new Promise((resolve, reject) => {
+        var url = api.getUrl(endPoint);
+        var log = api.logRequests;
+        if (log === undefined) {
+            log = true;
+        }
         logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
         function callback(data) {
@@ -71,10 +76,15 @@ API.prototype.request = function (endPoint, data, log) {
             }
             doneData[PROP_REQUEST_TIME] = requestTime;
             doneData[PROP_RESPONSE_TIME] = responseTime;
+            doneData[PROP_API] = api;
             Object.setPrototypeOf(doneData, RESPONSE_PROTO);
             (isError ? reject : resolve)(doneData);
         }
-        client.post(url, args, callback);
+        var client = api[PROP_REST_CLIENT];
+        if (!client) {
+            client = api[PROP_REST_CLIENT] = new RESTClient();
+        }
+        client.post(url, { headers: api.getHeaders(), data: data }, callback);
     });
 };
 
@@ -111,7 +121,7 @@ API.prototype.checkUserPassword = function (userName, password) {
 };
 
 API.prototype.getStaffList = function () {
-    return this.request('StaffList').then(result => result.StaffList);
+    return this.request('StaffList');
 };
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
@@ -209,18 +219,100 @@ API.prototype.getProcesses = function (includeDisabled) {
     return api[PROC_PROMISE_PROPERTY].then(procs => includeDisabled ? procs : procs.filter(proc => proc.Enabled));
 };
 
-const PROCESS_PROTO = {
-    getFields,
-    getForms,
-    addForm,
-    createForm,
-    getFormList: function (includeArchived, viewId) {
-        return this[API_PROPERTY].getFormList(this, viewId, includeArchived).then(result => result.Forms);
+function getProcess(obj) {
+    return (obj || this)[PROCESS_PROP];
+}
+
+exports.getProcess = getProcess;
+
+function getView(obj) {
+    return (obj || this)[VIEW_PROP];
+}
+
+exports.getView = getView;
+
+const VIEW_PROTO = {
+    getProcess: getProcess,
+    getForms: function () {
+        var view = this;
+        return view.getProcess().getForms(view.ID).then(result => {
+            result[VIEW_PROP] = view;
+            return result;
+        });
     },
-    getCachedFields,
-    getAllForms,
+    getFormList: function (includeArchived) {
+        return this.getProcess().getFormList(includeArchived, this.ID);
+    }
+};
+
+const PROCESS_PROTO = exports.PROCESS_PROTO = {
+
+    getFields: function () {
+        var proc = this;
+        return proc.getApi().getFields(proc.ProcessID).then(response => {
+            response[PROCESS_PROP] = proc;
+            return response;
+        });
+    },
+
+    getForms: function (viewId) {
+        var proc = this;
+        return proc.getApi().getForms(proc.ProcessID, viewId).then(result => {
+            result[PROCESS_PROP] = proc;
+            return result;
+        });
+    },
+
+    addForm: function (fields, status) {
+        return this.getApi().addForm(this.ProcessID, fields, status);
+    },
+
+    createForm: function (fields, properties) {
+        return this.getApi().createForm(this.ProcessID, fields, properties);
+    },
+
+    getFormList: function (includeArchived, viewId) {
+        return this.getApi().getFormList(this, viewId, includeArchived);
+    },
+
+    getCachedFields: function () {
+        var proc = this;
+        var cache = rpmUtil.getCache(proc);
+        var changed;
+        return proc.getApi().getLastModifications().then(modifications => {
+            changed = modifications.ProcFields;
+            if (!changed || !cache._fields || changed !== cache._fieldsChanged) {
+                return proc.getFields();
+            }
+        }).then(fields => {
+            if (fields) {
+                cache._fields = fields;
+                cache._fieldsChanged = changed;
+            }
+            return cache._fields;
+        });
+
+    },
+
+    getAllForms: function (includeArchived) {
+        var process = this;
+        return process.getFormList(includeArchived).then(forms => {
+            var data = [];
+            var p = Promise.resolve();
+            forms.forEach(form => p = p.then(() => process.getApi().getForm(form.ID)).then(form => data.push(form)));
+            return p.then(() => data);
+        });
+    },
+
     getViews: function () {
-        return this[API_PROPERTY].getProcessViews(this);
+        var proc = this;
+        return proc.getApi().getProcessViews(proc).then(views => {
+            views.forEach(view => {
+                view[PROCESS_PROP] = proc;
+                Object.setPrototypeOf(view, VIEW_PROTO);
+            });
+            return views;
+        });
     },
     getView: function (nameOrId, demand) {
         var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
@@ -233,17 +325,17 @@ const PROCESS_PROTO = {
         });
     },
     getSecurity: function () {
-        return this[API_PROPERTY].getProcessSecurity(this);
+        return this.getApi().getProcessSecurity(this);
     },
     getActionTypes: function () {
-        return this[API_PROPERTY].getActionTypes(this);
+        return this.getApi().getActionTypes(this);
     }
 };
 
-const API_PROPERTY = Symbol();
+Object.setPrototypeOf(PROCESS_PROTO, API_BASED_PROTO);
 
 API.prototype._extendProcess = function (proc) {
-    proc[API_PROPERTY] = this;
+    proc[PROP_API] = this;
     Object.setPrototypeOf(proc, PROCESS_PROTO);
     return proc;
 };
@@ -349,57 +441,11 @@ API.prototype.createFormInfoCache = function () {
     };
 };
 
-
 var PROCESS_FIELD_PROTO = {
     getValue: function (formField) {
         return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
     }
 };
-
-function getFields(asObject) {
-    var proc = this;
-    return proc[API_PROPERTY].getFields(proc.ProcessID).then(response => {
-        if (asObject) {
-            response.Fields = response.Fields.toObject('Name');
-        }
-        response[PROCESS_PROP] = proc;
-        return response;
-    });
-}
-
-function getCachedFields() {
-    var proc = this;
-    var cache = rpmUtil.getCache(proc);
-    var changed;
-    return proc[API_PROPERTY].getLastModifications().then(modifications => {
-        changed = modifications.ProcFields;
-        if (!changed || !cache._fields || changed !== cache._fieldsChanged) {
-            return proc.getFields();
-        }
-    }).then(fields => {
-        if (fields) {
-            cache._fields = fields;
-            cache._fieldsChanged = changed;
-        }
-        return cache._fields;
-    });
-
-}
-
-function getAllForms(includeArchived) {
-    var process = this;
-    return process.getFormList(includeArchived).then(forms => {
-        var data = [];
-        var p = Promise.resolve();
-        forms.forEach(form => p = p.then(() => process[API_PROPERTY].getForm(form.ID)).then(form => data.push(form)));
-        return p.then(() => data);
-    });
-}
-
-
-function getForms(viewId) {
-    return this[API_PROPERTY].getForms(this.ProcessID, viewId);
-}
 
 function getStatus(nameOrID, demand) {
     var property = typeof nameOrID === 'number' ? 'ID' : 'Text';
@@ -417,19 +463,27 @@ API.prototype.getCachedFields = function (processNameOrId) {
 const PROCESS_FIELDS_PROTO = {
     getField,
     getStatus,
-    getFieldByUid
+    getFieldByUid,
+    getValue: function (formField) {
+        var procField = this.Fields.find(f.Uid === formField.Uid);
+        return FIELD_ACCESSORS[procField.FieldType][procField.SubType].getValue(formField, procField);
+    }
 };
+Object.setPrototypeOf(PROCESS_FIELDS_PROTO, RESPONSE_PROTO);
+
 
 const PROCESS_PROP = Symbol();
+const VIEW_PROP = Symbol();
 
 rpmUtil.defineStandardProperty(PROCESS_FIELDS_PROTO, 'process', function () {
     return this[PROCESS_PROP];
 });
 
-
 API.prototype.getFields = function (processId) {
     return this.request('ProcFields', { ProcessID: processId.ProcessID || processId }).then(response => {
-        response = response.Process;
+        var proc = response.Process;
+        delete response.Process;
+        Object.assign(response, proc);
         response.Fields.forEach(field => Object.setPrototypeOf(field, PROCESS_FIELD_PROTO));
         return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
@@ -443,25 +497,40 @@ API.prototype.getActionTypes = function (processId) {
     return this.request('ActionTypes', { ProcessID: processId.ProcessID || processId });
 };
 
-API.prototype.getForms = function (processOrId, viewId) {
-    var baseRequest = new BaseProcessData(processOrId);
-    if (viewId) {
-        baseRequest.ViewID = viewId;
+API.prototype.getForms = function (processOrId, view) {
+    if (typeof processOrId === 'object') {
+        processOrId = processOrId.ProcessID || processOrId.Process;
     }
-    var self = this;
-    return new Promise((resolve, reject) => {
-        self.request('ProcForms', baseRequest).then(
-            response => resolve(response),
-            error => {
-                if (error.Message === 'No forms') {
-                    error = new BaseProcessData(processOrId);
-                    error.Columns = [];
-                    error.Forms = [];
-                    resolve(error);
-                } else {
-                    reject(error);
-                }
-            });
+    if (typeof view === 'object') {
+        view = view.ID;
+    }
+    var baseRequest = {};
+    if (typeof processOrId === 'object') {
+        processOrId = processOrId.ProcessID || processOrId.Process;
+    }
+    baseRequest[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
+    if (view) {
+        baseRequest.ViewID = typeof view === 'object' ? view.ID : view;
+    }
+    var api = this;
+    return api.request('ProcForms', baseRequest).catch(error => {
+        if (api.throwNoForms || error.Message !== 'No forms') {
+            throw error;
+        }
+        error = {
+            ColumnUids: [],
+            Columns: [],
+            Forms: [],
+            View: view
+        };
+        if (typeof processOrId === 'number') {
+            error.ProcessID = processOrId;
+            error.Process = '';
+        } else {
+            error.ProcessID = 0;
+            error.Process = processOrId;
+        }
+        return error;
     });
 };
 
@@ -473,7 +542,7 @@ API.prototype.getFormList = function (processId, viewId, includeArchived) {
     }
     var request = { ProcessID: processId.ProcessID || processId };
     if (viewId) {
-        request.ViewID = viewId;
+        request.ViewID = viewId.ID || viewId;
     }
     if (includeArchived) {
         request.IncludeArchived = true;
@@ -566,19 +635,10 @@ function BaseProcessData(processOrId) {
     }
 }
 
-function addForm(fields, status) {
-    return this[API_PROPERTY].addForm(this.ProcessID, fields, status);
-}
-
 API.prototype.addForm = function (processId, fields, status) {
     console.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
     return this.createForm(processId, fields, { Status: status });
 };
-
-function createForm(fields, properties) {
-    return this[API_PROPERTY].createForm(this.ProcessID, fields, properties);
-}
-
 
 API.prototype.createForm = function (processOrId, fields, properties) {
     var api = this;
@@ -625,7 +685,10 @@ API.prototype.setFormStatus = function (form, status) {
 };
 
 API.prototype.getHeaders = function () {
-    return { RpmApiKey: this.key };
+    return {
+        RpmApiKey: this.key,
+        "Content-Type": "application/json"
+    };
 };
 
 const PROP_CACHED_MODIFIED = Symbol();
@@ -1709,4 +1772,12 @@ exports.REP_TYPES = Object.seal(['Rep', 'Manager']);
 exports.isListField = function (field) {
     var customField = FIELD_TYPE.CustomField;
     return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
+};
+
+exports.isTableField = function (field) {
+    var customField = FIELD_TYPE.CustomField;
+    return field.FieldType === customField.value && (
+        field.SubType == customField.subTypes.FieldTable.value ||
+        field.SubType == customField.subTypes.FieldTableDefinedRow.value
+    );
 };

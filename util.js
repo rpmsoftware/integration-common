@@ -2,6 +2,7 @@
 var util = require('util');
 var fs = require('fs');
 var moment = require('moment');
+var hash = require('object-hash');
 require('string').extendPrototype();
 
 exports.readConfig = function (envName, fileName) {
@@ -45,7 +46,7 @@ function clearArray(array) {
 
 exports.clearArray = clearArray;
 
-exports.toBoolean = function (value) {
+exports.toBoolean = function (value, demand) {
     if (typeof value !== 'string') {
         return Boolean(value);
     }
@@ -61,9 +62,12 @@ exports.toBoolean = function (value) {
         case '0':
         case '':
             return false;
-        default:
-            throw new SyntaxError('Cannot convert to boolean: ' + value);
     }
+    var msg = 'Cannot convert to boolean: ' + value;
+    if (demand) {
+        throw new SyntaxError(msg);
+    }
+    console.warn(msg);
 };
 
 exports.createDateNormalizer = function (timeZone) {
@@ -131,7 +135,7 @@ exports.isEmpty = function (object) {
     return true;
 };
 
-exports.getValues = function (object) {
+function getValues(object) {
     if (Array.isArray(object)) {
         return object;
     }
@@ -139,7 +143,9 @@ exports.getValues = function (object) {
         throw new Error('Object is expected');
     }
     return Object.keys(object).map(key => object[key]);
-};
+}
+
+exports.getValues = getValues;
 
 function demandDeepValue(object, keys) {
     function goDeeper(key) {
@@ -593,3 +599,20 @@ exports.promiseFinally = function (callback) {
 exports.pause = function (timeout, value) {
     return new Promise(resolve => setTimeout(() => resolve(value), normalizeInteger(timeout)));
 };
+
+exports.singleCall = function (callback) {
+    var running = {};
+    return function () {
+        var h = getValues(arguments);
+        h.unshift(this);
+        h = hash(h);
+        var p = running[h];
+        if (!p) {
+            p = callback.apply(this, arguments);
+            if (p instanceof Promise) {
+                running[h] = p;
+            }
+        }
+        return p;
+    }
+}

@@ -5,12 +5,9 @@ factories[rpm.OBJECT_TYPE.CustomField] = {};
 
 factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (field, useUids) {
     var defRow = field.Rows.find(row => row.IsDefinition);
-    defRow.fieldsByName = {};
+    var fieldsByName = {};
     var prop = useUids ? 'Uid' : 'Name';
-    defRow.Fields.forEach(field => {
-        defRow.fieldsByName[field[prop]] = field;
-        field.Options = field.Options && field.Options.toObject('Text');
-    });
+    defRow.Fields.forEach(field => fieldsByName[field[prop]] = field);
 
     return function (rows, form) {
         var existingRows;
@@ -70,13 +67,13 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
             var row;
             row = {};
             for (var fieldNameOrUid in object) {
-                var field = defRow.fieldsByName[fieldNameOrUid];
+                var field = fieldsByName[fieldNameOrUid];
                 if (!field) {
                     throw new Error('Unknown table field: ' + fieldNameOrUid);
                 }
                 var value = object[fieldNameOrUid];
                 if (value && field.Options) {
-                    var option = field.Options[value];
+                    var option = field.Options.find(o => o.Text === value);
                     if (!option) {
                         throw new Error('Unknown option: ' + value);
                     }
