@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.13.0",
+    "version": "3.14.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dependencies.json",
@@ -14,6 +14,6 @@
     "license": "ISC",
     "private": true,
     "engines": {
-        "node": ">=4.4.x"
+        "node": "4.x.x"
     }
 }

@@ -186,6 +186,9 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
         userID = userID && userID.UserID;
         formOrID = formOrID.FormID;
     }
+    if (typeof formOrID === 'object') {
+        formOrID = (formOrID.Form || formOrID).FormID;
+    }
     var data = {
         Action: {
             Description: description,

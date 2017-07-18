@@ -615,4 +615,21 @@ exports.singleCall = function (callback) {
         }
         return p;
     }
-}
+};
+
+exports.cachify = function (callback, secTimeout) {
+    var cache;
+    secTimeout = +secTimeout;
+    secTimeout = secTimeout > 0 ? secTimeout * 1000 : 0;
+    var last = 0;
+    return function (reset) {
+        if (reset || secTimeout && Date.now() - last > secTimeout) {
+            cache = undefined;
+        }
+        return cache ? Promise.resolve(cache.value) : Promise.resolve().then(callback).then(value => {
+            cache = { value };
+            last = secTimeout && Date.now();
+            return value;
+        });
+    };
+};
