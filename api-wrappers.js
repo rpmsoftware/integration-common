@@ -53,13 +53,15 @@ RESPONSE_PROTO.getResponseTime = function () {
 };
 
 
-API.prototype.request = function (endPoint, data) {
+API.prototype.request = function (endPoint, data, log) {
     var api = this;
     return new Promise((resolve, reject) => {
         var url = api.getUrl(endPoint);
-        var log = api.logRequests;
         if (log === undefined) {
-            log = true;
+            log = api.logRequests;
+            if (log === undefined) {
+                log = true;
+            }
         }
         logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
         var requestTime = new Date();
@@ -185,9 +187,6 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
         userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
         userID = userID && userID.UserID;
         formOrID = formOrID.FormID;
-    }
-    if (typeof formOrID === 'object') {
-        formOrID = (formOrID.Form || formOrID).FormID;
     }
     var data = {
         Action: {

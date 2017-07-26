@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.14.0",
+    "version": "3.14.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dependencies.json",
@@ -12,8 +12,5 @@
         "normalizers.js"
     ],
     "license": "ISC",
-    "private": true,
-    "engines": {
-        "node": "4.x.x"
-    }
+    "private": true
 }
