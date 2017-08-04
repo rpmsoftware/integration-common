@@ -112,7 +112,7 @@ function normalizeValue(value) {
     if (typeof value === 'boolean') {
         value = value ? 'Yes' : 'No';
     } else if (value instanceof Date) {
-        value = value.toUTCString();
+        value = value.toISOString();
     }
     return value;
 }
