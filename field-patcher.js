@@ -73,13 +73,12 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                 }
                 var value = object[fieldNameOrUid];
                 if (value && field.Options) {
-                    var option = field.Options.find(o => o.Text === value);
+                    var option = field.Options.find(o => o.Text === value || option.ID === value);
                     if (!option) {
                         throw new Error('Unknown option: ' + value);
                     }
                     value = {
                         ID: option.ID,
-                        Value: option.Text
                     };
                 } else if (field.FieldType === rpm.OBJECT_TYPE.FormReference) {
                     value = {
@@ -88,7 +87,6 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
 
                 } else {
                     value = {
-                        ID: 0,
                         Value: normalizeValue(value)
                     };
 

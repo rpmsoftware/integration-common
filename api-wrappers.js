@@ -1,11 +1,12 @@
-var util = require('util');
-var RESTClient = require('node-rest-client').Client;
+// var RESTClient = require('node-rest-client').Client;
 var rpmUtil = require('./util');
 var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
 const MAX_PARALLEL_CALLS = 20;
 const PROP_REST_CLIENT = Symbol();
+
+const postRequest = require('./rest-node');
 
 function API(url, key, name) {
     if (typeof url === 'object') {
@@ -55,39 +56,36 @@ RESPONSE_PROTO.getResponseTime = function () {
 
 API.prototype.request = function (endPoint, data, log) {
     var api = this;
-    return new Promise((resolve, reject) => {
-        var url = api.getUrl(endPoint);
+    var url = api.getUrl(endPoint);
+    if (log === undefined) {
+        log = api.logRequests;
         if (log === undefined) {
-            log = api.logRequests;
-            if (log === undefined) {
-                log = true;
-            }
+            log = true;
         }
-        logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
-        var requestTime = new Date();
-        function callback(data) {
-            var responseTime = new Date();
-            var doneData;
-            var isError = false;
-            if (data.Result) {
-                isError = data.Result.Error;
-                doneData = isError || data.Result || data;
-            } else {
-                isError = true;
-                doneData = data;
-            }
-            doneData[PROP_REQUEST_TIME] = requestTime;
-            doneData[PROP_RESPONSE_TIME] = responseTime;
-            doneData[PROP_API] = api;
-            Object.setPrototypeOf(doneData, RESPONSE_PROTO);
-            (isError ? reject : resolve)(doneData);
+    }
+    logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
+    var requestTime = new Date();
+    return postRequest(url, data, api.getHeaders()).then(data => {
+        var responseTime = new Date();
+        var doneData;
+        var isError = false;
+        if (data.Result) {
+            isError = data.Result.Error;
+            doneData = isError || data.Result || data;
+        } else {
+            isError = true;
+            doneData = data;
         }
-        var client = api[PROP_REST_CLIENT];
-        if (!client) {
-            client = api[PROP_REST_CLIENT] = new RESTClient();
+        doneData[PROP_REQUEST_TIME] = requestTime;
+        doneData[PROP_RESPONSE_TIME] = responseTime;
+        doneData[PROP_API] = api;
+        Object.setPrototypeOf(doneData, RESPONSE_PROTO);
+        if (isError) {
+            throw doneData;
         }
-        client.post(url, { headers: api.getHeaders(), data: data }, callback);
+        return doneData;
     });
+
 };
 
 API.prototype.createFormNumberCache = function () {
@@ -342,7 +340,9 @@ API.prototype._extendProcess = function (proc) {
     return proc;
 };
 
-var ERR_PROCESS_NOT_FOUND = 'Process not found: %s';
+function throwProcessNotFound(nameOrID) {
+    throw Error(`Process not found ${nameOrID}`);
+}
 
 function getProcessSearchKey(nameOrID) {
     return typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
@@ -353,7 +353,7 @@ API.prototype.getProcess = function (nameOrID, demand) {
         var key = getProcessSearchKey(nameOrID);
         var result = procs.find(proc => proc[key] == nameOrID);
         if (demand && !result) {
-            throw Error(util.format(ERR_PROCESS_NOT_FOUND, nameOrID));
+            throwProcessNotFound(nameOrID);
         }
         return result;
     });
@@ -365,7 +365,7 @@ API.prototype.getActiveProcess = function (nameOrID, demand) {
             return result;
         }
         if (demand) {
-            throw Error(util.format(ERR_PROCESS_NOT_FOUND, nameOrID));
+            throwProcessNotFound(nameOrID);
         }
     });
 };

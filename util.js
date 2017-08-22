@@ -1,5 +1,4 @@
 'use strict';
-var util = require('util');
 var fs = require('fs');
 var moment = require('moment');
 require('string').extendPrototype();
@@ -87,7 +86,7 @@ exports.createDateNormalizer = function (timeZone) {
 exports.indexOf = function (array, value) {
     var result = array.indexOf(value);
     if (result < 0) {
-        throw new Error(util.format('Value %s is not in %s', value, array));
+        throw new Error(`Value ${value} is not in [${array.jonn(',')}]`);
     }
     return result;
 };
@@ -202,7 +201,7 @@ exports.deleteCache = function (object) {
 function getEager(object, id, error) {
     var result = object[id];
     if (result === undefined) {
-        throwError(error || util.format('Property "%s" not found in object: %s', id, JSON.stringify(object)), 'PropertyNotFoundError', { property: id, object: object });
+        throwError(error || `Property "${id}" not found in object: ${JSON.stringify(object)}`, 'PropertyNotFoundError', { property: id, object: object });
     }
     return result;
 }
@@ -314,6 +313,10 @@ var arrayPrototypeExtensions = {
             result[key] = element;
         });
         return result;
+    },
+
+    getRandomElement: function () {
+        return this[Math.trunc(Math.random() * this.length)];
     }
 
 };
@@ -455,7 +458,7 @@ exports.normalizeInteger = normalizeInteger;
 exports.logErrorStack = function (error) {
     if (!(error instanceof Error)) {
         if (typeof error === 'object') {
-            error = util.format('%j', error);
+            error = JSON.stringify(error);
         }
         error = new Error(error);
     }
@@ -516,22 +519,9 @@ exports.createParallelRunner = function (parallelRequests) {
 
 ( /*init logger */() => {
     try {
-        var winston = require('winston');
-        exports.logger = {
-            error: winston.error,
-            warn: winston.warn,
-            info: winston.info,
-            debug: winston.debug,
-            trace: winston.trace
-        };
+        exports.logger = require('./logger-winston');
     } catch (e) {
-        exports.logger = {
-            error: console.error,
-            warn: console.warn,
-            info: console.info,
-            debug: console.log,
-            trace: console.trace
-        };
+        exports.logger = require('./logger-console');
     }
 })();
 
