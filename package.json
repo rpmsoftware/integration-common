@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.15.0",
+    "version": "3.15.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dependencies.json",
@@ -9,7 +9,12 @@
         "mssql.js",
         "util.js",
         "field-patcher.js",
-        "normalizers.js"
+        "normalizers.js",
+        "rest-node.js",
+        "rest-node-fetch.js",
+        "rest-react-fetch.js",
+        "logger-console.js",
+        "logger-winston.js"
     ],
     "license": "ISC",
     "private": true
