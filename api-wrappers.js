@@ -5,19 +5,19 @@ var norm = require('./normalizers');
 
 const MAX_PARALLEL_CALLS = 20;
 const PROP_REST_CLIENT = Symbol();
+const PROP_POST_REQUEST = Symbol();
 
-const postRequest = require('./rest-node');
-
-function API(url, key, name) {
+function API(url, key, postRequest) {
     if (typeof url === 'object') {
+        postRequest = arguments[arguments.length - 1];
         key = url.key;
-        name = url.name;
         url = url.url;
     }
     url = url.toLowerCase().ensureRight('/');
     this.url = url.ensureRight('Api2.svc/').toString();
     this.key = key;
-    this.name = name;
+    assert.equal(typeof postRequest, 'function');
+    this[PROP_POST_REQUEST] = postRequest;
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
@@ -65,7 +65,7 @@ API.prototype.request = function (endPoint, data, log) {
     }
     logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     var requestTime = new Date();
-    return postRequest(url, data, api.getHeaders()).then(data => {
+    return this[PROP_POST_REQUEST](url, data, api.getHeaders()).then(data => {
         var responseTime = new Date();
         var doneData;
         var isError = false;
