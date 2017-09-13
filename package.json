@@ -4,7 +4,6 @@
     "version": "3.16.0",
     "author": "Dmitriy Serdyukov",
     "files": [
-        "dependencies.json",
         "api-wrappers.js",
         "mssql.js",
         "util.js",
@@ -12,13 +11,14 @@
         "normalizers.js",
         "api-node-rest.js",
         "api-node-fetch.js",
-        "api-react-fetch.js"
+        "api-react-fetch.js",
+        "logger-console.js",
+        "logger-winston.js"
     ],
     "license": "ISC",
     "private": true,
     "dependencies": {
         "moment": "^2.18.1",
-        "node-rest-client": "^3.1.0",
         "object-hash": "^1.1.8",
         "string": "^3.3.3"
     }
