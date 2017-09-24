@@ -204,19 +204,19 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
 
 const PROC_PROMISE_PROPERTY = Symbol();
 
-API.prototype.getProcesses = function (includeDisabled) {
+API.prototype.getProcesses = function () {
     var api = this;
     if (!api[PROC_PROMISE_PROPERTY]) {
         api[PROC_PROMISE_PROPERTY] = api.request('Procs').then(response => {
-            var result = response.Procs.map(api._extendProcess.bind(api));
+            response.Procs.forEach(api._extendProcess.bind(api));
             delete api[PROC_PROMISE_PROPERTY];
-            return result;
+            return response;
         }, error => {
             delete api[PROC_PROMISE_PROPERTY];
             throw error;
         });
     }
-    return api[PROC_PROMISE_PROPERTY].then(procs => includeDisabled ? procs : procs.filter(proc => proc.Enabled));
+    return api[PROC_PROMISE_PROPERTY];
 };
 
 function getProcess(obj) {
@@ -374,10 +374,10 @@ API.prototype.getCachedProcesses = function () {
     var api = this;
     var cache = rpmUtil.getCache(api);
     return api.getModifiedAspects()
-        .then(modifiedAspects => (!cache._processes || modifiedAspects.contains('ProcList')) && api.getProcesses(true))
+        .then(modifiedAspects => (!cache._processes || modifiedAspects.contains('ProcList')) && api.getProcesses())
         .then(processes => {
             if (processes) {
-                cache._processes = processes;
+                cache._processes = processes.Procs;
             }
             return cache._processes;
         });
