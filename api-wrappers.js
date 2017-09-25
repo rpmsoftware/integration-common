@@ -1,10 +1,8 @@
-// var RESTClient = require('node-rest-client').Client;
 var rpmUtil = require('./util');
 var logger = rpmUtil.logger;
 var norm = require('./normalizers');
 
 const MAX_PARALLEL_CALLS = 20;
-const PROP_REST_CLIENT = Symbol();
 const PROP_POST_REQUEST = Symbol();
 
 function API(url, key, postRequest) {
@@ -76,9 +74,9 @@ API.prototype.request = function (endPoint, data, log) {
             isError = true;
             doneData = data;
         }
-        doneData[PROP_REQUEST_TIME] = requestTime;
-        doneData[PROP_RESPONSE_TIME] = responseTime;
-        doneData[PROP_API] = api;
+        Object.defineProperty(doneData, PROP_REQUEST_TIME, { value: requestTime });
+        Object.defineProperty(doneData, PROP_RESPONSE_TIME, { value: responseTime });
+        Object.defineProperty(doneData, PROP_API, { value: api });
         Object.setPrototypeOf(doneData, RESPONSE_PROTO);
         if (isError) {
             throw doneData;
@@ -145,7 +143,7 @@ API.prototype.getViews = function (viewCategory, templateID) {
     return this.request('ProcViews', {
         'ViewCategory': +viewCategory,
         'ObjectSpecificID': +templateID
-    }).then(result => result.Views);
+    });
 };
 
 API.prototype.getProcessViews = function (processID) {
@@ -236,7 +234,7 @@ const VIEW_PROTO = {
     getForms: function () {
         var view = this;
         return view.getProcess().getForms(view.ID).then(result => {
-            result[VIEW_PROP] = view;
+            Object.defineProperty(result, VIEW_PROP, { value: view });
             return result;
         });
     },
@@ -250,7 +248,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getFields: function () {
         var proc = this;
         return proc.getApi().getFields(proc.ProcessID).then(response => {
-            response[PROCESS_PROP] = proc;
+            Object.defineProperty(response, PROCESS_PROP, { value: proc });
             return response;
         });
     },
@@ -258,7 +256,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getForms: function (viewId) {
         var proc = this;
         return proc.getApi().getForms(proc.ProcessID, viewId).then(result => {
-            result[PROCESS_PROP] = proc;
+            Object.defineProperty(result, PROCESS_PROP, { value: proc });
             return result;
         });
     },
@@ -307,8 +305,8 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getViews: function () {
         var proc = this;
         return proc.getApi().getProcessViews(proc).then(views => {
-            views.forEach(view => {
-                view[PROCESS_PROP] = proc;
+            views.Views.forEach(view => {
+                Object.defineProperty(view, PROCESS_PROP, { value: proc });
                 Object.setPrototypeOf(view, VIEW_PROTO);
             });
             return views;
@@ -317,7 +315,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getView: function (nameOrId, demand) {
         var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
         return this.getViews().then(views => {
-            var result = views.find(view => view[property] === nameOrId);
+            var result = views.Views.find(view => view[property] === nameOrId);
             if (demand && !result) {
                 throw new Error(`View not found: ${nameOrId}`);
             }
@@ -335,7 +333,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
 Object.setPrototypeOf(PROCESS_PROTO, API_BASED_PROTO);
 
 API.prototype._extendProcess = function (proc) {
-    proc[PROP_API] = this;
+    Object.defineProperty(proc, PROP_API, { value: this });
     Object.setPrototypeOf(proc, PROCESS_PROTO);
     return proc;
 };
@@ -977,6 +975,7 @@ API.prototype.getAgencies = function () {
 
 
 function extractContact(object) {
+    assert.equal(typeof object.Contact, 'object');
     if (typeof object.Contact !== 'object') {
         var contact = object.Contact = {};
         ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(property => {
