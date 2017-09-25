@@ -122,6 +122,10 @@ API.prototype.getStaffList = function () {
     return this.request('StaffList');
 };
 
+API.prototype.getStaff = function (staffID) {
+    return this.request('Staff', { StaffID: +staffID });
+};
+
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
 
 function parseTimezoneOffset(offset) {
