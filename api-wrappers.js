@@ -122,6 +122,10 @@ API.prototype.getStaffList = function () {
     return this.request('StaffList');
 };
 
+API.prototype.getStaffGroups = function () {
+    return this.request('StaffGroups');
+};
+
 API.prototype.getStaff = function (staffID) {
     return this.request('Staff', { StaffID: +staffID });
 };
