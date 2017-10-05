@@ -38,9 +38,6 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
         function add(id, row) {
             result.push({
                 RowID: id,
-                IsDefinition: false,
-                IsLabelRow: false,
-                IsShown: true,
                 Fields: defRow.Fields.map(field => {
                     var result = row && row[field.Uid];
                     return {
