@@ -32,33 +32,21 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                 throw new Error('Incompatible rows');
             }
         }
-        var newDefRow = {
-            RowID: defRow.ID,
-            IsDefinition: true,
-            IsLabelRow: defRow.IsLabelRow,
-            IsShown: defRow.IsShown,
-            Fields: defRow.Fields.map(field => ({
-                Values: [],
-                Uid: field.Uid
-            }))
-        };
 
-
-        var result = [newDefRow];
+        var result = [];
 
         function add(id, row) {
-            result.push({
+            var rowFields = [];
+            defRow.Fields.forEach(field => {
+                var result = row && row[field.Uid];
+                result && rowFields.push({
+                    Values: [result],
+                    Uid: field.Uid
+                });
+            })
+            rowFields.length > 0 && result.push({
                 RowID: id,
-                IsDefinition: false,
-                IsLabelRow: false,
-                IsShown: true,
-                Fields: newDefRow.Fields.map(field => {
-                    var result = row && row[field.Uid];
-                    return {
-                        Values: result ? [result] : [],
-                        Uid: field.Uid
-                    };
-                })
+                Fields: rowFields
             });
 
         }
