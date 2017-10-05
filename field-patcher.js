@@ -36,17 +36,18 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
         var result = [];
 
         function add(id, row) {
-            var rowFields = [];
-            defRow.Fields.forEach(field => {
-                var result = row && row[field.Uid];
-                result && rowFields.push({
-                    Values: [result],
-                    Uid: field.Uid
-                });
-            })
-            rowFields.length > 0 && result.push({
+            result.push({
                 RowID: id,
-                Fields: rowFields
+                IsDefinition: false,
+                IsLabelRow: false,
+                IsShown: true,
+                Fields: defRow.Fields.map(field => {
+                    var result = row && row[field.Uid];
+                    return {
+                        Values: result ? [result] : [],
+                        Uid: field.Uid
+                    };
+                })
             });
 
         }
