@@ -1,6 +1,7 @@
 (() => {
     var rpm = require('./api-wrappers');
-    var api = new rpm.RpmApi(require('./util').readConfig('RPM_CONFIG', 'config.json').rpmApiMagnum);
+
+    var api = new (require('./api-node-rest'))(require('./util').readConfig('RPM_CONFIG', 'config.json').rpmApiMagnum);
     var util = require('util');
     var assert = require('assert');
 
@@ -10,13 +11,13 @@
         refSubTypes[rpm.REF_DATA_TYPE[key]] = key;
     }
 
-
     var processes = {};
     var data = [];
     var fieldsByUid = {};
     
     api.getProcesses(true)
         .then(response => {
+            response = response.Procs;
             processes = response.toObject('ProcessID');
             if (!Array.isArray(response)) {
                 response = [response];

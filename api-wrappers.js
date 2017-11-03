@@ -644,13 +644,14 @@ function BaseProcessData(processOrId) {
 }
 
 API.prototype.addForm = function (processId, fields, status) {
-    console.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
+    logger.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
     return this.createForm(processId, fields, { Status: status });
 };
 
 API.prototype.createForm = function (processOrId, fields, properties) {
     var api = this;
     properties = properties || {};
+    fields = fields || [];
     var status = properties.Status || properties.StatusID || undefined;
     properties = { Form: properties };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
@@ -663,16 +664,17 @@ API.prototype.createForm = function (processOrId, fields, properties) {
     return p.then(api._extendForm.bind(api));
 };
 
+const FORM_PROTO = {
+    getFieldsAsObject: getFormFieldsAsObject,
+    getFieldValue: getFormFieldValue,
+    getField,
+    getFieldByUid
+};
 
 function extendForm(form) {
-    var frm = form.Form || form;
-    frm.getFieldsAsObject = getFormFieldsAsObject;
-    frm.getFieldValue = getFormFieldValue;
-    frm.getField = getField;
-    frm.getFieldByUid = getFieldByUid;
+    Object.setPrototypeOf(form.Form || form, FORM_PROTO);
     return form;
 }
-
 
 API.prototype.createFormSet = function (parentFormID, fields) {
     if (typeof parentFormID === 'object') {
