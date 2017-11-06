@@ -320,6 +320,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
             return views;
         });
     },
+
     getView: function (nameOrId, demand) {
         var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
         return this.getViews().then(views => {
@@ -330,11 +331,17 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
             return result;
         });
     },
+
     getSecurity: function () {
         return this.getApi().getProcessSecurity(this);
     },
+
     getActionTypes: function () {
         return this.getApi().getActionTypes(this);
+    },
+
+    getActions() {
+        return this.getApi().request('ProcActions', { ProcessID: this.ProcessID });
     }
 };
 
