@@ -317,8 +317,17 @@ var arrayPrototypeExtensions = {
 
     getRandomElement: function () {
         return this[Math.trunc(Math.random() * this.length)];
-    }
+    },
 
+    shuffle: function () {
+        const copy = this.concat();
+        const result = [];
+        while (copy.length > 0) {
+            result.push(copy.splice(Math.trunc(Math.random() * copy.length), 1)[0]);
+        }
+        return result;
+    }
+    
 };
 
 function extendArrayPrototype() {
