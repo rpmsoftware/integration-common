@@ -1221,7 +1221,7 @@ exports.PHONE_TYPES = Object.seal({
     Other: 6
 });
 
-var OBJECT_TYPE = exports.OBJECT_TYPE = {
+const OBJECT_TYPE = exports.OBJECT_TYPE = {
     NA: 0,
     AgentRep: 1,
     SubscriberSupport: 2,
@@ -1234,10 +1234,13 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     Subscriber: 9,
     CommissionRun: 10,
     SystemName: 11,
+    ProductVariables: 12,
+    ItemVariables: 13,
     CustomerLocation: 14,
     CustomerAlias: 15,
-    Deployment: 17,
-    Carrier: 20,
+    Instance: 17,
+    Brand: 19,
+    Agreement: 20,
     Lead: 100,
     Quote: 101,
     Order: 102,
@@ -1249,6 +1252,8 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     Supplier: 203,
     RefPartner: 204,
     SupplierExclusion: 205,
+    AgencyGroup: 206,
+    CommAdjType: 300,
     Product: 303,
     CustomerAccount: 304,
     CommTier: 305,
@@ -1266,6 +1271,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     MasterDes: 318,
     AgentDes: 319,
     CommDeposit: 320,
+    CommMatrix: 321, // we have multiple import matrixes 
     Notes: 323, // These notes are used for search by fields, but are unused
     Quota: 324, // this is for old quota that was removed from system CR 10435
     IssueText: 325,
@@ -1276,6 +1282,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     SupplierExtranet: 400,
     SupplierExtranetLogin: 401,
     CommImportTemp: 411,
+    CommName: 420,
     CommItemTransfer: 421,
     FileAttachment: 450,
     ECItem: 470,
@@ -1285,6 +1292,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     CustomFieldListSelectedItem: 502,
     FormField: 503,
     TableFieldRow: 504,
+    PMFieldField: 505,
     PMTemplate: 510,
     PMStatus: 511,
     PMTemplateReference: 512,  // To be phased out.  This type is redundant with 522 for our purposes.
@@ -1302,6 +1310,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     FormEmail: 526,
     FormSummary: 530,
     FormHistory: 531,
+    FormSignature: 532,
     ArchivedAccountGroup: 538,
     ArchivedCommissionItemSplit: 539,
     ArchivedFormParticipant: 540,
@@ -1318,9 +1327,14 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     Approval: 560,
     ApprovalStage: 561,
     ProcessFlow: 565,
-    FormVerifiedList: 574,
     Holder: 580,
+    HolderModifiedDate: 581, // for view
+    FolderFiles: 582, // for view
+    NoFolderFiles: 583, // for view
     Role: 600,
+    StaffGroup: 601,
+    RolePrivilege: 602,
+    RolePermsission: 603,
     AgencyAssignment: 620,
     AgencyAssignmentCategory: 621,
     CalendarAction: 650,
@@ -1330,11 +1344,12 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     Cview_FilterOption: 711,
     AgencyReferral: 715,
     Referral: 716,
-    CustomFormReport: 741,
+    FormLayout: 741,
     PhoneType: 800,
     TemporaryLogo: 851,
     Reconciles: 900,
     Reconcile: 901,
+    SuperUserBillingLevel: 950,
     StaticField: 9999,  // Refers to fields like Customer.Website or Contact.FirstName.  Some static fields are shared fields.
     NetBilledForRun: 10000,
     PayoutForRun: 10001,
@@ -1360,6 +1375,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     CountryAddress: 10075,
     Modified: 10076,
     Company: 10077,
+    User: 10078,
     PrimaryContact: 10100,
     ContactInfo: 10101,
     StreetAddress: 10102,
@@ -1379,6 +1395,7 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     Rename_Manager: 10123,
     Rename_Agency: 10124,
     Rename_Agencies: 10125,
+    FieldFieldStaticOption: 10140,
     BardCode: 10200,
     FormStarted: 10201,
     Owner: 10202,
@@ -1403,7 +1420,9 @@ var OBJECT_TYPE = exports.OBJECT_TYPE = {
     ProcessHolder: 10551,
     HolderFlow: 10607,
     HolderFileAttachment: 10608,
-    HolderProcess: 10600
+    HolderProcess: 10600,
+    ViewDownload: 10609,
+    ImportFile: 10610
 };
 
 var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
