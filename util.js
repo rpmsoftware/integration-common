@@ -86,7 +86,7 @@ exports.createDateNormalizer = function (timeZone) {
 exports.indexOf = function (array, value) {
     var result = array.indexOf(value);
     if (result < 0) {
-        throw new Error(`Value ${value} is not in [${array.jonn(',')}]`);
+        throw new Error(`Value ${value} is not in [${array.join(',')}]`);
     }
     return result;
 };
