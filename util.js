@@ -319,6 +319,12 @@ var arrayPrototypeExtensions = {
         return this[Math.trunc(Math.random() * this.length)];
     },
 
+    removeRandomElement: function () {
+        if (this.length > 0) {
+            return this.splice(Math.trunc(Math.random() * this.length), 1)[0];
+        }
+    },
+
     shuffle: function () {
         const copy = this.concat();
         const result = [];
@@ -327,7 +333,7 @@ var arrayPrototypeExtensions = {
         }
         return result;
     }
-    
+
 };
 
 function extendArrayPrototype() {
