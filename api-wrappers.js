@@ -1672,6 +1672,9 @@ function validateFieldType(field, fieldTypeName, subTypeName) {
     if (field.FieldType !== t.value) {
         throw new Error(`Incorrect FieldType ${field.FieldType}. ${t.value} (${fieldTypeName}) expected`);
     }
+    if (subTypeName === undefined) {
+        return field;
+    }
     t = t.subTypes[subTypeName];
     if (!t) {
         throw new Error(`Unknown SubType '${subTypeName}' for FieldType '${fieldTypeName}' subType`);
