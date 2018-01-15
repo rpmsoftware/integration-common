@@ -1017,11 +1017,12 @@ function extractContact(object) {
     return object;
 }
 
-API.prototype.getAgency = function (nameOrID) {
-    var api = this;
-    var request = {};
+API.prototype.getAgency = async function (nameOrID) {
+    const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    return api.request('Agency', request).then(a => extractContact(api.tweakDates(a)));
+    const agency = await this.request('Agency', request);
+    agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
+    return extractContact(this.tweakDates(agency));
 };
 
 API.prototype.createAgency = function (data) {
