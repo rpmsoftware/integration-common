@@ -4,6 +4,17 @@ var norm = require('./normalizers');
 
 const MAX_PARALLEL_CALLS = 20;
 const PROP_POST_REQUEST = Symbol();
+const PROP_PARENT = Symbol();
+const CHILD_PROTO = {
+    getParent: function () {
+        return this[PROP_PARENT];
+    }
+}
+
+function setParent(obj, parent) {
+    Object.defineProperty(obj, PROP_PARENT, { value: parent });
+    return obj;
+}
 
 function API(url, key, postRequest) {
     if (typeof url === 'object') {
@@ -890,9 +901,12 @@ API.prototype.searchCustomers = function (field, value) {
     return this.request('CustomerSearch', { Field: field, Search: value });
 };
 
-API.prototype._normalizeCustomer = function (result) {
-    result.Age = result.Age || 0;
-    return this.tweakDates(result);
+API.prototype._normalizeCustomer = function (customer) {
+    customer.Age = customer.Age || 0;
+    ['Locations', 'Accounts'].forEach(prop =>
+        customer[prop].forEach(ch => Object.setPrototypeOf(setParent(ch, customer), CHILD_PROTO))
+    );
+    return this.tweakDates(customer);
 };
 
 API.prototype.createCustomer = function (data) {
