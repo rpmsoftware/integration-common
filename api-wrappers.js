@@ -64,8 +64,8 @@ RESPONSE_PROTO.getResponseTime = function () {
 
 
 API.prototype.request = function (endPoint, data, log) {
-    var api = this;
-    var url = api.getUrl(endPoint);
+    const api = this;
+    const url = api.getUrl(endPoint);
     if (log === undefined) {
         log = api.logRequests;
         if (log === undefined) {
@@ -73,26 +73,24 @@ API.prototype.request = function (endPoint, data, log) {
         }
     }
     logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
-    var requestTime = new Date();
+    const requestTime = new Date();
     return this[PROP_POST_REQUEST](url, data, api.getHeaders()).then(data => {
-        var responseTime = new Date();
-        var doneData;
-        var isError = false;
-        if (data.Result) {
-            isError = data.Result.Error;
-            doneData = isError || data.Result || data;
-        } else {
-            isError = true;
-            doneData = data;
+        const responseTime = new Date();
+        if (!data.Result) {
+            throw new Error(typeof data === 'object' ? data.toString() : data);
         }
-        Object.defineProperty(doneData, PROP_REQUEST_TIME, { value: requestTime });
-        Object.defineProperty(doneData, PROP_RESPONSE_TIME, { value: responseTime });
-        Object.defineProperty(doneData, PROP_API, { value: api });
-        Object.setPrototypeOf(doneData, RESPONSE_PROTO);
+        const isError = data.Result.Error;
+        data = isError || data.Result || data;
+        if (typeof data === 'object') {
+            Object.defineProperty(data, PROP_REQUEST_TIME, { value: requestTime });
+            Object.defineProperty(data, PROP_RESPONSE_TIME, { value: responseTime });
+            Object.defineProperty(data, PROP_API, { value: api });
+            Object.setPrototypeOf(data, RESPONSE_PROTO);
+        }
         if (isError) {
-            throw doneData;
+            throw data;
         }
-        return doneData;
+        return data;
     });
 
 };
