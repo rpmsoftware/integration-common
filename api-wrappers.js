@@ -667,19 +667,13 @@ API.prototype.addForm = function (processId, fields, status) {
 };
 
 API.prototype.createForm = function (processOrId, fields, properties) {
-    var api = this;
     properties = properties || {};
     fields = fields || [];
-    var status = properties.Status || properties.StatusID || undefined;
     properties = { Form: properties };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
     properties.Form.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
-    var p = this.request('ProcFormAdd', properties);
-    if (status) {
-        p = p.then(form => api.setFormStatus(form, status));
-    }
-    return p.then(api._extendForm.bind(api));
+    return this.request('ProcFormAdd', properties).then(this._extendForm.bind(this));
 };
 
 const FORM_PROTO = {
