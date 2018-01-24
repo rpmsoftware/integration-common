@@ -979,14 +979,11 @@ API.prototype.editCustomerLocation = function (customerID, locationID, location)
     });
 };
 
-API.prototype.getSuppliers = function () {
-    return this.request('Suppliers').then(result => {
-        var modified = new Date(result.Age * 1000);
-        result.Suppliers.forEach(supplier => supplier.Modified = modified);
-        return result;
-    });
+API.prototype.getSuppliers = async function () {
+    const result = await this.request('Suppliers');
+    result.Suppliers.forEach(s => this.tweakDates(s));
+    return result;
 };
-
 
 API.prototype.getAgencies = function () {
     var api = this;
@@ -995,7 +992,6 @@ API.prototype.getAgencies = function () {
         return response;
     });
 };
-
 
 function extractContact(object) {
     assert.equal(typeof object.Contact, 'object');
