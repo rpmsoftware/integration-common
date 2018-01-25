@@ -1824,3 +1824,22 @@ exports.isTableField = function (field) {
         field.SubType == customField.subTypes.FieldTableDefinedRow.value
     );
 };
+
+const STAFF_FILTERS = {};
+['Role', 'StaffGroup', 'Enabled'].forEach(prop => STAFF_FILTERS[prop] = rpmUtil.getEager(OBJECT_TYPE, prop));
+exports.STAFF_FILTERS = Object.seal(STAFF_FILTERS);
+
+exports.getStaffFilters = function (field) {
+    validateFieldType(field, 'FormReference', 'Staff');
+    const result = {};
+    for (let prop in STAFF_FILTERS) {
+        let v = STAFF_FILTERS[prop];
+        v = field.Filters.find(f => f.Type === v).Specific;
+        if (v) {
+            result[prop] = v;
+        }
+    }
+    return result;
+}
+
+
