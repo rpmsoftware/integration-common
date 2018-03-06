@@ -1618,15 +1618,7 @@ var REF_DATA_TYPE = exports.REF_DATA_TYPE = {
 
 };
 
-var SHARED_FIELD_SUBTYPES = exports.SHARED_FIELD_SUBTYPES = {
-    CustomField: 500,
-    Reference: 522,
-    Owner: 523,
-    Status: 511,
-    Customer: 10100,
-    Modified: 10076,
-    Started: 10201,
-};
+const SHARED_FIELD_SUBTYPES = exports.SHARED_FIELD_SUBTYPES = OBJECT_TYPE;
 
 var FIELD_TYPE = exports.FIELD_TYPE = (() => {
     var fieldTypes = {};
