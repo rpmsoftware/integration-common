@@ -1,6 +1,7 @@
-var rpmUtil = require('./util');
-var logger = rpmUtil.logger;
-var norm = require('./normalizers');
+const rpmUtil = require('./util');
+const logger = rpmUtil.logger;
+const norm = require('./normalizers');
+const errors = require('./api-errors');
 
 const MAX_PARALLEL_CALLS = 20;
 const PROP_POST_REQUEST = Symbol();
@@ -878,11 +879,18 @@ function objectToId(nameOrID, property) {
     return typeof nameOrID === 'object' ? nameOrID[property] : nameOrID;
 }
 
-API.prototype.getCustomer = function (nameOrID) {
+API.prototype.getCustomer = async function (nameOrID, demand) {
     nameOrID = objectToId(nameOrID, 'CustomerID');
-    var request = {};
+    const request = {};
     request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
-    return this.request('Customer', request).then(c => this._normalizeCustomer(c));
+    try {
+        const result = await this.request('Customer', request);
+        return this._normalizeCustomer(result);
+    } catch (e) {
+        if (demand || e.Message !== errors.MSG_CUSTOMER_NOT_FOUND) {
+            throw e;
+        }
+    }
 };
 
 API.prototype.searchCustomers = function (field, value) {
@@ -1005,12 +1013,18 @@ function extractContact(object) {
     return object;
 }
 
-API.prototype.getAgency = async function (nameOrID) {
+API.prototype.getAgency = async function (nameOrID, demand) {
     const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    const agency = await this.request('Agency', request);
-    agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
-    return extractContact(this.tweakDates(agency));
+    try {
+        const agency = await this.request('Agency', request);
+        agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
+        return extractContact(this.tweakDates(agency));
+    } catch (e) {
+        if (demand || e.Message !== errors.MSG_AGENCY_NOT_FOUND) {
+            throw e;
+        }
+    }
 };
 
 API.prototype.createAgency = function (data) {
