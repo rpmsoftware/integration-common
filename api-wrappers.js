@@ -466,9 +466,12 @@ API.prototype.createFormInfoCache = function () {
     };
 };
 
-var PROCESS_FIELD_PROTO = {
+const PROCESS_FIELD_PROTO = {
     getValue: function (formField) {
         return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
+    },
+    isReference: function () {
+        return this.FieldType === OBJECT_TYPE.FormReference;
     }
 };
 
@@ -1847,5 +1850,3 @@ exports.getStaffFilters = function (field) {
     }
     return result;
 }
-
-
