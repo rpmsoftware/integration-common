@@ -466,13 +466,18 @@ API.prototype.createFormInfoCache = function () {
     };
 };
 
+function isReferenceField(field) {
+    field = field || this;
+    return field.FieldType === OBJECT_TYPE.FormReference;
+}
+
+exports.isReferenceField = isReferenceField;
+
 const PROCESS_FIELD_PROTO = {
     getValue: function (formField) {
         return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
     },
-    isReference: function () {
-        return this.FieldType === OBJECT_TYPE.FormReference;
-    }
+    isReference: isReferenceField
 };
 
 function getStatus(nameOrID, demand) {
@@ -816,16 +821,22 @@ API.prototype.getSupplierAccounts = function (nameOrID) {
     });
 };
 
-API.prototype.getAccount = function (account, supplier) {
-    var req = {};
+API.prototype.getAccount = async function (account, supplier, demand) {
+    const req = {};
     if (typeof account === 'number') {
         req.AccountID = account;
     } else {
         req.Account = account;
         req[typeof supplier === 'number' ? 'SupplierID' : 'Supplier'] = supplier;
     }
-    var api = this;
-    return api.request('Account', req).then(a => api.tweakDates(a));
+    try {
+        const acc = await this.request('Account', req);
+        return this.tweakDates(acc);
+    } catch (e) {
+        if (demand || e.Message !== errors.MSG_ACCOUNT_NOT_FOUND) {
+            throw e;
+        }
+    }
 };
 
 API.prototype.getAccounts = function (modifiedAfter) {
@@ -1850,3 +1861,5 @@ exports.getStaffFilters = function (field) {
     }
     return result;
 }
+
+
