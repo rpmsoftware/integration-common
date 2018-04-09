@@ -640,3 +640,13 @@ exports.cachify = function (callback, secTimeout) {
         });
     };
 };
+
+exports.promisify = function (callable) {
+    return function (...params) {
+        return new Promise((resolve, reject) => {
+            params.push((error, result) => error ? reject(error) : resolve(result));
+            callable.apply(this, params);
+        });
+
+    };
+};
