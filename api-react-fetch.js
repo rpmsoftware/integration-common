@@ -1,3 +1,5 @@
+/*global fetch*/
+
 const Api = require('./api-wrappers').RpmApi;
 
 function core(url, data, headers) {

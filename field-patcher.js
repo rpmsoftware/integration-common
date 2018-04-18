@@ -70,7 +70,6 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                     value = {
                         ID: value,
                     };
-
                 } else {
                     value = {
                         Value: normalizeValue(value)

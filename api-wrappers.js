@@ -498,7 +498,7 @@ const PROCESS_FIELDS_PROTO = {
     getStatus,
     getFieldByUid,
     getValue: function (formField) {
-        var procField = this.Fields.find(f.Uid === formField.Uid);
+        var procField = this.Fields.find(f => f.Uid === formField.Uid);
         return FIELD_ACCESSORS[procField.FieldType][procField.SubType].getValue(formField, procField);
     }
 };
@@ -883,9 +883,6 @@ API.prototype.createAccount = function (name, customer, supplier, location, grou
     data[typeof supplier === 'number' ? 'SupplierID' : 'SupplierName'] = supplier;
     data[typeof location === 'number' ? 'LocationID' : 'LocationName'] = location;
     data[typeof group === 'number' ? 'AccountGroupID' : 'AccountGroupName'] = group;
-    if (fields) {
-
-    }
     return this.request('AccountAdd', { Account: data });
 };
 

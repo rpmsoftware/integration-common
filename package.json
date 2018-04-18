@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.25.0",
+    "version": "3.26.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -13,7 +13,9 @@
         "api-node-fetch.js",
         "api-react-fetch.js",
         "logger-console.js",
-        "logger-winston.js"
+        "logger-winston.js",
+        "cache.js",
+        "api-errors.js"
     ],
     "license": "ISC",
     "private": true,

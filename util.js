@@ -1,6 +1,6 @@
 'use strict';
-var fs = require('fs');
-var moment = require('moment');
+const fs = require('fs');
+const moment = require('moment');
 require('string').extendPrototype();
 
 exports.readConfig = function (envName, fileName) {
@@ -350,10 +350,10 @@ exports.tryJsonParse = function (value) {
         return value;
     }
     try {
-        value = JSON.parse(value);
+        return JSON.parse(value);
     } catch (err) {
+        return value;
     }
-    return value;
 };
 
 extendArrayPrototype();
@@ -650,3 +650,11 @@ exports.promisify = function (callable) {
 
     };
 };
+
+exports.validateString = function (value) {
+    if (typeof value !== 'string' || value.length < 1) {
+        throw new Error(`Non-empty string is expected ("${value}")`);
+    }
+    return value;
+};
+
