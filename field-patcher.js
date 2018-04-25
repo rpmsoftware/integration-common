@@ -3,34 +3,15 @@ var rpm = require('./api-wrappers');
 var factories = {};
 factories[rpm.OBJECT_TYPE.CustomField] = {};
 
-factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (field, useUids) {
-    var defRow = field.Rows.find(row => row.IsDefinition);
-    var fieldsByName = {};
-    var prop = useUids ? 'Uid' : 'Name';
-    defRow.Fields.forEach(field => fieldsByName[field[prop]] = field);
+factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tableField, useUids) {
+    const tableFieldName = tableField.Name;
+    const tableFields = tableField.Rows.find(row => row.IsDefinition).Fields;
 
     return function (rows, form) {
-        var existingRows;
+        const existingRows = form && (form.Form || form).getField(tableFieldName, true).Rows.filter(r => !r.IsDefinition);
 
         function getRowID() {
-            if (!existingRows || !existingRows.length) {
-                return 0;
-            }
-            var row = existingRows.shift();
-            return row.IsDefinition ? getRowID() : row.RowID;
-        }
-
-        if (form) {
-            form = form.Form || form;
-            var formTableField = form.Fields.find(f => f.Uid === field.Uid);
-            if (!formTableField) {
-                throw new Error('Form does not contain table field ' + field.Name);
-            }
-            existingRows = formTableField.Rows.slice();
-            var existingDefRow = existingRows.find(row => row.IsDefinition);
-            if (existingDefRow && existingDefRow.RowID !== defRow.ID) {
-                throw new Error('Incompatible rows');
-            }
+            return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
         }
 
         var result = [];
@@ -38,22 +19,24 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
         function add(id, row) {
             result.push({
                 RowID: id,
-                Fields: defRow.Fields.map(field => {
+                Fields: tableFields.map(field => {
                     var result = row && row[field.Uid];
                     return {
                         Values: result ? [result] : [],
-                        Uid: field.Uid
+                        Uid: field.Uid,
                     };
                 })
             });
 
         }
 
+        const prop = useUids ? 'Uid' : 'Name';
+
         rows.forEach(object => {
             var row;
             row = {};
             for (var fieldNameOrUid in object) {
-                var field = fieldsByName[fieldNameOrUid];
+                var field = tableFields.find(field => field[prop] === fieldNameOrUid);
                 if (!field) {
                     throw new Error('Unknown table field: ' + fieldNameOrUid);
                 }
@@ -68,7 +51,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
                     };
                 } else if (field.FieldType === rpm.OBJECT_TYPE.FormReference) {
                     value = {
-                        ID: value,
+                        ID: value || 0,
                     };
                 } else {
                     value = {
@@ -81,12 +64,12 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (fie
             add(getRowID(), row);
         });
 
-        var id;
+        let id;
         while ((id = getRowID())) {
             add(id);
         }
 
-        return { Field: field.Name, Uid: field.Uid, Rows: result };
+        return { Field: tableFieldName, Rows: result };
 
     };
 };

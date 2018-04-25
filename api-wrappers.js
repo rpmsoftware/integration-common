@@ -221,9 +221,10 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
 const PROC_PROMISE_PROPERTY = Symbol();
 
 API.prototype.getProcesses = function () {
-    var api = this;
+    const api = this;
     if (!api[PROC_PROMISE_PROPERTY]) {
         api[PROC_PROMISE_PROPERTY] = api.request('Procs').then(response => {
+            Object.setPrototypeOf(response, PROCESSES_PROTO);
             response.Procs.forEach(api._extendProcess.bind(api));
             delete api[PROC_PROMISE_PROPERTY];
             return response;
@@ -258,6 +259,24 @@ const VIEW_PROTO = {
     },
     getFormList: function (includeArchived) {
         return this.getProcess().getFormList(includeArchived, this.ID);
+    }
+};
+
+const PROCESSES_PROTO = {
+    getProcess: function (nameOrID, demand) {
+        const prop = typeof nameOrID === 'number' ? 'ProcessID' : 'Process';
+        const result = this.Procs.find(p => p[prop] === nameOrID);
+        if (!result && demand) {
+            throwProcessNotFound(nameOrID);
+        }
+        return result;
+    },
+    getActiveProcess: function (nameOrID, demand) {
+        let result = this.getProcess(nameOrID, demand);
+        if (result && !result.Enabled) {
+            throw new Error('Process is disabled: ' + nameOrID);
+        }
+        return result;
     }
 };
 
