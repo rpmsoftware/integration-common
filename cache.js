@@ -1,17 +1,33 @@
 const assert = require('assert');
 
-function getKey(id, params) {
-    params = Array.isArray(params) ? params.map(JSON.stringify).join(',') : JSON.stringify(params);
-    return id + '(' + params + ')';
-}
+const DELIMITER = ',';
 
 class Cache {
+    static getKey(id, params) {
+        params = Array.isArray(params) ? params.map(JSON.stringify).join(DELIMITER) : JSON.stringify(params);
+        if (params.length > 0) {
+            params += DELIMITER;
+        }
+        return id + '(' + params;
+    }
+
     constructor() {
         this.cache = {};
     }
 
     clear() {
-        this.cache = {};
+        if (arguments.length < 1) {
+            this.cache = {};
+            return;
+        }
+        const params = Array.from(arguments);
+        const id = params.shift();
+        const key = Cache.getKey(id, params);
+        Object.keys(this.cache).forEach(prop => {
+            if (prop.startsWith(key)) {
+                delete this.cache[prop];
+            }
+        });
     }
 
     cachify(f, id) {
@@ -20,7 +36,7 @@ class Cache {
         assert(id);
         const self = this;
         return async function () {
-            let key = getKey(id, Array.from(arguments));
+            let key = Cache.getKey(id, Array.from(arguments));
             let result = self.cache[key];
             if (!result) {
                 try {
@@ -40,7 +56,7 @@ class Cache {
 
 
     put(id, params, value) {
-        this.cache[getKey(id, params)] = { value };
+        this.cache[Cache.getKey(id, params)] = { value };
     }
 
 }

@@ -159,8 +159,8 @@ var INFO_PROTO = {
 
 API.prototype.getViews = function (viewCategory, templateID) {
     return this.request('ProcViews', {
-        'ViewCategory': +viewCategory,
-        'ObjectSpecificID': +templateID
+        'ViewCategory': rpmUtil.normalizeInteger(viewCategory),
+        'ObjectSpecificID': rpmUtil.normalizeInteger(templateID)
     });
 };
 
@@ -532,11 +532,13 @@ rpmUtil.defineStandardProperty(PROCESS_FIELDS_PROTO, 'process', function () {
 });
 
 API.prototype.getFields = function (processId) {
-    return this.request('ProcFields', { ProcessID: processId.ProcessID || processId }).then(response => {
-        var proc = response.Process;
-        delete response.Process;
-        Object.assign(response, proc);
-        response.Fields.forEach(field => Object.setPrototypeOf(field, PROCESS_FIELD_PROTO));
+    processId = rpmUtil.normalizeInteger(processId);
+    return this.request('ProcFields', { ProcessID: processId }).then(response => {
+        response = response.Process;
+        response.Fields.forEach(field => {
+            Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
+            Object.defineProperty(field, 'ProcessID', { value: processId });
+        });
         return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
 };
@@ -549,22 +551,17 @@ API.prototype.getActionTypes = function (processId) {
     return this.request('ActionTypes', { ProcessID: processId.ProcessID || processId });
 };
 
-API.prototype.getForms = function (processOrId, view) {
-    if (typeof processOrId === 'object') {
-        processOrId = processOrId.ProcessID || processOrId.Process;
+API.prototype.getForms = function (processOrId, viewID) {
+    const baseRequest = {};
+    if (typeof processOrId === 'number') {
+        baseRequest.ProcessID = rpmUtil.normalizeInteger(processOrId);
+    } else {
+        baseRequest.Process = rpmUtil.validateString(processOrId);
     }
-    if (typeof view === 'object') {
-        view = view.ID;
+    if (viewID) {
+        baseRequest.ViewID = rpmUtil.normalizeInteger(viewID);
     }
-    var baseRequest = {};
-    if (typeof processOrId === 'object') {
-        processOrId = processOrId.ProcessID || processOrId.Process;
-    }
-    baseRequest[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
-    if (view) {
-        baseRequest.ViewID = typeof view === 'object' ? view.ID : view;
-    }
-    var api = this;
+    const api = this;
     return api.request('ProcForms', baseRequest).catch(error => {
         if (api.throwNoForms || error.Message !== 'No forms') {
             throw error;
@@ -573,7 +570,7 @@ API.prototype.getForms = function (processOrId, view) {
             ColumnUids: [],
             Columns: [],
             Forms: [],
-            View: view
+            View: viewID
         };
         if (typeof processOrId === 'number') {
             error.ProcessID = processOrId;
