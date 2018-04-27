@@ -63,7 +63,6 @@ RESPONSE_PROTO.getResponseTime = function () {
     return this[PROP_RESPONSE_TIME];
 };
 
-
 API.prototype.request = function (endPoint, data, log) {
     const api = this;
     const url = api.getUrl(endPoint);
@@ -455,8 +454,6 @@ API.prototype.trashForm = function (formID) {
     return this.request('ProcFormTrash', { FormID: formID });
 };
 
-var ERROR_RESPONSE_FORM_NOT_FOUND = 'Form not found';
-
 API.prototype.createFormInfoCache = function () {
     var api = this;
     var cache = {};
@@ -466,7 +463,7 @@ API.prototype.createFormInfoCache = function () {
             return Promise.resolve(result);
         }
         return api.getForm(formID).then(form => form && api.getFormList(form.ProcessID, true), error => {
-            if (error.Message !== ERROR_RESPONSE_FORM_NOT_FOUND) {
+            if (error.Message !== errors.MSG_FORM_NOT_FOUND) {
                 throw error;
             }
         }).then(result => {
@@ -478,7 +475,7 @@ API.prototype.createFormInfoCache = function () {
                 result = cache[formID];
             }
             if (!result && demand) {
-                throw new Error(ERROR_RESPONSE_FORM_NOT_FOUND);
+                throw new Error(errors.MSG_FORM_NOT_FOUND);
             }
             return result;
         });
@@ -638,8 +635,8 @@ API.prototype._extendForm = function (form) {
 };
 
 API.prototype.getForm = function () {
-    return this.demandForm.apply(this, arguments).then(form => form, function (error) {
-        if (error.Message != 'Form not found') {
+    return this.demandForm.apply(this, arguments).catch(error => {
+        if (error.Message != errors.MSG_FORM_NOT_FOUND) {
             throw error;
         }
     });
@@ -1091,6 +1088,14 @@ API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {
     return api.request('Rep', request).then(r => extractContact(api.tweakDates(r)));
 };
 
+API.prototype.errorToFormAction = function (error, form, user) {
+    if (error instanceof Error) {
+        error = error.name + '. ' + error.message;
+    } else {
+        error = error.Message || error;
+    }
+    return this.createFormAction(error, form, new Date(), user);
+};
 
 exports.RpmApi = API;
 
