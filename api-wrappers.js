@@ -433,12 +433,8 @@ API.prototype.getRoles = function () {
 };
 
 API.prototype.editForm = function (formId, fields, properties) {
-    if (typeof formId === 'object') {
-        formId = formId.Form || formId;
-        formId = formId.FormID;
-    }
     properties = properties || {};
-    properties.FormID = formId;
+    properties.FormID = rpmUtil.normalizeInteger(formId);
     properties.Fields = Array.isArray(fields) ? fields : Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
     return this.request('ProcFormEdit', { Form: properties, OverwriteWithNull: true }).then(this._extendForm.bind(this));
 };
