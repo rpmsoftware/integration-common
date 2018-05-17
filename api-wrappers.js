@@ -532,7 +532,7 @@ API.prototype.getFields = function (processId) {
         response = response.Process;
         response.Fields.forEach(field => {
             Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
-            Object.defineProperty(field, 'processID', { value: processId });
+            Object.defineProperty(field, '_processID', { value: processId });
         });
         return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
