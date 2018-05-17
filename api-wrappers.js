@@ -164,7 +164,7 @@ API.prototype.getViews = function (viewCategory, templateID) {
 };
 
 API.prototype.getProcessViews = function (processID) {
-    return this.getViews(VIEW_CATEGORY.FormsPerTemplate, processID.ProcessID || processID);
+    return this.getViews(VIEW_CATEGORY.FormsPerTemplate, processID);
 };
 
 var VIEW_CATEGORY = {
@@ -340,7 +340,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
 
     getViews: function () {
         var proc = this;
-        return proc.getApi().getProcessViews(proc).then(views => {
+        return proc.getApi().getProcessViews(proc.ProcessID).then(views => {
             views.Views.forEach(view => {
                 Object.defineProperty(view, PROCESS_PROP, { value: proc });
                 Object.setPrototypeOf(view, VIEW_PROTO);
@@ -349,15 +349,17 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         });
     },
 
-    getView: function (nameOrId, demand) {
-        var property = typeof nameOrId === 'number' ? 'ID' : 'Name';
-        return this.getViews().then(views => {
-            var result = views.Views.find(view => view[property] === nameOrId);
-            if (demand && !result) {
-                throw new Error(`View not found: ${nameOrId}`);
-            }
-            return result;
-        });
+    getView: async function (nameOrId, demand) {
+        const property = typeof nameOrId === 'number' ? 'ID' : 'Name';
+        let result = await this.getViews();
+        result = result.Views.filter(view => view[property] === nameOrId);
+        const length = result.length;
+        if (demand && length < 1) {
+            throw new Error(`View not found: ${nameOrId}`);
+        }
+        if (length > 0) {
+            return result.find(v => v.IsShared) || result[0];
+        }
     },
 
     getSecurity: function () {
@@ -530,7 +532,7 @@ API.prototype.getFields = function (processId) {
         response = response.Process;
         response.Fields.forEach(field => {
             Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
-            Object.defineProperty(field, 'ProcessID', { value: processId });
+            Object.defineProperty(field, 'processID', { value: processId });
         });
         return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
     });
