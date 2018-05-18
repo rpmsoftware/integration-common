@@ -461,8 +461,12 @@ exports.normalizeDate = normalizeDate;
 
 
 function normalizeInteger(value) {
-    var intValue = +value;
-    if (isNaN(intValue) || intValue % 1) {
+    let intValue = value;
+    if (typeof intValue === 'string') {
+        intValue = intValue.trim();
+        intValue = intValue && +intValue;
+    }
+    if (typeof intValue !== 'number' || intValue % 1) {
         throw new TypeError('Invalid integer: ' + value);
     }
     return intValue;
