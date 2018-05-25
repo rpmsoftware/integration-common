@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.28.2",
+    "version": "3.29.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -25,7 +25,8 @@
         "string": "^3.3.3"
     },
     "devDependencies": {
-        "to-csv": "^0.1.1",
-        "node-rest-client": "^3.1.0"
+        "node-rest-client": "^3.1.0",
+        "string-hash": "^1.1.3",
+        "to-csv": "^0.1.1"
     }
 }

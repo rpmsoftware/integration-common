@@ -58,26 +58,40 @@ function add(subtype, name, get, init) {
 fieldType = rpm.OBJECT_TYPE.CustomField;
 subTypes = rpm.DATA_TYPE;
 
-add('FieldTableDefinedRow', function (conf, form) {
+add('Percent', function (conf, form) {
+    let result = rpm.getFieldByUid.call(form.Form || form, conf.srcUid, true).Value;
+    if (!result) {
+        return null;
+    }
+    result = +result;
+    assert(!isNaN(result));
+    return conf.isTableField ? result / 100 : result;
+});
+
+add('FieldTableDefinedRow', async function (conf, form) {
     const srcRows = (form.Form || form).getFieldByUid(conf.srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
-    console.log('ROWS: %j', srcRows)
-    // TemplateDefinedRowID
     const result = {};
-    for (let dr of conf.tableRows) {
-        const r = srcRows.find(r => r.TemplateDefinedRowID = dr.id);
-        assert(r, 'Cannot find form row with TemplateDefinedRowID=' + dr.id);
-        const frm = {
-            Fields:r.Fields.map(ff=>{
-                ff=
+    for (let rowConf of conf.tableRows) {
+        const srcRow = srcRows.find(r => r.TemplateDefinedRowID === rowConf.id);
+        assert(srcRow, 'Cannot find form row with TemplateDefinedRowID=' + rowConf.id);
+        const resultRow = {};
+        for (let fieldConf of conf.tableFields) {
+            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
+                Fields: srcRow.Fields.map(fld => {
+                    fld = Object.assign({}, fld);
+                    const val = fld.Values[0];
+                    delete fld.Values;
+                    if (val) {
+                        assert.equal(typeof val, 'object');
+                        Object.assign(fld, val);
+                    } else {
+                        fld.Value = null;
+                    }
+                    return fld;
+                })
             });
-        };
-        for (let df of conf.tableFields) {
-            let ff = Object.assign({}, rpm.getFieldByUid.call(r, df.srcUid, true));
-            Object.assign(ff, ff.Values[0]);
-            delete ff.Values;
-
         }
-
+        result[rowConf.name] = resultRow;
     }
     return result;
 
@@ -87,7 +101,9 @@ add('FieldTableDefinedRow', function (conf, form) {
     assert(defRow, 'No definition row');
     conf.tableFields = [];
     for (let tabField of defRow.Fields) {
-        conf.tableFields.push(await initField.call(this, {}, tabField));
+        tabField = await initField.call(this, {}, tabField);
+        tabField.isTableField = true;
+        conf.tableFields.push(tabField);
     }
     conf.tableRows = rpmField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow).map(r => ({ id: r.ID, name: r.Name }));
     return conf;
@@ -103,7 +119,7 @@ const DEFAULT_GETTER = {
 async function init(conf, rpmFields) {
     let rpmField;
     if (conf.srcField) {
-        rpmField = rpmFields.getField(rpmUtil.validateString(conf.srcField), true);
+        rpmField = rpm.getField.call(rpmFields, rpmUtil.validateString(conf.srcField), true);
     }
     return initField.call(this, conf, rpmField);
 }
