@@ -17,6 +17,27 @@ const COMMON_GETTERS = {
             return conf;
         }
     },
+
+    getIfField: {
+        get: function (config, form) {
+            form = form.Form || form;
+            const ifValue = form.getFieldByUid(config.ifUid, true).Value;
+            return config.ifValues.find(v => v === ifValue) ? form.getFieldByUid(config.srcUid, true).Value : undefined;
+        },
+        init: function (conf, rpmField, rpmFields) {
+            conf.srcUid = rpmField.Uid;
+            conf.ifUid = rpmFields.getField(rpmUtil.validateString(conf.ifField), true).Uid;
+            rpmUtil.validateString(conf.ifField);
+            let values = conf.ifValues;
+            if (!Array.isArray(values)) {
+                values = [values];
+            }
+            assert(values.length > 0, 'No values');
+            conf.ifValues = values;
+            return conf;
+        }
+    }
+
 };
 
 
@@ -100,8 +121,9 @@ add('FieldTableDefinedRow', async function (conf, form) {
     const defRow = rpmField.Rows.find(row => row.IsDefinition);
     assert(defRow, 'No definition row');
     conf.tableFields = [];
-    for (let tabField of defRow.Fields) {
-        tabField = await initField.call(this, {}, tabField);
+    const rpmTableFields = defRow.Fields;
+    for (let tabField of rpmTableFields) {
+        tabField = await initField.call(this, {}, tabField, rpmTableFields);
         tabField.isTableField = true;
         conf.tableFields.push(tabField);
     }
@@ -121,11 +143,11 @@ async function init(conf, rpmFields) {
     if (conf.srcField) {
         rpmField = rpm.getField.call(rpmFields, rpmUtil.validateString(conf.srcField), true);
     }
-    return initField.call(this, conf, rpmField);
+    return initField.call(this, conf, rpmField, rpmFields);
 }
 
 
-async function initField(conf, rpmField) {
+async function initField(conf, rpmField, rpmFields) {
     let type;
     if (rpmField) {
         type = common.getFullType(rpmField);
@@ -142,7 +164,7 @@ async function initField(conf, rpmField) {
         getter = getters[common.DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
     }
     if (getter.init) {
-        const newConf = await getter.init.call(this, conf, rpmField);
+        const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
         conf = newConf || conf;
     } else {
         assert(rpmField, 'Source field required');

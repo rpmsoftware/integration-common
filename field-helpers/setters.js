@@ -32,6 +32,15 @@ function validateIndex(array, indexOrValue) {
 }
 
 const COMMON_SETTERS = {
+    constant: {
+        convert: function (config) {
+            return config.value;
+        },
+        init: function (config) {
+            assert.notStrictEqual(config.value, undefined);
+        }
+    },
+
     pattern: {
         convert: function (config, data) {
             data = data[config.srcField];
