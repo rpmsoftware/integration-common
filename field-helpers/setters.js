@@ -123,8 +123,7 @@ const COMMON_SETTERS = {
                 const view = await proc.getView(config.view, true);
                 config.view = view.ID;
             }
-            let keyColumns = config.keyColumns;
-            keyColumns = (Array.isArray(keyColumns) ? keyColumns : [keyColumns]).map(normalizeIndex);
+            const keyColumns = rpmUtil.toArray(config.keyColumns).map(normalizeIndex);
             assert(keyColumns.length > 0, 'Must have at least one dictionary key column');
             config.keyColumns = keyColumns;
             config.valueColumn = normalizeIndex(config.valueColumn);
@@ -194,14 +193,14 @@ add('FieldTableDefinedRow',
             rows.push({ RowID: getRowID(rowDef.id), TemplateDefinedRowID: rowDef.id, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
-                const fieldPatch = await set.call(this, tabFieldConf, srcRow);
+                const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
                 }
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    (Array.isArray(err) ? err : [err]).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err))
+                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -252,14 +251,14 @@ add('FieldTable', 'delimetered',
             rows.push({ RowID: getRowID(), Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
-                const fieldPatch = await set.call(this, tabFieldConf, srcRow);
+                const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
                 }
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    (Array.isArray(err) ? err : [err]).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err))
+                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -455,7 +454,7 @@ async function initField(conf, rpmField) {
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
     const setter = conf.setter;
     if (setter) {
-        gen = gen[setter];
+        gen = gen[setter] || COMMON_SETTERS[setter];
         if (!gen) {
             throw new Error('Unknown RPM value generator: ' + JSON.stringify(conf));
         }
@@ -463,7 +462,8 @@ async function initField(conf, rpmField) {
         gen = gen[common.DEFAULT_ACCESSOR_NAME] || defaultConverter;
     }
     if (gen.init) {
-        conf = await gen.init.call(this, conf, rpmField);
+        const newConf = await gen.init.call(this, conf, rpmField);
+        conf = newConf || conf;
     } else {
         validateString(conf.srcField);
     }
@@ -481,12 +481,12 @@ async function initField(conf, rpmField) {
 
 function getSetter(fieldConfig) {
     let converter = SPECIFIC_SETTERS[fieldConfig.type] || COMMON_SETTERS;
-    const name = fieldConfig.converter || common.DEFAULT_ACCESSOR_NAME;
+    const name = fieldConfig.setter || common.DEFAULT_ACCESSOR_NAME;
     const result = converter && converter[name] || COMMON_SETTERS[name] || defaultConverter;
     return result.convert;
 }
 
-async function set(conf, data, form) {
+async function setField(conf, data, form) {
     const setter = getSetter(conf);
     let result;
     try {
@@ -504,7 +504,13 @@ async function set(conf, data, form) {
         { ID: result ? rpmUtil.normalizeInteger(result) : 0 } :
         { Value: result }
     );
+}
 
+async function set(conf, data, form) {
+    const result = await setField.call(this, conf, data, form);
+    result.Uid = conf.dstUid;
+    result.Field = conf.dstField;
+    return result;
 }
 
 Object.assign(exports, { initField, set });

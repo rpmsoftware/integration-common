@@ -28,10 +28,7 @@ const COMMON_GETTERS = {
             conf.srcUid = rpmField.Uid;
             conf.ifUid = rpmFields.getField(rpmUtil.validateString(conf.ifField), true).Uid;
             rpmUtil.validateString(conf.ifField);
-            let values = conf.ifValues;
-            if (!Array.isArray(values)) {
-                values = [values];
-            }
+            const values = rpmUtil.toArray(conf.ifValues);
             assert(values.length > 0, 'No values');
             conf.ifValues = values;
             return conf;

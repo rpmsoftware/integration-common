@@ -556,24 +556,24 @@ exports.createDateMatcher = function (config) {
     var conf = {};
     if (config.day) {
         conf._day = {};
-        (Array.isArray(config.day) ? config.day : [config.day]).forEach(d =>
+        toArray(config.day).forEach(d =>
             conf._day[normalizeInteger(typeof d === 'string' ? DAYS[d.trim().toLowerCase()] : d) % 7] = true);
     }
     if (config.month) {
         conf._month = {};
-        (Array.isArray(config.month) ? config.month : [config.month]).forEach(d =>
+        toArray(config.month).forEach(d =>
             conf._month[normalizeInteger(typeof d === 'string' ? MONTHS[d.trim().toLowerCase()] : d) % 12] = true);
     }
 
     if (config.date) {
         conf._date = {};
-        (Array.isArray(config.date) ? config.date : [config.date]).forEach(
+        toArray(config.date).forEach(
             d => conf._date[normalizeInteger(d) % 32] = true);
     }
 
     if (config.hour) {
         conf._hour = {};
-        (Array.isArray(config.hour) ? config.hour : [config.hour]).forEach(
+        toArray(config.hour).forEach(
             d => conf._hour[normalizeInteger(d) % 24] = true);
     }
     return function (date) {
@@ -662,3 +662,4 @@ exports.validateString = function (value) {
     return value;
 };
 
+const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];
