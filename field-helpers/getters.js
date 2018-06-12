@@ -3,7 +3,14 @@ const rpmUtil = require('../util');
 const rpm = require('../api-wrappers');
 const common = require('./common');
 
+const dummy = () => { };
+
 const COMMON_GETTERS = {
+    none: {
+        get: dummy,
+        init: dummy
+    },
+
     getID: function (config, form) {
         form = form.Form || form;
         return rpm.getFieldByUid.call(form, config.srcUid, true).ID;
@@ -33,8 +40,35 @@ const COMMON_GETTERS = {
             conf.ifValues = values;
             return conf;
         }
-    }
+    },
 
+    getDeep: {
+        get: async function (config, form) {
+            form = form.Form || form;
+            for (let f of config.fieldPath) {
+                form = form.getFieldByUid(f.uid, true).ID;
+                if (!form) {
+                    return null;
+                }
+                form = await this.api.demandForm(form);
+                form = form.Form;
+            }
+            return get.call(this, config.targetField, form);
+        },
+        init: async function (conf, rpmField, rpmFields) {
+            const targetField = conf.fieldPath.pop();
+            const fieldPath = [];
+            for (let f of conf.fieldPath) {
+                f = rpm.getField.call(rpmFields, rpmUtil.validateString(f), true);
+                rpm.validateProcessReference(f);
+                fieldPath.push({ name: f.Name, uid: f.Uid });
+                rpmFields = await this.api.getFields(f.ProcessID);
+            }
+            conf.targetField = await init.call(this, targetField, rpmFields);
+            conf.fieldPath = fieldPath;
+            return conf;
+        }
+    }
 };
 
 
@@ -114,19 +148,66 @@ add('FieldTableDefinedRow', async function (conf, form) {
     return result;
 
 }, async function (conf, rpmField) {
-    conf.srcUid = rpmField.Uid;
-    const defRow = rpmField.Rows.find(row => row.IsDefinition);
-    assert(defRow, 'No definition row');
-    conf.tableFields = [];
-    const rpmTableFields = defRow.Fields;
-    for (let tabField of rpmTableFields) {
-        tabField = await initField.call(this, {}, tabField, rpmTableFields);
-        tabField.isTableField = true;
-        conf.tableFields.push(tabField);
-    }
+    conf = await initTableFields.call(this, conf, rpmField);
     conf.tableRows = rpmField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow).map(r => ({ id: r.ID, name: r.Name }));
     return conf;
 });
+
+
+
+async function initTableFields(config, rpmField) {
+    const defRow = rpmField.Rows.find(row => row.IsDefinition);
+    assert(defRow, 'No definition row');
+
+    let tableFields = config.tableFields;
+    tableFields = tableFields ? tableFields.map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
+
+    config.tableFields = [];
+    const rpmTableFields = defRow.Fields;
+    for (let tabField of rpmTableFields) {
+        let tabFieldConf = tableFields.find(fc => fc.srcField === tabField.Name) || {};
+        tabFieldConf = await initField.call(this, tabFieldConf, tabField, rpmTableFields);
+        tabFieldConf.isTableField = true;
+        config.tableFields.push(tabFieldConf);
+    }
+    return config;
+}
+
+add('FieldTable', async function (conf, form) {
+    const srcRows = (form.Form || form).getFieldByUid(conf.srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
+    const result = [];
+    for (let srcRow of srcRows) {
+        const resultRow = {};
+        for (let fieldConf of conf.tableFields) {
+            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
+                Fields: srcRow.Fields.map(fld => {
+                    fld = Object.assign({}, fld);
+                    const val = fld.Values[0];
+                    delete fld.Values;
+                    if (val) {
+                        assert.equal(typeof val, 'object');
+                        Object.assign(fld, val);
+                    } else {
+                        fld.Value = null;
+                    }
+                    return fld;
+                })
+            });
+        }
+        result.push(resultRow);
+    }
+    return result;
+}, initTableFields);
+
+
+fieldType = rpm.OBJECT_TYPE.FormReference;
+subTypes = rpm.REF_DATA_TYPE;
+
+add('RestrictedReference', 'getID', async function (config, form) {
+    form = form.Form || form;
+    return rpm.getFieldByUid.call(form, config.srcUid, true).ID;
+});
+
 
 const DEFAULT_GETTER = {
     get: function (config, form) {
@@ -136,6 +217,9 @@ const DEFAULT_GETTER = {
 };
 
 async function init(conf, rpmFields) {
+    if (typeof conf === 'string') {
+        conf = { srcField: conf };
+    }
     let rpmField;
     if (conf.srcField) {
         rpmField = rpm.getField.call(rpmFields, rpmUtil.validateString(conf.srcField), true);

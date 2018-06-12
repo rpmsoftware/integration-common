@@ -208,25 +208,7 @@ add('FieldTableDefinedRow',
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     },
     async function (config, rpmField) {
-        const defRow = rpmField.Rows.find(row => row.IsDefinition);
-        assert(defRow, 'No definition row');
-        const tableFields = config.tableFields;
-        if (tableFields) {
-            const fieldConfigs = [];
-            for (let tableFieldName in tableFields) {
-                let tabFieldConf = tableFields[tableFieldName]
-                if (typeof tabFieldConf !== 'object') {
-                    tabFieldConf = { srcField: tabFieldConf + '' }
-                }
-                fieldConfigs.push(await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true)));
-            }
-            config.tableFields = fieldConfigs;
-        } else {
-            config.tableFields = [];
-            for (let tabField of defRow.Fields) {
-                config.tableFields.push(await initField.call(this, { srcField: tabField.Name }, tabField));
-            }
-        }
+        config = await initTableFields.call(this, config, rpmField);
         config.tableRows = rpmField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow).map(r => ({ id: r.ID, name: r.Name }));
         return config;
     }
@@ -274,7 +256,6 @@ add('FieldTable', 'delimetered',
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     },
     async function (config, rpmField) {
-        const context = this;
         const result = {
             tableFields: [],
             colDelimiter: config.colDelimiter ? validateString(config.colDelimiter) : undefined
@@ -283,16 +264,85 @@ add('FieldTable', 'delimetered',
         const defRow = rpmField.Rows.find(row => row.IsDefinition);
         assert(defRow, 'No definition row');
         for (let tableFieldName in config.tableFields) {
-            let tabFieldConf = config.tableFields[tableFieldName]
+            let tabFieldConf = config.tableFields[tableFieldName];
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
-            result.tableFields.push(await initField.call(context, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true)));
+            tabFieldConf = await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true));
+            tabFieldConf.isTableField = true;
+            result.tableFields.push(tabFieldConf);
         }
-
         return result;
     }
 );
+
+add('FieldTable',
+    async function (config, data, form) {
+        data = data[config.srcField] || data;
+        assert(Array.isArray(data), 'Array is expected');
+        const existingRows = form && rpm.getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
+        function getRowID() {
+            return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
+        }
+        const rows = [];
+        let errors = [];
+        let rownum = 0;
+        for (let srcRow of data) {
+            let fieldValues = [];
+            rows.push({ RowID: getRowID(), Fields: fieldValues });
+            ++rownum;
+            for (let tabFieldConf of config.tableFields) {
+                const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
+                if (!fieldPatch) {
+                    continue;
+                }
+                let err = fieldPatch.Errors;
+                delete fieldPatch.Errors;
+                if (err) {
+                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                }
+                fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
+            }
+        }
+        const emptyFields = config.tableFields.map(tabFieldConf => ({ Values: [], Uid: tabFieldConf.dstUid }));
+        let id;
+        while ((id = getRowID())) {
+            rows.push({ RowID: id, Fields: emptyFields });
+        }
+        if (rows.length < 1) {
+            return;
+        }
+        return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
+    }, initTableFields
+);
+
+async function initTableFields(config, rpmField) {
+    const defRow = rpmField.Rows.find(row => row.IsDefinition);
+    assert(defRow, 'No definition row');
+    const tableFields = config.tableFields;
+    config.tableFields = [];
+
+    function push(c) {
+        c.isTableField = true;
+        config.tableFields.push(c);
+    }
+
+    if (tableFields) {
+        for (let tableFieldName in tableFields) {
+            let tabFieldConf = tableFields[tableFieldName]
+            if (typeof tabFieldConf !== 'object') {
+                tabFieldConf = { srcField: tabFieldConf + '' }
+            }
+            push(await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true)));
+        }
+    } else {
+        for (let tabField of defRow.Fields) {
+            push(await initField.call(this, { srcField: tabField.Name }, tabField));
+        }
+    }
+    return config;
+}
+
 
 function getDate(config, data) {
     const date = data[config.srcField];
@@ -439,6 +489,21 @@ add('CustomerAccount', 'getOrCreate',
         return config;
     }
 );
+
+
+add('RestrictedReference', async function (config, data) {
+    data = data[config.srcField];
+    if (!data) return null;
+    if (typeof data === 'number') {
+        if (config.isTableField) {
+            return { ID: data };
+        }
+        data = await this.api.demandForm(data);
+        return data.Form.Number;
+    }
+    return data;
+});
+
 
 const defaultConverter = {
     convert: function (config, data) {
