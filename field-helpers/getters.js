@@ -203,7 +203,17 @@ add('FieldTable', async function (conf, form) {
 fieldType = rpm.OBJECT_TYPE.FormReference;
 subTypes = rpm.REF_DATA_TYPE;
 
-add('RestrictedReference', 'getID', async function (config, form) {
+add('RestrictedReference', 'getNumber', async function (config, form) {
+    form = form.Form || form;
+    let dst = rpm.getFieldByUid.call(form, config.srcUid, true).ID;
+    if (!dst) {
+        return null;
+    }
+    dst = await this.api.demandForm(dst);
+    return dst.Form.Number;
+});
+
+add('RestrictedReference', 'getID', function (config, form) {
     form = form.Form || form;
     return rpm.getFieldByUid.call(form, config.srcUid, true).ID;
 });
