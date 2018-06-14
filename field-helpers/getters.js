@@ -239,7 +239,7 @@ async function initField(conf, rpmField, rpmFields) {
     if (getterName) {
         getter = getters[getterName];
         if (!getter) {
-            throw new Error('Unknown RPM value generator: ' + JSON.stringify(conf));
+            throw new Error('Unknown getter: ' + JSON.stringify(conf));
         }
     } else {
         getter = getters[common.DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
