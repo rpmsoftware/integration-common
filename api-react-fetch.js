@@ -11,5 +11,5 @@ function core(url, data, headers) {
 }
 
 module.exports = function (url, key) {
-  return new Api(url, key, core);
+  return Api.call(this, url, key, core);
 };
