@@ -4,7 +4,6 @@ const norm = require('./normalizers');
 const errors = require('./api-errors');
 
 const MAX_PARALLEL_CALLS = 20;
-const PROP_POST_REQUEST = Symbol();
 const PROP_PARENT = Symbol();
 const CHILD_PROTO = {
     getParent: function () {
@@ -19,15 +18,22 @@ function setParent(obj, parent) {
 
 function API(url, key, postRequest) {
     if (typeof url === 'object') {
-        postRequest = arguments[arguments.length - 1];
+        postRequest = key;
         key = url.key;
         url = url.url;
     }
     url = url.toLowerCase().ensureRight('/');
     this.url = url.ensureRight('Api2.svc/').toString();
     this.key = key;
+    console.log(postRequest);
+    if (!postRequest) {
+        postRequest = 'node-rest';
+    }
+    if (typeof postRequest === 'string') {
+        postRequest = require('./rest-posters/' + postRequest)();
+    }
     assert.equal(typeof postRequest, 'function');
-    this[PROP_POST_REQUEST] = postRequest;
+    Object.defineProperty(this, 'postRequest', { value: postRequest });
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
@@ -74,7 +80,7 @@ API.prototype.request = function (endPoint, data, log) {
     }
     logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
-    return this[PROP_POST_REQUEST](url, data, api.getHeaders()).then(data => {
+    return this.postRequest(url, data, api.getHeaders()).then(data => {
         const responseTime = new Date();
         if (!data.Result) {
             throw new Error(typeof data === 'object' ? data.toString() : data);
@@ -727,7 +733,7 @@ API.prototype.setFormStatus = function (form, status) {
 API.prototype.getHeaders = function () {
     return {
         RpmApiKey: this.key,
-        "Content-Type": "application/json"
+        'Content-Type': 'application/json'
     };
 };
 

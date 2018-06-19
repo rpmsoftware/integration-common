@@ -1,6 +1,4 @@
-/*global fetch*/
-
-const Api = require('./api-wrappers').RpmApi;
+const fetch = require('node-fetch');
 
 function core(url, data, headers) {
   return fetch(url, {
@@ -10,6 +8,6 @@ function core(url, data, headers) {
   }).then((response) => response.json());
 }
 
-module.exports = function (url, key) {
-  return Api.call(this, url, key, core);
+module.exports = function () {
+  return core;
 };

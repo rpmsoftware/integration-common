@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.32.2",
+    "version": "3.32.3",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -9,24 +9,17 @@
         "util.js",
         "field-patcher.js",
         "normalizers.js",
-        "api-node-rest.js",
-        "api-node-fetch.js",
-        "api-react-fetch.js",
         "logger-console.js",
         "logger-winston.js",
         "cache.js",
-        "api-errors.js"
+        "api-errors.js",
+        "field-helpers/*",
+        "rest-posters/*"
     ],
     "license": "ISC",
     "private": true,
     "dependencies": {
         "moment": "^2.18.1",
-        "object-hash": "^1.1.8",
         "string": "^3.3.3"
-    },
-    "devDependencies": {
-        "node-rest-client": "^3.1.0",
-        "string-hash": "^1.1.3",
-        "to-csv": "^0.1.1"
     }
 }
