@@ -608,26 +608,6 @@ exports.pause = function (timeout, value) {
     return new Promise(resolve => setTimeout(() => resolve(value), normalizeInteger(timeout)));
 };
 
-exports.singleCall = (() => {
-    var hash = require('object-hash');
-    return function (callback) {
-        var running = {};
-        return function () {
-            var h = getValues(arguments);
-            h.unshift(this);
-            h = hash(h);
-            var p = running[h];
-            if (!p) {
-                p = callback.apply(this, arguments);
-                if (p instanceof Promise) {
-                    running[h] = p;
-                }
-            }
-            return p;
-        }
-    };
-})();
-
 exports.cachify = function (callback, secTimeout) {
     var cache;
     secTimeout = +secTimeout;

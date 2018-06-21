@@ -1,11 +1,12 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.32.3",
+    "version": "3.33.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
         "mssql.js",
+        "hash.js",
         "util.js",
         "field-patcher.js",
         "normalizers.js",
