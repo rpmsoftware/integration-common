@@ -25,7 +25,6 @@ function API(url, key, postRequest) {
     url = url.toLowerCase().ensureRight('/');
     this.url = url.ensureRight('Api2.svc/').toString();
     this.key = key;
-    console.log(postRequest);
     if (!postRequest) {
         postRequest = 'node-rest';
     }
@@ -51,22 +50,18 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
-const PROP_REQUEST_TIME = Symbol();
-const PROP_RESPONSE_TIME = Symbol();
-const PROP_API = Symbol();
-
 const API_BASED_PROTO = {
     getApi: function () {
-        return this[PROP_API];
+        return this.api;
     }
 };
 
 const RESPONSE_PROTO = Object.create(API_BASED_PROTO);
 RESPONSE_PROTO.getRequestTime = function () {
-    return this[PROP_REQUEST_TIME];
+    return this.requestTime;
 };
 RESPONSE_PROTO.getResponseTime = function () {
-    return this[PROP_RESPONSE_TIME];
+    return this.responseTime;
 };
 
 API.prototype.request = function (endPoint, data, log) {
@@ -88,9 +83,9 @@ API.prototype.request = function (endPoint, data, log) {
         const isError = data.Result.Error;
         data = isError || data.Result || data;
         if (typeof data === 'object') {
-            Object.defineProperty(data, PROP_REQUEST_TIME, { value: requestTime });
-            Object.defineProperty(data, PROP_RESPONSE_TIME, { value: responseTime });
-            Object.defineProperty(data, PROP_API, { value: api });
+            Object.defineProperty(data, 'requestTime', { value: requestTime });
+            Object.defineProperty(data, 'responseTime', { value: responseTime });
+            Object.defineProperty(data, 'api', { value: api });
             Object.setPrototypeOf(data, RESPONSE_PROTO);
         }
         if (isError) {
@@ -242,13 +237,13 @@ API.prototype.getProcesses = function () {
 };
 
 function getProcess(obj) {
-    return (obj || this)[PROCESS_PROP];
+    return (obj || this).process;
 }
 
 exports.getProcess = getProcess;
 
 function getView(obj) {
-    return (obj || this)[VIEW_PROP];
+    return (obj || this).view;
 }
 
 exports.getView = getView;
@@ -258,7 +253,7 @@ const VIEW_PROTO = {
     getForms: function () {
         var view = this;
         return view.getProcess().getForms(view.ID).then(result => {
-            Object.defineProperty(result, VIEW_PROP, { value: view });
+            Object.defineProperty(result, 'view', { value: view });
             return result;
         });
     },
@@ -290,7 +285,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getFields: function () {
         var proc = this;
         return proc.getApi().getFields(proc.ProcessID).then(response => {
-            Object.defineProperty(response, PROCESS_PROP, { value: proc });
+            Object.defineProperty(response, 'process', { value: proc });
             return response;
         });
     },
@@ -298,7 +293,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getForms: function (viewId) {
         var proc = this;
         return proc.getApi().getForms(proc.ProcessID, viewId).then(result => {
-            Object.defineProperty(result, PROCESS_PROP, { value: proc });
+            Object.defineProperty(result, 'process', { value: proc });
             return result;
         });
     },
@@ -312,7 +307,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     },
 
     getFormList: function (includeArchived, viewId) {
-        return this.getApi().getFormList(this, viewId, includeArchived);
+        return this.getApi().getFormList(this.ProcessID, viewId, includeArchived);
     },
 
     getCachedFields: function () {
@@ -348,7 +343,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         var proc = this;
         return proc.getApi().getProcessViews(proc.ProcessID).then(views => {
             views.Views.forEach(view => {
-                Object.defineProperty(view, PROCESS_PROP, { value: proc });
+                Object.defineProperty(view, 'process', { value: proc });
                 Object.setPrototypeOf(view, VIEW_PROTO);
             });
             return views;
@@ -369,22 +364,22 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     },
 
     getSecurity: function () {
-        return this.getApi().getProcessSecurity(this);
+        return this.getApi().getProcessSecurity(this.ProcessID);
     },
 
     getActionTypes: function () {
-        return this.getApi().getActionTypes(this);
+        return this.getApi().getActionTypes(this.ProcessID);
     },
 
     getActions() {
-        return this.getApi().request('ProcActions', { ProcessID: this.ProcessID });
+        return this.getApi().getProcessActions(this.ProcessID);
     }
 };
 
 Object.setPrototypeOf(PROCESS_PROTO, API_BASED_PROTO);
 
 API.prototype._extendProcess = function (proc) {
-    Object.defineProperty(proc, PROP_API, { value: this });
+    Object.defineProperty(proc, 'api', { value: this });
     Object.setPrototypeOf(proc, PROCESS_PROTO);
     return proc;
 };
@@ -524,32 +519,26 @@ const PROCESS_FIELDS_PROTO = {
 };
 Object.setPrototypeOf(PROCESS_FIELDS_PROTO, RESPONSE_PROTO);
 
-
-const PROCESS_PROP = Symbol();
-const VIEW_PROP = Symbol();
-
-rpmUtil.defineStandardProperty(PROCESS_FIELDS_PROTO, 'process', function () {
-    return this[PROCESS_PROP];
-});
-
-API.prototype.getFields = function (processId) {
+API.prototype.getFields = async function (processId) {
     processId = rpmUtil.normalizeInteger(processId);
-    return this.request('ProcFields', { ProcessID: processId }).then(response => {
-        response = response.Process;
-        response.Fields.forEach(field => {
-            Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
-            Object.defineProperty(field, '_processID', { value: processId });
-        });
-        return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
+    const response = await this.request('ProcFields', { ProcessID: processId });
+    const process = response.Process;
+    delete response.Process;
+    assert.equal(Object.keys(response).length, 0);
+    process.Fields.forEach(field => {
+        Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
+        Object.defineProperty(field, '_processID', { value: processId });
     });
+    Object.assign(response, process);
+    return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
 };
 
 API.prototype.getProcessSecurity = function (processId) {
-    return this.request('ProcSecurity', { ProcessID: processId.ProcessID || processId });
+    return this.request('ProcSecurity', { ProcessID: rpmUtil.normalizeInteger(processId) });
 };
 
 API.prototype.getActionTypes = function (processId) {
-    return this.request('ActionTypes', { ProcessID: processId.ProcessID || processId });
+    return this.request('ActionTypes', { ProcessID: rpmUtil.normalizeInteger(processId) });
 };
 
 API.prototype.getForms = function (processOrId, viewID) {
@@ -586,13 +575,14 @@ API.prototype.getForms = function (processOrId, viewID) {
 
 
 API.prototype.getFormList = function (processId, viewId, includeArchived) {
+    processId = rpmUtil.normalizeInteger(processId);
     if (includeArchived === undefined && typeof viewId === 'boolean') {
         includeArchived = viewId;
         viewId = undefined;
     }
-    var request = { ProcessID: processId.ProcessID || processId };
+    const request = { ProcessID: processId };
     if (viewId) {
-        request.ViewID = viewId.ID || viewId;
+        request.ViewID = rpmUtil.normalizeInteger(viewId);
     }
     if (includeArchived) {
         request.IncludeArchived = true;
@@ -1099,6 +1089,10 @@ API.prototype.errorToFormAction = function (error, form, user) {
         error = error.Message || error;
     }
     return this.createFormAction(error, form, new Date(), user);
+};
+
+API.prototype.getProcessActions = function (processID) {
+    return this.request('ProcActions', { ProcessID: rpmUtil.normalizeInteger(processID) });
 };
 
 exports.RpmApi = API;

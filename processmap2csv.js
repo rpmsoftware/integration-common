@@ -1,7 +1,7 @@
 (() => {
     var rpm = require('./api-wrappers');
 
-    var api = new (require('./api-node-rest'))(require('./util').readConfig('RPM_CONFIG', 'config.json').rpmApiMagnum);
+    var api = new rpm.RpmApi(require('./util').readConfig('RPM_CONFIG', 'config.json').rpmEvolutionEngineering);
     var util = require('util');
     var assert = require('assert');
 
