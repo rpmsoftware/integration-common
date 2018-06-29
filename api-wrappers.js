@@ -898,9 +898,15 @@ function objectToId(nameOrID, property) {
 }
 
 API.prototype.getCustomer = async function (nameOrID, demand) {
-    nameOrID = objectToId(nameOrID, 'CustomerID');
+    let prop = typeof nameOrID;
+    if (prop === 'number') {
+        prop = 'CustomerID';
+    } else {
+        assert.equal(prop, 'string');
+        prop = 'Customer';
+    }
     const request = {};
-    request[(typeof nameOrID === 'number') ? 'CustomerID' : 'Customer'] = nameOrID;
+    request[prop] = nameOrID;
     try {
         const result = await this.request('Customer', request);
         return this._normalizeCustomer(result);

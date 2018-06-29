@@ -23,11 +23,14 @@ class Cache {
         const params = Array.from(arguments);
         const id = params.shift();
         const key = Cache.getKey(id, params);
+        const deletedEntities = [];
         Object.keys(this.cache).forEach(prop => {
             if (prop.startsWith(key)) {
+                deletedEntities.push(this.cache[prop]);
                 delete this.cache[prop];
             }
         });
+        return deletedEntities;
     }
 
     cachify(f, id) {
