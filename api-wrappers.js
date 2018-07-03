@@ -447,10 +447,7 @@ API.prototype.setFormArchived = function (archived, formId) {
 };
 
 API.prototype.trashForm = function (formID) {
-    if (typeof formID === 'object') {
-        formID = (formID.Form || formID).FormID;
-    }
-    return this.request('ProcFormTrash', { FormID: formID });
+    return this.request('ProcFormTrash', { FormID: rpmUtil.normalizeInteger(formID) });
 };
 
 API.prototype.createFormInfoCache = function () {
@@ -828,7 +825,7 @@ API.prototype.getSupplierAccounts = function (nameOrID) {
     });
 };
 
-API.prototype.getAccount = async function (account, supplier, demand) {
+API.prototype.demandAccount = async function (account, supplier) {
     const req = {};
     if (typeof account === 'number') {
         req.AccountID = account;
@@ -836,9 +833,13 @@ API.prototype.getAccount = async function (account, supplier, demand) {
         req.Account = account;
         req[typeof supplier === 'number' ? 'SupplierID' : 'Supplier'] = supplier;
     }
+    const acc = await this.request('Account', req);
+    return this.tweakDates(acc);
+};
+
+API.prototype.getAccount = function (account, supplier, demand) {
     try {
-        const acc = await this.request('Account', req);
-        return this.tweakDates(acc);
+        return this.demandAccount(account, supplier);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_ACCOUNT_NOT_FOUND) {
             throw e;
@@ -897,7 +898,7 @@ function objectToId(nameOrID, property) {
     return typeof nameOrID === 'object' ? nameOrID[property] : nameOrID;
 }
 
-API.prototype.getCustomer = async function (nameOrID, demand) {
+API.prototype.demandCustomer = async function (nameOrID) {
     let prop = typeof nameOrID;
     if (prop === 'number') {
         prop = 'CustomerID';
@@ -907,9 +908,13 @@ API.prototype.getCustomer = async function (nameOrID, demand) {
     }
     const request = {};
     request[prop] = nameOrID;
+    const result = await this.request('Customer', request);
+    return this._normalizeCustomer(result);
+};
+
+API.prototype.getCustomer = async function (nameOrID, demand) {
     try {
-        const result = await this.request('Customer', request);
-        return this._normalizeCustomer(result);
+        return this.demandCustomer(nameOrID);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_CUSTOMER_NOT_FOUND) {
             throw e;
@@ -1037,13 +1042,17 @@ function extractContact(object) {
     return object;
 }
 
-API.prototype.getAgency = async function (nameOrID, demand) {
+API.prototype.demandAgency = async function (nameOrID) {
     const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
+    const agency = await this.request('Agency', request);
+    agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
+    return extractContact(this.tweakDates(agency));
+};
+
+API.prototype.getAgency = async function (nameOrID, demand) {
     try {
-        const agency = await this.request('Agency', request);
-        agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
-        return extractContact(this.tweakDates(agency));
+        return this.demandAgency(nameOrID);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_AGENCY_NOT_FOUND) {
             throw e;
