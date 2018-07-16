@@ -4,16 +4,14 @@ const norm = require('./normalizers');
 const errors = require('./api-errors');
 
 const MAX_PARALLEL_CALLS = 20;
-const PROP_PARENT = Symbol();
 const CHILD_PROTO = {
     getParent: function () {
-        return this[PROP_PARENT];
+        return this.parent;
     }
 }
 
 function setParent(obj, parent) {
-    Object.defineProperty(obj, PROP_PARENT, { value: parent });
-    return obj;
+    return Object.defineProperty(obj, 'parent', { value: parent });
 }
 
 function API(url, key, postRequest) {
