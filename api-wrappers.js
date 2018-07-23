@@ -1108,6 +1108,28 @@ API.prototype.getProcessActions = function (processID) {
     return this.request('ProcActions', { ProcessID: rpmUtil.normalizeInteger(processID) });
 };
 
+API.prototype.addFormParticipant = function (form, process, name) {
+    if (name === undefined) {
+        name = process;
+        process = undefined;
+    }
+    const request = { Form: {}, Username: name.Username || name };
+    const t = typeof form;
+    if (t === 'object') {
+        request.Form.FormID = rpmUtil.getEager(form.Form || form, 'FormID');
+    } else if (t === 'number') {
+        request.Form.FormID = rpmUtil.normalizeInteger(form);
+    } else {
+        request.Form.Number = rpmUtil.validateString(form);
+        if (typeof process === 'number') {
+            request.ProcessID = process;
+        } else {
+            request.Process = rpmUtil.validateString(process);
+        }
+    }
+    return this.request('ProcFormParticipantAdd', request).then(form => this._extendForm(form));
+};
+
 exports.RpmApi = API;
 
 function DataCache(api) {
