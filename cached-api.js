@@ -60,7 +60,7 @@ module.exports = function (apiConfig) {
             const result = await original.apply(this, arguments);
             const form = result.Form;
             let getter = 'demandForm';
-            cache.clear(getter, [form.FormID]);
+            cache.clear(getter, form.FormID);
             cache.clear(getter, [result.ProcessID, form.Number]);
             cache.clear(getter, [result.Process, form.Number]);
             getter = 'getForms';
@@ -78,15 +78,12 @@ module.exports = function (apiConfig) {
         const result = await createFormAction.apply(this, arguments);
         const form = result.Action.Form;
         let getter = 'demandForm';
-        cache.clear(getter, [form.FormID]);
-        cache.clear(getter, [result.ProcessID, form.Number]);
-        cache.clear(getter, [result.Process, form.Number]);
+        cache.clear(getter, form.FormID);
+        cache.clear(getter, form.ProcessID);
         getter = 'getForms';
-        cache.clear(getter, result.ProcessID);
-        cache.clear(getter, result.Process);
+        cache.clear(getter, form.ProcessID);
         getter = 'getFormList';
-        cache.clear(getter, result.ProcessID);
-        cache.clear(getter, result.Process);
+        cache.clear(getter, form.ProcessID);
         return result;
     };
 
