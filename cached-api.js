@@ -36,7 +36,8 @@ module.exports = function (apiConfig) {
         'demandCustomer',
         'demandAgency',
         'demandAccount',
-        'getRep'
+        'getRep',
+        'getAccountGroups'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
 
     ['createAccount', 'editAccount'].forEach(prop => {

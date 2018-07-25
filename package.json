@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.34.1",
+    "version": "3.35.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -20,7 +20,7 @@
     "license": "ISC",
     "private": true,
     "dependencies": {
-        "moment": "^2.18.1",
+        "moment": "^2.22.2",
         "string": "^3.3.3"
     }
 }

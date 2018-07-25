@@ -1130,6 +1130,11 @@ API.prototype.addFormParticipant = function (form, process, name) {
     return this.request('ProcFormParticipantAdd', request).then(form => this._extendForm(form));
 };
 
+API.prototype.getAccountGroups = function () {
+    return this.request('AccountGroups');
+};
+
+
 exports.RpmApi = API;
 
 function DataCache(api) {
