@@ -41,14 +41,23 @@ class Cache {
         return async function () {
             let key = Cache.getKey(id, Array.from(arguments));
             let result = self.cache[key];
-            if (!result) {
-                try {
-                    const value = await f.apply(this, arguments);
-                    result = { value };
-                } catch (error) {
-                    result = { error };
+            try {
+                if (!result) {
+                    result = f.apply(this, arguments);
+                    if (result instanceof Promise) {
+                        self.cache[key] = result = result.then(
+                            value => self.cache[key] = { value },
+                            error => self.cache[key] = { error }
+                        );
+                    } else {
+                        self.cache[key] = result = { value: result };
+                    }
                 }
-                self.cache[key] = result;
+                if (result instanceof Promise) {
+                    result = await result;
+                }
+            } catch (error) {
+                result = self.cache[key] = { error };
             }
             if (result.error) {
                 throw result.error;

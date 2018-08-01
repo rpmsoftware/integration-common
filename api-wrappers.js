@@ -135,7 +135,7 @@ API.prototype.getStaffGroups = function () {
 };
 
 API.prototype.getStaff = function (staffID) {
-    return this.request('Staff', { StaffID: +staffID });
+    return this.request('Staff', { StaffID: rpmUtil.normalizeInteger(staffID) });
 };
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
