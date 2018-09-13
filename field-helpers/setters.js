@@ -279,17 +279,37 @@ add('FieldTable', 'delimetered',
 add('FieldTable',
     async function (config, data, form) {
         data = data[config.srcField] || data;
-        assert(Array.isArray(data), 'Array is expected');
-        const existingRows = form && rpm.getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
-        function getRowID() {
-            return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
+        assert.equal(typeof data, 'object', 'Object is expected');
+        const existingRows = form ? rpm.getField.call(form.Form || form, config.dstField, true)
+            .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
+
+        let getRowID;
+        if (Array.isArray(data)) {
+            getRowID = () => (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
+        } else if (config.key) {
+            const rowIDs = {};
+            for (let row of existingRows) {
+                const field = rpm.getFieldByUid.call(row, config.key, true);
+                let key = field.Values[0];
+                key = key && key.Value;
+                rowIDs[key] = row.RowID;
+            }
+            getRowID = key => rowIDs[key] || undefined;
+        } else {
+            getRowID = rowID => +rowID || undefined;
         }
+
         const rows = [];
         let errors = [];
         let rownum = 0;
-        for (let srcRow of data) {
+        for (let key in data) {
+            const srcRow = data[key];
+            const rowID = getRowID(key);
+            if (rowID === undefined) {
+                continue;
+            }
             let fieldValues = [];
-            rows.push({ RowID: getRowID(), Fields: fieldValues });
+            rows.push({ RowID: rowID, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
                 const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
@@ -322,6 +342,7 @@ async function initTableFields(config, rpmField) {
     const tableFields = config.tableFields;
     config.tableFields = [];
 
+
     function push(c) {
         c.isTableField = true;
         config.tableFields.push(c);
@@ -337,9 +358,16 @@ async function initTableFields(config, rpmField) {
         }
     } else {
         for (let tabField of defRow.Fields) {
-            push(await initField.call(this, { srcField: tabField.Name }, tabField));
+            tabField.UserCanEdit && push(await initField.call(this, { srcField: tabField.Name }, tabField));
         }
     }
+    if (config.key) {
+        config.key = rpm.getField.call(defRow, rpmUtil.validateString(config.key), true).Uid;
+    } else {
+        config.key = undefined;
+    }
+
+
     return config;
 }
 

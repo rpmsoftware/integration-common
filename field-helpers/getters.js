@@ -66,6 +66,9 @@ const COMMON_GETTERS = {
             }
             conf.targetField = await init.call(this, targetField, rpmFields);
             conf.fieldPath = fieldPath;
+            if (!conf.srcField) {
+                conf.srcField = fieldPath[0].name;
+            }
             return conf;
         }
     }
@@ -81,6 +84,12 @@ for (let name in COMMON_GETTERS) {
         assert.equal(type, 'function');
         COMMON_GETTERS[name] = { get };
     }
+}
+
+function addCommon(name, get, init) {
+    rpmUtil.validateString(name);
+    assert(!COMMON_GETTERS[name], `Getter already exists: "${name}"`);
+    COMMON_GETTERS[name] = { get, init };
 }
 
 const SPECIFIC_GETTERS = {};
@@ -160,41 +169,62 @@ async function initTableFields(config, rpmField) {
     assert(defRow, 'No definition row');
 
     let tableFields = config.tableFields;
-    tableFields = tableFields ? tableFields.map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
+    tableFields = Array.isArray(tableFields) ? tableFields.map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
 
     config.tableFields = [];
     const rpmTableFields = defRow.Fields;
     for (let tabField of rpmTableFields) {
         let tabFieldConf = tableFields.find(fc => fc.srcField === tabField.Name) || {};
         tabFieldConf = await initField.call(this, tabFieldConf, tabField, rpmTableFields);
+        rpmUtil.validateString(tabFieldConf.srcField);
         tabFieldConf.isTableField = true;
         config.tableFields.push(tabFieldConf);
+    }
+    config.keyRowID = !!config.keyRowID;
+    if (config.key) {
+        rpmUtil.validateString(config.key);
+        assert(config.tableFields.find(c => c.srcField === config.key), `No key field "${config.key}"`);
+    } else {
+        config.key = undefined;
     }
     return config;
 }
 
 add('FieldTable', async function (conf, form) {
-    const srcRows = (form.Form || form).getFieldByUid(conf.srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
-    const result = [];
+    const srcField = (form.Form || form).getFieldByUid(conf.srcUid, true);
+    let srcRows = srcField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
+    const filter = srcField.filter;
+    if (typeof filter === 'function') {
+        srcRows = srcRows.filter(filter);
+    }
+
+    const result = conf.key || conf.keyRowID ? {} : [];
     for (let srcRow of srcRows) {
         const resultRow = {};
+        const tableForm = {
+            Fields: srcRow.Fields.map(fld => {
+                fld = Object.assign({}, fld);
+                const val = fld.Values[0];
+                delete fld.Values;
+                if (val) {
+                    assert.equal(typeof val, 'object');
+                    Object.assign(fld, val);
+                } else {
+                    fld.Value = null;
+                }
+                return fld;
+            })
+        };
         for (let fieldConf of conf.tableFields) {
-            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
-                Fields: srcRow.Fields.map(fld => {
-                    fld = Object.assign({}, fld);
-                    const val = fld.Values[0];
-                    delete fld.Values;
-                    if (val) {
-                        assert.equal(typeof val, 'object');
-                        Object.assign(fld, val);
-                    } else {
-                        fld.Value = null;
-                    }
-                    return fld;
-                })
-            });
+            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, tableForm);
         }
-        result.push(resultRow);
+        if (conf.key) {
+            result[rpmUtil.getEager(resultRow, conf.key)] = resultRow;
+        } else if (conf.keyRowID) {
+            result[srcRow.RowID] = resultRow;
+        } else {
+            result.push(resultRow);
+        }
     }
     return result;
 }, initTableFields);
@@ -284,4 +314,4 @@ function get(conf, form) {
     return findGetter(conf).call(this, conf, form);
 }
 
-Object.assign(exports, { get, init });
+Object.assign(exports, { get, init, addCommon });
