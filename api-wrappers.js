@@ -4,11 +4,6 @@ const norm = require('./normalizers');
 const errors = require('./api-errors');
 
 const MAX_PARALLEL_CALLS = 20;
-const CHILD_PROTO = {
-    getParent: function () {
-        return this.parent;
-    }
-}
 
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
@@ -931,7 +926,7 @@ API.prototype.searchCustomers = function (field, value) {
 API.prototype._normalizeCustomer = function (customer) {
     customer.Age = customer.Age || 0;
     ['Locations', 'Accounts'].forEach(prop =>
-        customer[prop].forEach(ch => Object.setPrototypeOf(setParent(ch, customer), CHILD_PROTO))
+        customer[prop].forEach(ch => setParent(ch, customer))
     );
     return this.tweakDates(customer);
 };
@@ -1044,7 +1039,7 @@ API.prototype.demandAgency = async function (nameOrID) {
     const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
     const agency = await this.request('Agency', request);
-    agency.Reps.forEach(rep => Object.setPrototypeOf(setParent(rep, agency), CHILD_PROTO));
+    agency.Reps.forEach(rep => setParent(rep, agency));
     return extractContact(this.tweakDates(agency));
 };
 
@@ -1132,6 +1127,38 @@ API.prototype.addFormParticipant = function (form, process, name) {
 
 API.prototype.getAccountGroups = function () {
     return this.request('AccountGroups');
+};
+
+API.prototype.editStaff = function (staff, changes) {
+    if (changes === undefined) {
+        assert.equal(typeof staff, 'object');
+        changes = staff;
+    } else {
+        staff = staff && staff.StaffID || staff;
+        assert.equal(typeof staff, 'number');
+        assert.equal(typeof changes, 'object');
+        changes.StaffID = staff;
+    }
+    return this.request('StaffEdit', { Staff: changes.Staff || changes });
+};
+
+API.prototype.editUserEnabled = function (user, enabled) {
+    user = user.Username || user;
+    return this.request('UserEnabledEdit', {
+        Username: user,
+        Enabled: !!enabled
+    });
+};
+
+API.prototype.createStaff = function (contact, role, enabled) {
+    contact = contact || {};
+    return this.request('StaffAdd', {
+        Staff: role === undefined && enabled === undefined ? (contact.Staff || contact) : {
+            RoleID: role && (role.ID || rpmUtil.normalizeInteger(role)),
+            Contact: contact,
+            Enabled: !!enabled
+        }
+    });
 };
 
 

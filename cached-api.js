@@ -147,7 +147,26 @@ module.exports = function (apiConfig) {
         };
     });
 
+    ['createStaff', 'editStaff'].forEach(prop => {
+        const original = api[prop];
+        api[prop] = async function () {
+            const result = await original.apply(this, arguments);
+            cache.clear('getStaff', result.StaffID);
+            cache.clear('getStaffList');
+            return result;
+        };
+    });
 
+    const _editUserEnabled = api.editUserEnabled;
+    api.editUserEnabled = async function () {
+        const result = await _editUserEnabled.apply(this, arguments);
+        cache.clear('getStaff');
+        cache.clear('getStaffList');
+        cache.clear('getCustomerUsers');
+        cache.clear('getAgentUsers');
+        cache.clear('getUser');
+        return result;
+    };
 
     return api;
 }
