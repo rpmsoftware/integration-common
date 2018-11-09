@@ -47,6 +47,7 @@ module.exports = function (apiConfig) {
             cache.put('demandAccount', [result.Account, result.Supplier], result);
             cache.put('demandAccount', [result.AccountID], result);
             cache.clear('getAccounts');
+            cache.clear('searchCustomers');
             cache.clear('getCustomerAccounts', result.Customer);
             cache.clear('getCustomerAccounts', result.CustomerID);
             cache.clear('getSupplierAccounts', result.Supplier);

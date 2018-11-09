@@ -179,6 +179,14 @@ API.prototype.getAgentUsers = function () {
     return this.request('AgentUsers');
 };
 
+API.prototype.getReps = async function () {
+    return (await this.getAgentUsers()).AgentUsers.filter(u => u.RepID > 0);
+};
+
+API.prototype.getManagers = async function getManagers() {
+    return (await this.getAgentUsers()).AgentUsers.filter(u => u.MgrID > 0);
+}
+
 API.prototype.getCustomerUsers = function () {
     return this.request('CustomerUsers');
 };
@@ -428,11 +436,29 @@ API.prototype.getRoles = function () {
     return this.request('Roles');
 };
 
-API.prototype.editForm = function (formId, fields, properties) {
+API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties) {
+    if (typeof formNumberOrID === 'object') {
+        properties = fields;
+        fields = formNumberOrID;
+        formNumberOrID = processNameOrID;
+        processNameOrID = undefined;
+    }
     properties = properties || {};
-    properties.FormID = rpmUtil.normalizeInteger(formId);
-    properties.Fields = Array.isArray(fields) ? fields : Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
-    return this.request('ProcFormEdit', { Form: properties, OverwriteWithNull: true }).then(this._extendForm.bind(this));
+    const body = { Form: properties, OverwriteWithNull: true };
+    if (processNameOrID) {
+        if (typeof processNameOrID === 'string') {
+            body.Process = processNameOrID;
+        } else {
+            body.ProcessID = rpmUtil.normalizeInteger(processNameOrID);
+        }
+        properties.Number = formNumberOrID;
+    } else {
+        properties.FormID = rpmUtil.normalizeInteger(formNumberOrID);
+    }
+    fields = fields || [];
+    properties.Fields = Array.isArray(fields) ? fields :
+        Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
 API.prototype.setFormArchived = function (archived, formId) {
@@ -1944,5 +1970,3 @@ exports.getStaffFilters = function (field) {
     }
     return result;
 }
-
-

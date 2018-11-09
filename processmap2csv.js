@@ -1,7 +1,7 @@
 (() => {
     var rpm = require('./api-wrappers');
 
-    var api = new rpm.RpmApi(require('./util').readConfig('RPM_CONFIG', 'config.json').rpmEvolutionEngineering);
+    var api = new rpm.RpmApi(require('./util').readConfig('RPM_CONFIG', 'config.json')[process.argv[2]]);
     var util = require('util');
     var assert = require('assert');
 
@@ -62,7 +62,7 @@
         }))
         .then(result => {
             result = require('to-csv')(result);
-            var fileName = process.argv[2];
+            var fileName = process.argv[3];
             fileName ? require('fs').writeFileSync(fileName, result) : console.info(result);
         }, console.error);
 })();
