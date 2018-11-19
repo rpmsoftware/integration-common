@@ -89,23 +89,25 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    const trashForm = api.trashForm;
-    api.trashForm = async function (id) {
-        id = rpmUtil.normalizeInteger(id);
-        const result = await trashForm.apply(this, arguments);
-        let getter = 'demandForm';
-        const cached = cache.clear(getter, [id])[0];
-        if (cached) {
-            cache.clear(getter, [cached.ProcessID, cached.Number]);
-            cache.clear(getter, [cached.Process, cached.Number]);
-            cache.clear('getForms', cached.ProcessID);
-            cache.clear('getFormList', cached.ProcessID);
-        } else {
-            cache.clear('getForms');
-            cache.clear('getFormList');
-        }
-        return result;
-    };
+    ['trashForm', 'setFormArchived'].forEach(prop => {
+        const original = api[prop];
+        api[prop] = async function () {
+            const id = rpmUtil.normalizeInteger(arguments[0]);
+            const result = await original.apply(this, arguments);
+            let getter = 'demandForm';
+            const cached = cache.clear(getter, [id])[0];
+            if (cached) {
+                cache.clear(getter, [cached.ProcessID, cached.Number]);
+                cache.clear(getter, [cached.Process, cached.Number]);
+                cache.clear('getForms', cached.ProcessID);
+                cache.clear('getFormList', cached.ProcessID);
+            } else {
+                cache.clear('getForms');
+                cache.clear('getFormList');
+            }
+            return result;
+        };
+    });
 
     ['createAgency', 'editAgency'].forEach(prop => {
         const original = api[prop];

@@ -461,8 +461,10 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
-API.prototype.setFormArchived = function (archived, formId) {
-    return this.request(archived ? 'ProcFormArchive' : 'ProcFormUnarchive', { FormID: formId });
+API.prototype.setFormArchived = function (formID, archived) {
+    archived = archived === undefined || rpmUtil.toBoolean(archived);
+    formID = rpmUtil.normalizeInteger(formID);
+    return this.request(archived ? 'ProcFormArchive' : 'ProcFormUnarchive', { FormID: formID });
 };
 
 API.prototype.trashForm = function (formID) {
