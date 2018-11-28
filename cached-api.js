@@ -37,7 +37,8 @@ module.exports = function (apiConfig) {
         'demandAgency',
         'demandAccount',
         'getRep',
-        'getAccountGroups'
+        'getAccountGroups',
+        'getFile'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
 
     ['createAccount', 'editAccount'].forEach(prop => {
@@ -82,10 +83,27 @@ module.exports = function (apiConfig) {
         let getter = 'demandForm';
         cache.clear(getter, form.FormID);
         cache.clear(getter, form.ProcessID);
+        cache.clear('getForms', form.ProcessID);
+        cache.clear('getFormList', form.ProcessID);
+        return result;
+    };
+
+    const addFormFile = api.addFormFile;
+    api.addFormFile = async function (formID) {
+        const result = await addFormFile.apply(this, arguments);
+        formID = +formID;
+        let getter = 'demandForm';
+        cache.clear(getter, formID);
+        const form = await this.demandForm(formID);
+        cache.put(getter, [formID], form);
+        cache.put(getter, [form.ProcessID, form.Form.Number], form);
+        cache.put(getter, [form.Process, form.Form.Number], form);
         getter = 'getForms';
         cache.clear(getter, form.ProcessID);
+        cache.clear(getter, form.Process);
         getter = 'getFormList';
         cache.clear(getter, form.ProcessID);
+        cache.clear(getter, form.Process);
         return result;
     };
 

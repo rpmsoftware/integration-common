@@ -654,6 +654,29 @@ API.prototype.getForm = function () {
     });
 };
 
+API.prototype.getFile = function (fileID) {
+    if (this.validateParameters) {
+        fileID = rpmUtil.normalizeInteger(fileID);
+    }
+    return this.request('ProcFormFile', { FileID: fileID });
+};
+
+API.prototype.addFormFile = function (formID, fileName, fileData, folderID, description, shared) {
+    if (this.validateParameters) {
+        fileData = rpmUtil.toBase64(fileData);
+        formID = rpmUtil.normalizeInteger(formID);
+        fileName = rpmUtil.validateString(fileName);
+    }
+    return this.request('ProcFormFileAdd', {
+        FormID: formID,
+        File: fileData,
+        Name: fileName,
+        Description: description || undefined,
+        FolderID: +folderID || undefined,
+        IsStaffOnly: !shared
+    });
+};
+
 function getFormFieldsAsObject() {
     var form = this;
     var obj = {};
@@ -1189,55 +1212,7 @@ API.prototype.createStaff = function (contact, role, enabled) {
     });
 };
 
-
 exports.RpmApi = API;
-
-function DataCache(api) {
-    this.api = api;
-    this.checkModified();
-}
-
-DataCache.prototype.refreshers = {
-    ProcList: function () {
-        var self = this;
-        self.api.getProcesses().then(response => self.processCache = response);
-    }
-};
-
-DataCache.prototype.checkModified = function () {
-    var self = this;
-    this.api.getLastModifications().then(response => {
-        var update, changed = false;
-        if (self.lastModifications) {
-            update = function (key) {
-                var last = self.lastModifications[key];
-                var current = response[key];
-                if (!last || last < current) {
-                    self.refreshers[key].bind(self)();
-                    changed = true;
-                }
-            };
-        } else {
-            update = function (key) {
-                self.refreshers[key].bind(self)();
-            };
-            changed = true;
-        }
-        Object.keys(self.refreshers).forEach(update);
-        if (changed) {
-            self.lastModifications = response;
-        }
-    });
-};
-
-
-DataCache.prototype.getProcessInfo = function (processId) {
-    this.checkModified();
-    var key = (typeof processId === 'number') ? 'ProcessID' : 'Process';
-    return this.processCache.reduce((a, b) => a || (b[key] === processId ? b : undefined));
-};
-
-exports.DataCache = DataCache;
 
 exports.FIELD_FORMAT = Object.seal({
     String: 1,    // Account, Role, Supplier, [list field]

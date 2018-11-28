@@ -643,3 +643,5 @@ exports.validateString = function (value) {
 };
 
 const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];
+
+exports.toBase64 = data => (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64');
