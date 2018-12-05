@@ -88,10 +88,7 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    const addFormFile = api.addFormFile;
-    api.addFormFile = async function (formID) {
-        const result = await addFormFile.apply(this, arguments);
-        formID = +formID;
+    async function clearAfterFile(formID) {
         let getter = 'demandForm';
         cache.clear(getter, formID);
         const form = await this.demandForm(formID);
@@ -104,6 +101,20 @@ module.exports = function (apiConfig) {
         getter = 'getFormList';
         cache.clear(getter, form.ProcessID);
         cache.clear(getter, form.Process);
+    }
+
+    const addFormFile = api.addFormFile;
+    api.addFormFile = async function () {
+        const result = await addFormFile.apply(this, arguments);
+        await clearAfterFile.call(this, result.FileAttachment.FormID);
+        return result;
+    };
+
+    const editFormFile = api.editFormFile;
+    api.editFormFile = async function () {
+        const result = await editFormFile.apply(this, arguments);
+        await clearAfterFile.call(this, result.FileAttachment.FormID);
+        cache.clear('getFile', result.FileAttachment.FileID);
         return result;
     };
 

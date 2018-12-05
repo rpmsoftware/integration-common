@@ -677,6 +677,23 @@ API.prototype.addFormFile = function (formID, fileName, fileData, folderID, desc
     });
 };
 
+API.prototype.editFormFile = async function (fileID, formID, fileName, folderID, description, shared) {
+    if (this.validateParameters) {
+        fileID = rpmUtil.normalizeInteger(fileID);
+        fileID = rpmUtil.normalizeInteger(formID);
+        fileName = fileName === undefined ? undefined : rpmUtil.validateString(fileName);
+        folderID = folderID === undefined ? undefined : rpmUtil.normalizeInteger(folderID);
+    }
+    return this.request('ProcFormFileEdit', {
+        FileID: fileID,
+        FormID: formID,
+        Name: fileName,
+        Description: description,
+        FolderID: folderID,
+        IsStaffOnly: shared === undefined ? undefined : !shared
+    });
+};
+
 function getFormFieldsAsObject() {
     var form = this;
     var obj = {};
