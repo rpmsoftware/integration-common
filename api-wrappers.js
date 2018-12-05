@@ -654,11 +654,11 @@ API.prototype.getForm = function () {
     });
 };
 
-API.prototype.getFile = function (fileID) {
+API.prototype.getFile = function (fileID, returnUrl) {
     if (this.validateParameters) {
         fileID = rpmUtil.normalizeInteger(fileID);
     }
-    return this.request('ProcFormFile', { FileID: fileID });
+    return this.request('ProcFormFile', { FileID: fileID, ReturnDownloadUrl: rpmUtil.toBoolean(returnUrl) });
 };
 
 API.prototype.addFormFile = function (formID, fileName, fileData, folderID, description, shared) {

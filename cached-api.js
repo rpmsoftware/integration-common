@@ -8,6 +8,12 @@ module.exports = function (apiConfig) {
 
     const cache = new Cache();
 
+    api._getFileCached = api.getFile;
+
+    api.getFile = async function (fileID, returnUrl) {
+        return api._getFileCached(fileID, rpmUtil.toBoolean(returnUrl));
+    }
+
     Object.defineProperty(api, 'cache', { value: cache });
     [
         'getProcesses',
@@ -38,7 +44,7 @@ module.exports = function (apiConfig) {
         'demandAccount',
         'getRep',
         'getAccountGroups',
-        'getFile'
+        '_getFileCached'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
 
     ['createAccount', 'editAccount'].forEach(prop => {
@@ -114,7 +120,7 @@ module.exports = function (apiConfig) {
     api.editFormFile = async function () {
         const result = await editFormFile.apply(this, arguments);
         await clearAfterFile.call(this, result.FileAttachment.FormID);
-        cache.clear('getFile', result.FileAttachment.FileID);
+        cache.clear('_getFileCached', result.FileAttachment.FileID);
         return result;
     };
 
