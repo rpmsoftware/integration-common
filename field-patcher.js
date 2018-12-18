@@ -5,7 +5,8 @@ factories[rpm.OBJECT_TYPE.CustomField] = {};
 
 factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tableField, useUids) {
     const tableFieldName = tableField.Name;
-    const tableFields = tableField.Rows.find(row => row.IsDefinition).Fields;
+    const definitionRow = tableField.Rows.find(row => row.IsDefinition);
+    const tableFields = definitionRow.Fields;
 
     return function (rows, form) {
         const existingRows = form && (form.Form || form).getField(tableFieldName, true).Rows.filter(r => !r.IsDefinition);
@@ -14,7 +15,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tab
             return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
         }
 
-        var result = [];
+        const result = [];
 
         function add(id, row) {
             result.push({
@@ -67,6 +68,17 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tab
         let id;
         while ((id = getRowID())) {
             add(id);
+        }
+
+        if (result.length < 1) {
+            result.push({
+                RowID: definitionRow.RowID,
+                IsDefinition: true,
+                Fields: tableFields.map(f => ({
+                    Values: [],
+                    Uid: f.Uid
+                }))
+            });
         }
 
         return { Field: tableFieldName, Rows: result };

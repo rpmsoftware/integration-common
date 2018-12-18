@@ -1177,10 +1177,13 @@ API.prototype.addFormParticipant = function (form, process, name) {
         process = undefined;
     }
     const request = { Form: {}, Username: name.Username || name };
-    const t = typeof form;
-    if (t === 'object') {
-        request.Form.FormID = rpmUtil.getEager(form.Form || form, 'FormID');
-    } else if (t === 'number') {
+    if (typeof name === 'object') {
+        const { Agency, Username, AgencyID } = name;
+        Object.assign(request, { Agency, Username, AgencyID });
+    } else {
+        request.Username = rpmUtil.validateString(name);
+    }
+    if (typeof form === 'number') {
         request.Form.FormID = rpmUtil.normalizeInteger(form);
     } else {
         request.Form.Number = rpmUtil.validateString(form);
