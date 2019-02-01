@@ -258,8 +258,8 @@ const VIEW_PROTO = {
             return result;
         });
     },
-    getFormList: function (includeArchived) {
-        return this.getProcess().getFormList(includeArchived, this.ID);
+    getFormList: function (refType) {
+        return this.getProcess().getFormList(this.ID, refType);
     }
 };
 
@@ -307,8 +307,8 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         return this.getApi().createForm(this.ProcessID, fields, properties);
     },
 
-    getFormList: function (includeArchived, viewId) {
-        return this.getApi().getFormList(this.ProcessID, viewId, includeArchived);
+    getFormList: function (viewID, refType) {
+        return this.getApi().getFormList(this.ProcessID, viewID, refType);
     },
 
     getCachedFields: function () {
@@ -591,19 +591,22 @@ API.prototype.getForms = function (processOrId, viewID) {
     });
 };
 
-
-API.prototype.getFormList = function (processId, viewId, includeArchived) {
-    processId = rpmUtil.normalizeInteger(processId);
-    if (includeArchived === undefined && typeof viewId === 'boolean') {
-        includeArchived = viewId;
-        viewId = undefined;
+API.prototype.getFormList = function (processID, viewID, refType) {
+    if (this.validateParameters) {
+        assert.strictEqual(processID, 'number');
+        assert(arguments.length <= 3);
     }
-    const request = { ProcessID: processId };
-    if (viewId) {
-        request.ViewID = rpmUtil.normalizeInteger(viewId);
+    const request = { ProcessID: processID };
+    const type = typeof viewID;
+    if (type === 'number') {
+        request.ViewID = viewID;
+    } else if (viewID !== undefined) {
+        this.validateParameters && assert.strictEqual(type, 'boolean');
+        request.IncludeArchived = !!viewID;
     }
-    if (includeArchived) {
-        request.IncludeArchived = true;
+    if (refType !== undefined) {
+        this.validateParameters && assert.strictEqual(type, 'number');
+        request.ReferenceType = refType;
     }
     return this.request('ProcFormList', request);
 };
