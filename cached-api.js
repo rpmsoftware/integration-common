@@ -63,24 +63,37 @@ module.exports = function (apiConfig) {
         };
     });
 
+    function clearFormRelated(result) {
+        const form = result.Form;
+        let getter = 'demandForm';
+        cache.clear(getter, form.FormID);
+        cache.clear(getter, [result.ProcessID, form.Number]);
+        cache.clear(getter, [result.Process, form.Number]);
+        getter = 'getForms';
+        cache.clear(getter, result.ProcessID);
+        cache.clear(getter, result.Process);
+        getter = 'getFormList';
+        cache.clear(getter, result.ProcessID);
+        cache.clear(getter, result.Process);
+        return result;
+    };
+
     ['createForm', 'editForm', 'addFormParticipant'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            const form = result.Form;
-            let getter = 'demandForm';
-            cache.clear(getter, form.FormID);
-            cache.clear(getter, [result.ProcessID, form.Number]);
-            cache.clear(getter, [result.Process, form.Number]);
-            getter = 'getForms';
-            cache.clear(getter, result.ProcessID);
-            cache.clear(getter, result.Process);
-            getter = 'getFormList';
-            cache.clear(getter, result.ProcessID);
-            cache.clear(getter, result.Process);
+            clearFormRelated(result);
             return result;
         };
     });
+
+    const createForm = api.createForm;
+    api.createForm = async function () {
+        const result = await createForm.apply(this, arguments);
+        clearFormRelated(result);
+        cache.clear('getProcesses');
+        return result;
+    };
 
     const createFormAction = api.createFormAction;
     api.createFormAction = async function () {
@@ -132,14 +145,17 @@ module.exports = function (apiConfig) {
             let getter = 'demandForm';
             const cached = cache.clear(getter, [id])[0];
             if (cached) {
-                cache.clear(getter, [cached.ProcessID, cached.Number]);
-                cache.clear(getter, [cached.Process, cached.Number]);
+                cache.clear(getter, [cached.ProcessID, cached.Form.Number]);
+                cache.clear(getter, [cached.Process, cached.Form.Number]);
                 cache.clear('getForms', cached.ProcessID);
                 cache.clear('getFormList', cached.ProcessID);
+                cache.clear('getForms', cached.Process);
+                cache.clear('getFormList', cached.Process);
             } else {
                 cache.clear('getForms');
                 cache.clear('getFormList');
             }
+            cache.clear('getProcesses');
             return result;
         };
     });

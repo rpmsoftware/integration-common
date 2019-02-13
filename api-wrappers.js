@@ -286,7 +286,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getFields: function () {
         var proc = this;
         return proc.getApi().getFields(proc.ProcessID).then(response => {
-            Object.defineProperty(response, 'process', { value: proc });
+            Object.defineProperty(response, 'process', { value: proc, configurable: true });
             return response;
         });
     },
@@ -294,7 +294,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     getForms: function (viewId) {
         var proc = this;
         return proc.getApi().getForms(proc.ProcessID, viewId).then(result => {
-            Object.defineProperty(result, 'process', { value: proc });
+            Object.defineProperty(result, 'process', { value: proc, configurable: true });
             return result;
         });
     },
@@ -344,7 +344,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         var proc = this;
         return proc.getApi().getProcessViews(proc.ProcessID).then(views => {
             views.Views.forEach(view => {
-                Object.defineProperty(view, 'process', { value: proc });
+                Object.defineProperty(view, 'process', { value: proc, configurable: true });
                 Object.setPrototypeOf(view, VIEW_PROTO);
             });
             return views;
