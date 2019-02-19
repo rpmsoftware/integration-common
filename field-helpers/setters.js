@@ -601,8 +601,10 @@ async function setField(conf, data, form) {
 
 async function set(conf, data, form) {
     const result = await setField.call(this, conf, data, form);
-    result.Uid = conf.dstUid;
-    result.Field = conf.dstField;
+    if (result) {
+        result.Uid = conf.dstUid;
+        result.Field = conf.dstField;
+    }
     return result;
 }
 
