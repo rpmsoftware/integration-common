@@ -536,13 +536,7 @@ exports.createParallelRunner = function (parallelRequests) {
 
 };
 
-( /*init logger */() => {
-    try {
-        exports.logger = require('./logger-winston');
-    } catch (e) {
-        exports.logger = require('./logger-console');
-    }
-})();
+exports.logger = require('./logger')();
 
 var MONTHS = {};
 ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']

@@ -1,5 +1,4 @@
 const rpmUtil = require('./util');
-const logger = rpmUtil.logger;
 const norm = require('./normalizers');
 const errors = require('./api-errors');
 
@@ -29,6 +28,7 @@ function API(url, key, postRequest) {
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
+    this.logger = rpmUtil.logger;
 }
 
 rpmUtil.defineStandardProperty(API.prototype, 'parallelRunner', () => {
@@ -66,7 +66,7 @@ API.prototype.request = function (endPoint, data, log) {
             log = true;
         }
     }
-    logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
+    this.logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
     return this.postRequest(url, data, api.getHeaders()).then(data => {
         const responseTime = new Date();
@@ -737,7 +737,7 @@ function BaseProcessData(processOrId) {
 }
 
 API.prototype.addForm = function (processId, fields, status) {
-    logger.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
+    this.logger.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
     return this.createForm(processId, fields, { Status: status });
 };
 

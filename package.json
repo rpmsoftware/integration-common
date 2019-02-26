@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.39.4",
+    "version": "3.40.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -10,17 +10,16 @@
         "util.js",
         "field-patcher.js",
         "normalizers.js",
-        "logger-console.js",
-        "logger-winston.js",
         "cache.js",
         "api-errors.js",
         "field-helpers/*",
-        "rest-posters/*"
+        "rest-posters/*",
+        "logger/*"
     ],
     "license": "ISC",
     "private": true,
     "dependencies": {
-        "moment": "^2.22.2",
+        "moment": "^2.24.0",
         "string": "^3.3.3"
     }
 }
