@@ -299,12 +299,9 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         });
     },
 
-    addForm: function (fields, status) {
-        return this.getApi().addForm(this.ProcessID, fields, status);
-    },
 
-    createForm: function (fields, properties) {
-        return this.getApi().createForm(this.ProcessID, fields, properties);
+    createForm: function (fields, properties, fireWebEvent) {
+        return this.getApi().createForm(this.ProcessID, fields, properties, fireWebEvent);
     },
 
     getFormList: function (viewID, refType) {
@@ -436,14 +433,21 @@ API.prototype.getRoles = function () {
     return this.request('Roles');
 };
 
-API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties) {
+API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, fireWebEvent) {
     if (typeof formNumberOrID === 'object') {
+        fireWebEvent = properties;
         properties = fields;
         fields = formNumberOrID;
         formNumberOrID = processNameOrID;
         processNameOrID = undefined;
     }
-    properties = properties || {};
+    const type = typeof properties;
+    if (fireWebEvent === undefined && type === 'boolean') {
+        fireWebEvent = properties;
+        properties = {};
+    } else if (type !== 'object') {
+        properties = {};
+    }
     const body = { Form: properties, OverwriteWithNull: true };
     if (processNameOrID) {
         if (typeof processNameOrID === 'string') {
@@ -458,6 +462,10 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     fields = fields || [];
     properties.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    if (fireWebEvent) {
+        body.WebhookEvaluate = true;
+    }
+
     return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
@@ -736,18 +744,22 @@ function BaseProcessData(processOrId) {
     }
 }
 
-API.prototype.addForm = function (processId, fields, status) {
-    this.logger.warn('ACHTUNG! API.addForm is deprecated. Use API.createForm() instead');
-    return this.createForm(processId, fields, { Status: status });
-};
-
-API.prototype.createForm = function (processOrId, fields, properties) {
-    properties = properties || {};
+API.prototype.createForm = function (processOrId, fields, properties, fireWebEvent) {
+    const type = typeof properties;
+    if (fireWebEvent === undefined && type === 'boolean') {
+        fireWebEvent = properties;
+        properties = {};
+    } else if (type !== 'object') {
+        properties = {};
+    }
     fields = fields || [];
     properties = { Form: properties };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
     properties.Form.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    if (fireWebEvent) {
+        properties.WebhookEvaluate = true;
+    }
     return this.request('ProcFormAdd', properties).then(this._extendForm.bind(this));
 };
 
