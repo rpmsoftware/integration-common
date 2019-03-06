@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "3.41.0",
+    "version": "4.0.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -12,9 +12,14 @@
         "normalizers.js",
         "cache.js",
         "api-errors.js",
+        "webhooks.js",
+        "express.js",
         "field-helpers/*",
         "rest-posters/*",
-        "logger/*"
+        "logger/*",
+        "store/*",
+        "sendemail/*",
+        "office365/*"
     ],
     "license": "ISC",
     "private": true,

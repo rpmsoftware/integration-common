@@ -825,23 +825,16 @@ API.prototype.getLastModifications = function () {
     return api[PROP_MODIFIED_PROMISE];
 };
 
-const PROP_LAST_KNOWN_MODIFIED = Symbol();
-
-API.prototype.getModifiedAspects = function () {
-    var self = this;
-    return self.getLastModifications().then(response => {
-        var result = [];
-        if (self[PROP_LAST_KNOWN_MODIFIED]) {
-            for (var key in self[PROP_LAST_KNOWN_MODIFIED]) {
-                var value = self[PROP_LAST_KNOWN_MODIFIED][key];
-                if (response[key] > value) {
-                    result.push(key);
-                }
-            }
+API.prototype.getModifiedAspects = async function () {
+    const response = await self.getLastModifications();
+    const result = [];
+    const lastKnown = this.lastKnownModified;
+    if (lastKnown) {
+        for (let key in lastKnown) {
+            response[key] > lastKnown[key] && result.push(key);
         }
-        self[PROP_LAST_KNOWN_MODIFIED] = response;
-        return result;
-    });
+    }
+    Object.defineProperty(this, 'lastKnownModified', { value: response, configurable: true });
 };
 
 API.prototype.getCachedCustomers = function () {
