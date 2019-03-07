@@ -826,7 +826,7 @@ API.prototype.getLastModifications = function () {
 };
 
 API.prototype.getModifiedAspects = async function () {
-    const response = await self.getLastModifications();
+    const response = await this.getLastModifications();
     const result = [];
     const lastKnown = this.lastKnownModified;
     if (lastKnown) {
