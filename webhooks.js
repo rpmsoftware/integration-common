@@ -91,10 +91,10 @@
         return typeof obj === 'object' &&
             typeof obj.ObjectID === 'number' &&
             typeof obj.ParentID === 'number' &&
+            typeof obj.ObjectType === 'number' &&
+            typeof obj.ParentType === 'number' &&
             (!obj.StatusID || typeof obj.StatusID === 'number') &&
-            EVENT_NAMES.indexOf(obj.EventName) >= 0 &&
-            obj.ObjectType === enumObjectType.Form &&
-            obj.ParentType === enumObjectType.PMTemplate;
+            EVENT_NAMES.indexOf(obj.EventName) >= 0
     }
 
     exports.isWebHooksRequest = isWebHooksRequest;
