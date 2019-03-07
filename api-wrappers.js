@@ -835,6 +835,7 @@ API.prototype.getModifiedAspects = async function () {
         }
     }
     Object.defineProperty(this, 'lastKnownModified', { value: response, configurable: true });
+    return result;
 };
 
 API.prototype.getCachedCustomers = function () {
