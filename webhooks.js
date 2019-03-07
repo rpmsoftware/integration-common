@@ -73,19 +73,9 @@
     exports.EVENT_FORM_EDIT = 'form.edit';
     exports.EVENT_FORM_TRASH = 'form.trash';
     exports.EVENT_FORM_RESTORE = 'form.restore';
-    exports.EVENT_ACTION_START = 'action.start';
+    exports.EVENT_ACTION_START = 'action.add';
     exports.EVENT_ACTION_EDIT = 'action.edit';
     exports.EVENT_ACTION_TRASH = 'action.trash';
-
-    const EVENT_NAMES = [
-        exports.EVENT_FORM_START,
-        exports.EVENT_FORM_EDIT,
-        exports.EVENT_FORM_TRASH,
-        exports.EVENT_FORM_RESTORE,
-        exports.EVENT_ACTION_START,
-        exports.EVENT_ACTION_EDIT,
-        exports.EVENT_ACTION_TRASH,
-    ];
 
     function isWebHooksRequest(obj) {
         return typeof obj === 'object' &&
@@ -94,7 +84,7 @@
             typeof obj.ObjectType === 'number' &&
             typeof obj.ParentType === 'number' &&
             (!obj.StatusID || typeof obj.StatusID === 'number') &&
-            EVENT_NAMES.indexOf(obj.EventName) >= 0
+            typeof obj.EventName === 'string'
     }
 
     exports.isWebHooksRequest = isWebHooksRequest;
