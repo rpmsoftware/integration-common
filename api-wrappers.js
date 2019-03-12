@@ -1344,7 +1344,9 @@ var DATA_TYPE = exports.DATA_TYPE = {
     MeasureVolumeSmall: 48,
     MeasureVolumeMedium: 49,
     MeasureVolumeLarge: 50,
-    MeasureLengthLarge: 51
+    MeasureLengthLarge: 51,
+    Duration: 52,
+    Email: 53,
 };
 
 exports.PROCESS_PERMISSIONS = Object.seal({
