@@ -3,12 +3,12 @@ var assert = require('assert');
 var tedious = require('tedious');
 var util = require('util');
 var rpmUtil = require('./util');
-var logger = rpmUtil.logger;
 var TYPES = exports.TYPES = tedious.TYPES;
 var Request = tedious.Request;
 var Connection = tedious.Connection;
 var norm = require('./normalizers');
 
+TYPES.DateTimeOffset.normalize = norm.normalizeDate;
 TYPES.DateN.normalize = norm.normalizeDate;
 TYPES.Date.normalize = norm.normalizeDate;
 TYPES.DateTime2N.normalize = norm.normalizeDate;
@@ -59,7 +59,7 @@ exports.SqlTypedValue = SqlTypedValue;
 
 function executeStatement(sqlQuery, parameters, metadataOnly) {
     var connection = this;
-    logger.debug(sqlQuery);
+    this.logger.debug(sqlQuery);
     return new Promise((resolve, reject) => {
         var rows = [];
         var metadata;
@@ -116,6 +116,7 @@ exports.createConnection = function (config) {
                 connection.execute = executeStatement;
                 connection.getObjectID = getObjectID;
                 connection.getColumnTypes = getColumnTypes;
+                connection.logger = rpmUtil.logger;
                 resolve(connection);
             }
         });
