@@ -1,10 +1,17 @@
 const Cache = require('./cache');
-const RpmApi = require('./api-wrappers').RpmApi;
+const { RpmApi } = require('./api-wrappers');
 const rpmUtil = require('./util');
+
+async function getProcess(nameOrID, demand) {
+    return (await this.getProcesses()).getProcess(nameOrID, demand);
+};
+
+async function getActiveProcess(nameOrID, demand) {
+    return (await this.getProcesses()).getActiveProcess(nameOrID, demand);
+};
 
 module.exports = function (apiConfig) {
     const api = new RpmApi(apiConfig);
-    // return api;
 
     const cache = new Cache();
 
@@ -13,6 +20,11 @@ module.exports = function (apiConfig) {
     api.getFile = async function (fileID, returnUrl) {
         return api._getFileCached(fileID, rpmUtil.toBoolean(returnUrl));
     }
+
+
+    api.getProcess = getProcess;
+    api.getActiveProcess = getActiveProcess;
+
 
     Object.defineProperty(api, 'cache', { value: cache });
     [
