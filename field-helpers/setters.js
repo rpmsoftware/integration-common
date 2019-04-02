@@ -1,6 +1,4 @@
-const rpmUtil = require('../util');
-const throwError = rpmUtil.throwError;
-const validateString = rpmUtil.validateString;
+const { throwError, normalizeInteger, validateString, toBoolean, toArray, getEager } = require('../util');
 const moment = require('moment');
 const rpm = require('../api-wrappers');
 const assert = require('assert');
@@ -13,7 +11,7 @@ function normalizeIndex(value) {
     if (typeof value === 'string') {
         return value;
     }
-    const result = rpmUtil.normalizeInteger(value);
+    const result = normalizeInteger(value);
     if (result < 0) {
         throw new TypeError('Index cannot be negative: ' + value);
     }
@@ -123,7 +121,7 @@ const COMMON_SETTERS = {
                 const view = await proc.getView(config.view, true);
                 config.view = view.ID;
             }
-            const keyColumns = rpmUtil.toArray(config.keyColumns).map(normalizeIndex);
+            const keyColumns = toArray(config.keyColumns).map(normalizeIndex);
             assert(keyColumns.length > 0, 'Must have at least one dictionary key column');
             config.keyColumns = keyColumns;
             config.valueColumn = normalizeIndex(config.valueColumn);
@@ -161,7 +159,7 @@ function add(subtype, name, convert, init) {
         convert = name;
         name = common.DEFAULT_ACCESSOR_NAME;
     }
-    const fullType = common.getFullType(fieldType, rpmUtil.getEager(subTypes, subtype));
+    const fullType = common.getFullType(fieldType, getEager(subTypes, subtype));
     let gens = SPECIFIC_SETTERS[fullType];
     if (!gens) {
         gens = SPECIFIC_SETTERS[fullType] = {};
@@ -200,7 +198,7 @@ add('FieldTableDefinedRow',
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                    toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -240,7 +238,7 @@ add('FieldTable', 'delimetered',
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                    toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -312,6 +310,10 @@ add('FieldTable',
             rows.push({ RowID: rowID, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
+                console.log(srcRow, tabFieldConf.srcField);
+                if (!srcRow.hasOwnProperty(tabFieldConf.srcField)) {
+                    continue;
+                }
                 const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
@@ -319,7 +321,7 @@ add('FieldTable',
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    rpmUtil.toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                    toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -332,6 +334,7 @@ add('FieldTable',
         if (rows.length < 1) {
             return;
         }
+        rows.unshift({ IsDefinition: true });
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
 );
@@ -362,7 +365,7 @@ async function initTableFields(config, rpmField) {
         }
     }
     if (config.key) {
-        config.key = rpm.getField.call(defRow, rpmUtil.validateString(config.key), true).Uid;
+        config.key = rpm.getField.call(defRow, validateString(config.key), true).Uid;
     } else {
         config.key = undefined;
     }
@@ -372,8 +375,7 @@ async function initTableFields(config, rpmField) {
 }
 
 
-function getDate(config, data) {
-    const date = data[config.srcField];
+function toMoment(config, date) {
     if (!date) {
         return null;
     }
@@ -385,17 +387,29 @@ function getDate(config, data) {
 }
 
 add('Date', function (config, data) {
-    data = getDate(config, data);
-    return { Value: data ? data.format('YYYY-MM-DD') : null };
+    data = data[config.srcField];
+    if (config.normalize) {
+        data = toMoment(config, data);
+        data = data ? data.format('YYYY-MM-DD') : null;
+    }
+    return { Value: data };
 });
 
 add('DateTime', function (config, data) {
-    data = getDate(config, data);
-    return { Value: data ? data.format('YYYY-MM-DD HH:mm:ss') : null };
+    data = data[config.srcField];
+    if (config.normalize) {
+        data = toMoment(config, data);
+        data = data ? data.format('YYYY-MM-DD HH:mm:ss') : null;
+    }
+    return { Value: data };
 });
 
 add('YesNo', function (config, data) {
-    return { Value: rpmUtil.toBoolean(data[config.srcField]) ? 'Yes' : 'No' };
+    data = data[config.srcField];
+    if (config.normalize) {
+        data = toBoolean(data[config.srcField]) ? 'Yes' : 'No';
+    }
+    return { Value: data };
 });
 
 const EMPTY = { Value: null, ID: 0 };
@@ -558,7 +572,12 @@ async function initField(conf, rpmField) {
         const newConf = await gen.init.call(this, conf, rpmField);
         conf = newConf || conf;
     } else {
-        validateString(conf.srcField);
+        if (conf.hasOwnProperty('srcField')) {
+            validateString(conf.srcField);
+        } else {
+            conf.srcField = rpmField.Name;
+        }
+        conf.normalize = conf.hasOwnProperty('normalize') ? toBoolean(conf.normalize) : true;
     }
     if (setter) {
         conf.setter = setter;
@@ -594,7 +613,7 @@ async function setField(conf, data, form) {
         result = { ID: 0, Value: null, Errors: error.message || error };
     }
     return (result && typeof result === 'object') ? result : (conf.valueIsId ?
-        { ID: result ? rpmUtil.normalizeInteger(result) : 0 } :
+        { ID: result ? normalizeInteger(result) : 0 } :
         { Value: result }
     );
 }
