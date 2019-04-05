@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.3.0",
+    "version": "4.3.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
@@ -9,6 +9,7 @@
         "hash.js",
         "util.js",
         "field-patcher.js",
+        "field-accessors.js",
         "normalizers.js",
         "cache.js",
         "api-errors.js",
