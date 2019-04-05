@@ -1,5 +1,4 @@
 const rpmUtil = require('./util');
-const norm = require('./normalizers');
 const errors = require('./api-errors');
 const { URL } = require('url');
 const assert = require('assert');
@@ -117,8 +116,12 @@ API.prototype.checkUserPassword = function (userName, password) {
     return this.request('UserPasswordCheck', { Username: userName, Password: password }, false);
 };
 
-API.prototype.getStaffList = function () {
-    return this.request('StaffList');
+API.prototype.getStaffList = function (includeGuests) {
+    let body;
+    if (includeGuests) {
+        body = { IncludeGuest: rpmUtil.toBoolean(includeGuests) };
+    }
+    return this.request('StaffList', body);
 };
 
 API.prototype.getStaffGroups = function () {
@@ -424,13 +427,6 @@ function isReferenceField(field) {
 
 exports.isReferenceField = isReferenceField;
 
-const PROCESS_FIELD_PROTO = {
-    getValue: function (formField) {
-        return FIELD_ACCESSORS[this.FieldType][this.SubType].getValue(formField, this);
-    },
-    isReference: isReferenceField
-};
-
 function getStatus(nameOrID, demand) {
     var property = typeof nameOrID === 'number' ? 'ID' : 'Text';
     var result = this.StatusLevels.find(st => st[property] === nameOrID);
@@ -443,23 +439,18 @@ function getStatus(nameOrID, demand) {
 const PROCESS_FIELDS_PROTO = {
     getField,
     getStatus,
-    getFieldByUid,
-    getValue: function (formField) {
-        var procField = this.Fields.find(f => f.Uid === formField.Uid);
-        return FIELD_ACCESSORS[procField.FieldType][procField.SubType].getValue(formField, procField);
-    }
+    getFieldByUid
 };
 Object.setPrototypeOf(PROCESS_FIELDS_PROTO, RESPONSE_PROTO);
 
-API.prototype.getFields = async function (processId) {
-    processId = rpmUtil.normalizeInteger(processId);
-    const response = await this.request('ProcFields', { ProcessID: processId });
+API.prototype.getFields = async function (processID) {
+    processID = rpmUtil.normalizeInteger(processID);
+    const response = await this.request('ProcFields', { ProcessID: processID });
     const process = response.Process;
     delete response.Process;
     assert.equal(Object.keys(response).length, 0);
     process.Fields.forEach(field => {
-        Object.setPrototypeOf(field, PROCESS_FIELD_PROTO);
-        Object.defineProperty(field, '_processID', { value: processId });
+        Object.defineProperty(field, '_processID', { value: processID });
     });
     Object.assign(response, process);
     return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
@@ -591,18 +582,6 @@ API.prototype.editFormFile = async function (fileID, formID, fileName, folderID,
     });
 };
 
-function getFormFieldsAsObject() {
-    var form = this;
-    var obj = {};
-    form.Fields.forEach(pair => obj[pair.Field] = pair.Value);
-    return obj;
-}
-
-function getFormFieldValue(fieldName, eager) {
-    var field = this.getField(fieldName, eager);
-    return field && field.Value;
-}
-
 function getField(fieldName, eager) {
     var result = this.Fields.find(field => (field.Field || field.Name) === fieldName);
     if (!result && eager) {
@@ -650,8 +629,6 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
 };
 
 const FORM_PROTO = {
-    getFieldsAsObject: getFormFieldsAsObject,
-    getFieldValue: getFormFieldValue,
     getField,
     getFieldByUid
 };
@@ -1724,99 +1701,6 @@ function isProcessReference(field, processID) {
 exports.validateFieldType = validateFieldType;
 exports.validateProcessReference = validateProcessReference;
 exports.isProcessReference = isProcessReference;
-
-var FIELD_ACCESSORS = exports.FIELD_ACCESSORS = {};
-
-(() => {
-
-    var f, subTypes, st;
-
-    f = function (formField) {
-        return formField.ID || null;
-    };
-
-    st = FIELD_ACCESSORS[FIELD_TYPE.FormReference.value] = {};
-    subTypes = FIELD_TYPE.FormReference.subTypes;
-    for (var name in subTypes) {
-        st[subTypes[name].value] = { getValue: f };
-    }
-
-    st = FIELD_ACCESSORS[FIELD_TYPE.CustomField.value] = {};
-    subTypes = FIELD_TYPE.CustomField.subTypes;
-
-    f = function (formField) {
-        return norm.normalizeDate(formField.Value);
-    };
-    ['Date', 'DateTime'].forEach(name => st[subTypes[name].value] = { getValue: f });
-
-    st[subTypes.YesNo.value] = {
-        getValue: function (formField) {
-            return norm.normalizeBoolean(formField.Value);
-        }
-    };
-
-    f = function (formField) {
-        return norm.normalizeNumber(formField.Value);
-    };
-
-    ['Money', 'Number', 'Money4', 'Percent', 'FixedNumber', 'Decimal',
-        'MeasureLengthSmall', 'MeasureLengthMedium', 'MeasurePressure', 'MeasureArea',
-        'MeasureWeight', 'MeasureForce', 'MeasureDensity', 'MeasureFlow', 'MeasureTemperature']
-        .forEach(name => st[subTypes[name].value] = { getValue: f });
-
-
-    st[subTypes.List.value] = {
-        getValue: function (formField, processField) {
-            if (!processField) {
-                return formField.Value;
-            }
-            assert.equal(formField.Uid, processField.Uid);
-            return formField.Value ? processField.Options.find(option => option.Text == formField.Value).ID : null;
-        }
-    };
-
-    var MULTI_LIST_DELIMITER = ', ';
-    st[subTypes.ListMultiSelect.value] = {
-        getValue: function (formField, processField) {
-            var result = formField.Value.split(MULTI_LIST_DELIMITER);
-            if (!processField) {
-                return result;
-            }
-            assert.equal(formField.Uid, processField.Uid);
-            return result.filter(value => value).map(value => processField.Options.find(option => option.Text == value).ID);
-        }
-    };
-
-    var DEPRICATED_TABLE_COL_DELIMITER = ' %%';
-    var DEPRICATED_TABLE_ROW_DELIMITER = ' ||';
-
-    st[subTypes.DeprecatedTable.value] = {
-        getValue: function (formField, processField) {
-            assert.equal(formField.Uid, processField.Uid);
-            var result = [];
-            formField.Value.split(DEPRICATED_TABLE_ROW_DELIMITER).forEach(row => {
-                var normalizedRow = {};
-                row.split(DEPRICATED_TABLE_COL_DELIMITER).forEach((value, idx) => {
-                    value = value.trim();
-                    if (value) {
-                        normalizedRow[processField.Options[idx].Text] = value;
-                    }
-                });
-                if (!rpmUtil.isEmpty(normalizedRow)) result.push(normalizedRow);
-            });
-            return result;
-        }
-    };
-
-    f = function (formField) {
-        return formField.Value;
-    };
-
-    ['Text', 'Http', 'Description', 'TextArea', 'Link', 'SpecialPhone', 'LocationLatLong',
-        'LocationUTM', 'LocationDLS', 'LocationNTS', 'WellUWI', 'WellAPI', 'Html']
-        .forEach(name => st[subTypes[name].value] = { getValue: f });
-
-})();
 
 
 Object.seal(DATA_TYPE);
