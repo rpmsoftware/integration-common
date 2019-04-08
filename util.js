@@ -4,7 +4,7 @@ const moment = require('moment');
 require('string').extendPrototype();
 
 exports.readConfig = function (envName, fileName) {
-    var config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'ascii');
+    const config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'utf8');
     return JSON.parse(config);
 };
 
