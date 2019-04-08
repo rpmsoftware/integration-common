@@ -117,11 +117,7 @@ API.prototype.checkUserPassword = function (userName, password) {
 };
 
 API.prototype.getStaffList = function (includeGuests) {
-    let body;
-    if (includeGuests) {
-        body = { IncludeGuest: rpmUtil.toBoolean(includeGuests) };
-    }
-    return this.request('StaffList', body);
+    return this.request('StaffList', { IncludeGuest: rpmUtil.toBoolean(includeGuests) });
 };
 
 API.prototype.getStaffGroups = function () {
