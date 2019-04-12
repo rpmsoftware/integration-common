@@ -789,7 +789,7 @@ API.prototype.getAccountGroupsInUse = function () {
                 return;
             }
             result[acc.AccountGroupID] = {
-                AccountGroupID: acc.AccountGroupID,
+                ID: acc.AccountGroupID,
                 AccountGroup: acc.AccountGroup,
                 SupplierID: acc.SupplierID
             };
@@ -806,7 +806,7 @@ API.prototype.createAccount = function (name, customer, supplier, location, grou
     customer = customer && (customer.CustomerID || customer.Customer || customer);
     supplier = supplier && (supplier.SupplierID || supplier.Supplier || supplier);
     location = location && (location.LocationID || location.Name || location);
-    group = group && (group.AccountGroupID || group.AccountGroup || group);
+    group = group && (group.ID || group.AccountGroup || group);
 
     data[typeof customer === 'number' ? 'CustomerID' : 'CustomerName'] = customer;
     data[typeof supplier === 'number' ? 'SupplierID' : 'SupplierName'] = supplier;
