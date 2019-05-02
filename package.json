@@ -1,11 +1,12 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.3.4",
+    "version": "4.4.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "api-wrappers.js",
         "mssql.js",
+        "freshdesk.js",
         "hash.js",
         "util.js",
         "field-patcher.js",

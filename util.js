@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const moment = require('moment');
+const assert = require('assert');
 require('string').extendPrototype();
 
 exports.readConfig = function (envName, fileName) {
@@ -332,7 +333,67 @@ var arrayPrototypeExtensions = {
             result.push(copy.splice(Math.trunc(Math.random() * copy.length), 1)[0]);
         }
         return result;
+    },
+
+    aggregate: function (aggrProp, reducer, groupProps) {
+        if (!Array.isArray(groupProps)) {
+            groupProps = Array.prototype.slice.call(arguments);
+            groupProps.shift();
+            groupProps.shift();
+        }
+        assert(groupProps.every(p => typeof p === 'string'));
+        assert(!groupProps.find(p => p === aggrProp));
+        let result = {};
+        this.forEach(e => {
+            let groupValues = {};
+            groupProps.forEach(p => groupValues[p] = getEager(e, p));
+            let key = `[${getValues(groupValues).join('][')}]`
+            let grp = result[key];
+            if (!grp) {
+                grp = result[key] = groupValues;
+                grp[aggrProp] = [];
+            }
+            grp[aggrProp].push(getEager(e, aggrProp));
+        });
+        result = getValues(result);
+        result.forEach(e => e[aggrProp] = e[aggrProp].reduce(reducer));
+        return result;
+    },
+
+    buildHierarchy(groupProps, reducer) {
+        assert(Array.isArray(groupProps));
+        let idxLast = groupProps.length;
+        assert(idxLast > 0);
+        assert(groupProps.every(e => typeof e === 'string'));
+        let result = {};
+        --idxLast;
+        this.forEach(e => {
+            let current = result;
+            groupProps.forEach((p, ii) => {
+                let key = String(getEager(e, p));
+                let next = current[key];
+                if (!next) {
+                    next = current[key] = ii < idxLast ? {} : [];
+                }
+                current = next;
+            });
+            current.push(e);
+        });
+
+        function reduce(obj) {
+            if (Array.isArray(obj)) {
+                return reducer(obj);
+            }
+            for (let p in obj) {
+                obj[p] = reduce(obj[p]);
+            }
+            return obj;
+        }
+
+        return reducer ? reduce(result) : result;
     }
+
+
 
 };
 
@@ -634,6 +695,10 @@ exports.validateString = function (value) {
         throw new Error(`Non-empty string is expected ("${value}")`);
     }
     return value;
+};
+
+exports.toMoment = function (value) {
+    return moment.isMoment(value) ? value : moment(value);
 };
 
 const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];

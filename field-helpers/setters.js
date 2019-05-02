@@ -186,7 +186,7 @@ add('FieldTableDefinedRow',
         const errors = [];
         let rownum = 0;
         for (let rowDef of config.tableRows) {
-            const srcRow = data[rowDef.name];
+            const srcRow = data[rowDef.name] || {};
             const fieldValues = [];
             rows.push({ RowID: getRowID(rowDef.id), TemplateDefinedRowID: rowDef.id, Fields: fieldValues });
             ++rownum;
@@ -286,13 +286,20 @@ add('FieldTable',
             getRowID = () => (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
         } else if (config.key) {
             const rowIDs = {};
+            const keylessRows = [];
             for (let row of existingRows) {
                 const field = rpm.getFieldByUid.call(row, config.key, true);
                 let key = field.Values[0];
                 key = key && key.Value;
-                rowIDs[key] = row.RowID;
+                if (key && !rowIDs[key]) {
+                    rowIDs[key] = row.RowID;
+                } else {
+                    keylessRows.push(row.RowID);
+                }
             }
-            getRowID = key => rowIDs[key] || undefined;
+            const blankID = config.createKeys ? 0 : undefined;
+            getRowID = key => key === undefined ? keylessRows.shift() :
+                (rowIDs[key] || keylessRows.shift() || blankID);
         } else {
             getRowID = rowID => +rowID || undefined;
         }
@@ -310,7 +317,6 @@ add('FieldTable',
             rows.push({ RowID: rowID, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
-                console.log(srcRow, tabFieldConf.srcField);
                 if (!srcRow.hasOwnProperty(tabFieldConf.srcField)) {
                     continue;
                 }
@@ -334,7 +340,6 @@ add('FieldTable',
         if (rows.length < 1) {
             return;
         }
-        rows.unshift({ IsDefinition: true });
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
 );
@@ -364,13 +369,8 @@ async function initTableFields(config, rpmField) {
             tabField.UserCanEdit && push(await initField.call(this, { srcField: tabField.Name }, tabField));
         }
     }
-    if (config.key) {
-        config.key = rpm.getField.call(defRow, validateString(config.key), true).Uid;
-    } else {
-        config.key = undefined;
-    }
-
-
+    config.key = config.key ? rpm.getField.call(defRow, validateString(config.key), true).Uid : undefined;
+    config.createKeys = config.key && !!config.tableFields.find(tf => tf.dstUid === config.key);
     return config;
 }
 
@@ -407,7 +407,7 @@ add('DateTime', function (config, data) {
 add('YesNo', function (config, data) {
     data = data[config.srcField];
     if (config.normalize) {
-        data = toBoolean(data[config.srcField]) ? 'Yes' : 'No';
+        data = data === undefined ? null : (toBoolean(data) ? 'Yes' : 'No');
     }
     return { Value: data };
 });
