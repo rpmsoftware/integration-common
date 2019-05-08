@@ -504,15 +504,15 @@ exports.singleRun = function (callback) {
 };
 
 function normalizeDate(date) {
-    var result;
+    let result;
     if (date instanceof Date) {
         result = date;
     } else if (typeof result === 'string' && result.toUpperCase().indexOf('T') >= 0) {
         result = moment(result).toDate();
-    } else {
+    } else if (date !== undefined && date !== null) {
         result = new Date(date);
     }
-    if (isNaN(result.getTime())) {
+    if (!result || isNaN(result.getTime())) {
         throw new Error('Invalid date: ' + date);
     }
     return result;

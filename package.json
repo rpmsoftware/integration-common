@@ -1,9 +1,10 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.4.0",
+    "version": "4.5.0",
     "author": "Dmitriy Serdyukov",
     "files": [
+        "amqp.js",
         "api-wrappers.js",
         "mssql.js",
         "freshdesk.js",

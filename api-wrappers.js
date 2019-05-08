@@ -564,7 +564,6 @@ API.prototype.addFormFile = function (formID, fileName, fileData, folderID, desc
 API.prototype.editFormFile = async function (fileID, formID, fileName, folderID, description, shared) {
     if (this.validateParameters) {
         fileID = rpmUtil.normalizeInteger(fileID);
-        fileID = rpmUtil.normalizeInteger(formID);
         fileName = fileName === undefined ? undefined : rpmUtil.validateString(fileName);
         folderID = folderID === undefined ? undefined : rpmUtil.normalizeInteger(folderID);
     }
