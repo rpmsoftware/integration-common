@@ -1091,6 +1091,13 @@ API.prototype.createStaff = function (contact, role, enabled) {
     });
 };
 
+API.prototype.getSupplier = function (id) {
+    if (this.validateParameters) {
+        id = rpmUtil.normalizeInteger(id);
+    }
+    return this.request('Supplier', { SupplierID: id });
+};
+
 exports.RpmApi = API;
 
 exports.FIELD_FORMAT = Object.seal({
