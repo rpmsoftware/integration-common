@@ -22,7 +22,6 @@ class API {
         rpmUtil.validateString(key);
         this.url = url.toLowerCase().ensureRight('/').ensureRight('api/').ensureRight('v2/').toString();
         Object.defineProperty(this, 'client', { value: new Client({ user: key, password: 'X' }) });
-
     }
 
     getUrl(endpoint) {
@@ -57,12 +56,11 @@ class API {
     }
 
     request(method, url, options) {
-        method = method.toLowerCase();
-        rpmUtil.logger.debug(`${method} ${url} ${this.logRequestData && options ? '\n' + JSON.stringify(options) : ''}`);
+        rpmUtil.logger.debug(`${method.toUpperCase()} ${url} ${this.logRequestData && options ? '\n' + JSON.stringify(options) : ''}`);
         options = options || {};
         options.headers = DEFAULT_HEADERS;
         return new Promise((resolve, reject) => {
-            this.client[method](url, options, (data, response) => {
+            this.client[method.toLowerCase()](url, options, (data, response) => {
                 switch (response.statusCode) {
                     case 200:
                     case 201:
@@ -84,8 +82,6 @@ class API {
 
             })
         });
-
-
     };
 
     getTimeEntries(before, after, billable) {
@@ -108,21 +104,30 @@ class API {
 
     getAgents() {
         return this.getPaged('agents');
-
     }
 
     getAgent(id) {
         return this.get('agents/' + rpmUtil.normalizeInteger(id));
-
     }
+
     getCompany(id) {
         return this.get('companies/' + rpmUtil.normalizeInteger(id));
-
     }
+
     getCompanies() {
         return this.getPaged('companies');
-
     }
+
+    getTicket(id) {
+        return this.get('tickets/' + rpmUtil.normalizeInteger(id));
+    }
+
+    getTickets(since) {
+        return this.getPaged('tickets', {
+            updated_since: since ? (moment.isMoment(since) ? since : moment(since)).toISOString() : undefined
+        });
+    }
+
 }
 
 module.exports = API;
