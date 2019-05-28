@@ -3,7 +3,7 @@ const moment = require('moment');
 const rpm = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');
-const format = require('util').format;
+const { format } = require('util');
 const common = require('./common');
 
 
@@ -362,7 +362,11 @@ async function initTableFields(config, rpmField) {
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
-            push(await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true)));
+            tabFieldConf = await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true));
+            if (!tabFieldConf.srcField) {
+                tabFieldConf.srcField = tabFieldConf.dstField;
+            }
+            push(tabFieldConf);
         }
     } else {
         for (let tabField of defRow.Fields) {
@@ -414,18 +418,19 @@ add('YesNo', function (config, data) {
 
 const EMPTY = { Value: null, ID: 0 };
 
-add('List', async function (config, data) {
+add('List', function (config, data) {
     const value = data[config.srcField];
     if (!value) {
         return EMPTY;
     }
-    let option = await this.api.getFields(config.processID);
-    option = option.getFieldByUid(config.dstUid, true);
-    option = option.Options.find(o => o.Text === value);
+    let option = config.options.find(o => o.Text === value);
     return option ? { Value: option.Text, ID: option.ID } : (config.demand ?
         Object.assign({ Errors: getErrorMessage(config, 'Unknown value: ' + value) }, EMPTY) :
         { Value: value }
     );
+}, async function (config, rpmField) {
+    config.options = getEager(rpmField, 'Options');
+    return config;
 });
 
 fieldType = rpm.OBJECT_TYPE.FormReference;

@@ -445,9 +445,9 @@ API.prototype.getFields = async function (processID) {
     const process = response.Process;
     delete response.Process;
     assert.equal(Object.keys(response).length, 0);
-    process.Fields.forEach(field => {
-        Object.defineProperty(field, '_processID', { value: processID });
-    });
+    process.Fields.forEach(field =>
+        Object.defineProperty(field, 'processID', { value: processID })
+    );
     Object.assign(response, process);
     return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
 };
@@ -1716,13 +1716,15 @@ exports.isListField = function (field) {
     return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
 };
 
-exports.isTableField = function (field) {
-    var customField = FIELD_TYPE.CustomField;
+function isTableField(field) {
+    const customField = FIELD_TYPE.CustomField;
     return field.FieldType === customField.value && (
         field.SubType == customField.subTypes.FieldTable.value ||
         field.SubType == customField.subTypes.FieldTableDefinedRow.value
     );
-};
+}
+
+exports.isTableField = isTableField;
 
 const STAFF_FILTERS = {};
 ['Role', 'StaffGroup', 'Enabled'].forEach(prop => STAFF_FILTERS[prop] = rpmUtil.getEager(OBJECT_TYPE, prop));
@@ -1740,3 +1742,10 @@ exports.getStaffFilters = function (field) {
     }
     return result;
 }
+
+exports.getDefinitionRow = function (field) {
+    assert(isTableField(field));
+    const defRow = field.Rows.find(row => row.IsDefinition);
+    assert.equal(typeof defRow, 'object', 'No definition row');
+    return defRow;
+};
