@@ -37,6 +37,7 @@ function API(url, key, postRequest) {
     formUrlTemplate[0] = 'secure';
     formUrlTemplate = formUrlTemplate.join('.');
     this.formUrlTemplate = `https://${formUrlTemplate}/rpm/page/form.aspx?item=%d`;
+    this.validateParameters = true;
 }
 
 rpmUtil.defineStandardProperty(API.prototype, 'parallelRunner', () => {
@@ -1170,8 +1171,8 @@ var DATA_TYPE = exports.DATA_TYPE = {
     Percent: 17,
     DeprecatedFormula4: 18,    // Refers to a formula money field
     FixedNumber: 19, // Fixed
-    SpecialPhone: 20, // WTF?
-    LocationLatLong: 21, // WTF?
+    SpecialPhone: 20,
+    LocationLatLong: 21,
     Decimal: 22,
     LocationUTM: 23,
     LocationDLS: 24,
