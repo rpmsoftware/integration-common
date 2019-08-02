@@ -991,8 +991,11 @@ API.prototype.createAgency = function (data) {
 API.prototype.editAgency = function (id, data) {
     data = data || id;
     assert.equal(typeof data, 'object');
-    if (typeof id === 'number') {
+    const type = typeof id;
+    if (type === 'number') {
         data.AgencyID = id;
+    } else if (type === 'string') {
+        data.Agency = id;
     }
     return this.request('AgencyEdit', { Agency: data }).then(a => extractContact(this.tweakDates(a)));
 };
