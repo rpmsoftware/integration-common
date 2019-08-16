@@ -360,7 +360,7 @@ var arrayPrototypeExtensions = {
         return result;
     },
 
-    buildHierarchy(groupProps, reducer) {
+    buildHierarchy: function (groupProps, reducer) {
         assert(Array.isArray(groupProps));
         let idxLast = groupProps.length;
         assert(idxLast > 0);
@@ -391,9 +391,23 @@ var arrayPrototypeExtensions = {
         }
 
         return reducer ? reduce(result) : result;
+    },
+
+    toSet: function () {
+        const result = [];
+        for (let ii = 0; ii < this.length; ii++) {
+            const element = this[ii];
+            let duplicate;
+            for (let jj = ii + 1; jj < this.length; jj++) {
+                duplicate = element === this[jj];
+                if (duplicate) {
+                    break;
+                }
+            }
+            !duplicate && result.push(element);
+        }
+        return result;
     }
-
-
 
 };
 

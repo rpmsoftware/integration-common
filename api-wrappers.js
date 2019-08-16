@@ -1102,6 +1102,50 @@ API.prototype.getSupplier = function (id) {
     return this.request('Supplier', { SupplierID: id });
 };
 
+
+API.prototype.createAccessValidator = async function (inConfig) {
+    const config = {
+        users: [],
+        roles: []
+    };
+    if (inConfig.users) {
+        config.users = rpmUtil.toArray(inConfig.users).toSet();
+    }
+    if (inConfig.roles) {
+        const roles = rpmUtil.toArray(inConfig.roles).toSet();
+        if (roles.length > 0) {
+            let rpmRoles = await this.getRoles();
+            rpmRoles = rpmRoles.Roles;
+            for (let roleName of roles) {
+                const role = rpmRoles.find(r => r.Name === roleName);
+                role ? config.roles.push(role.ID) : console.warn('Role not found: ' + roleName);
+            }
+        }
+    }
+    return async (username, password) => {
+        if (typeof username === 'object') {
+            password = username.password;
+            username = username.username;
+        }
+        if (config.users.length < 1 && config.roles.length < 1) {
+            throw errors.MSG_UNAUTHORIZED_USER;
+        }
+        let user = await this.checkUserPassword(username, password);
+        if (!user.Success) {
+            throw 'Invalid password';
+        }
+        if (config.users.contains(username)) {
+            return;
+        }
+        user = await this.getStaffList(true);
+        user = user.StaffList.find(u => u.Username === username);
+        if (!config.roles.find(r => r === user.RoleID)) {
+            throw errors.MSG_UNAUTHORIZED_USER;
+        }
+    };
+}
+
+
 exports.RpmApi = API;
 
 exports.FIELD_FORMAT = Object.seal({
