@@ -495,7 +495,7 @@ API.prototype.getForms = function (processOrId, viewID) {
 
 API.prototype.getFormList = function (processID, viewID, refType) {
     if (this.validateParameters) {
-        assert.strictEqual(processID, 'number');
+        assert.strictEqual(typeof processID, 'number');
         assert(arguments.length <= 3);
     }
     const request = { ProcessID: processID };
