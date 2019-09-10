@@ -186,7 +186,10 @@ add('FieldTableDefinedRow',
         const errors = [];
         let rownum = 0;
         for (let rowDef of config.tableRows) {
-            const srcRow = data[rowDef.name] || {};
+            const srcRow = data[rowDef.name];
+            if (!srcRow) {
+                continue;
+            }
             const fieldValues = [];
             rows.push({ RowID: getRowID(rowDef.id), TemplateDefinedRowID: rowDef.id, Fields: fieldValues });
             ++rownum;

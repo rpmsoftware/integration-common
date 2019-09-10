@@ -407,10 +407,24 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
+API.prototype._archiveForm = function (formID) {
+    if (this.validateParameters) {
+        formID = rpmUtil.normalizeInteger(formID);
+    }
+    return this.request('ProcFormArchive', { FormID: formID });
+};
+
+API.prototype._unarchiveForm = function (formID) {
+    if (this.validateParameters) {
+        formID = rpmUtil.normalizeInteger(formID);
+    }
+    return this.request('ProcFormUnarchive', { FormID: formID });
+};
+
 API.prototype.setFormArchived = function (formID, archived) {
-    archived = archived === undefined || rpmUtil.toBoolean(archived);
-    formID = rpmUtil.normalizeInteger(formID);
-    return this.request(archived ? 'ProcFormArchive' : 'ProcFormUnarchive', { FormID: formID });
+    return (archived === undefined || rpmUtil.toBoolean(archived)) ?
+        this._archiveForm(formID) :
+        this._unarchiveForm(formID);
 };
 
 API.prototype.trashForm = function (formID) {
