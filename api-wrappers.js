@@ -17,7 +17,7 @@ function API(url, key, postRequest) {
         url = url.url;
     }
     url = url.toLowerCase().ensureRight('/');
-    this.url = url.ensureRight('Api2.svc/').toString();
+    this.url = url.ensureRight('api2.svc/').toString();
     this.key = key;
     if (!postRequest) {
         postRequest = 'node-rest';
