@@ -58,10 +58,22 @@ const COMMON_SETTERS = {
         data = data && data.trim();
         return data ? '' + createHash(data) : null;
     },
+
     trim: function (config, data) {
         data = data[config.srcField];
         return data && data.trim() || null;
     },
+
+    formNumberToID: async function (config, data) {
+        assert(config.processID > 0);
+        const srcValue = data[config.srcField];
+        if (!srcValue) {
+            return 0;
+        }
+        const form = await this.api.demandForm(config.processID, srcValue);
+        return form.Form.FormID;
+    },
+
     dictionary: {
         convert: async function (config, data) {
             const srcValue = data[config.srcField];
@@ -414,7 +426,7 @@ add('DateTime', function (config, data) {
 add('YesNo', function (config, data) {
     data = data[config.srcField];
     if (config.normalize) {
-        data = data === undefined ? null : (toBoolean(data) ? 'Yes' : 'No');
+        data = (data === undefined || data === null) ? null : (toBoolean(data) ? 'Yes' : 'No');
     }
     return { Value: data };
 });
@@ -580,12 +592,12 @@ async function initField(conf, rpmField) {
         const newConf = await gen.init.call(this, conf, rpmField);
         conf = newConf || conf;
     } else {
-        if (conf.hasOwnProperty('srcField')) {
-            validateString(conf.srcField);
-        } else {
-            conf.srcField = rpmField.Name;
-        }
         conf.normalize = conf.hasOwnProperty('normalize') ? toBoolean(conf.normalize) : true;
+    }
+    if (conf.hasOwnProperty('srcField')) {
+        validateString(conf.srcField);
+    } else {
+        conf.srcField = rpmField.Name;
     }
     if (setter) {
         conf.setter = setter;

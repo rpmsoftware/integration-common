@@ -119,13 +119,22 @@ function add(subtype, name, get, init) {
 fieldType = rpm.OBJECT_TYPE.CustomField;
 subTypes = rpm.DATA_TYPE;
 
+const REGEX_PERCENTS = /^(\d+(\.\d+)?)%$/;
+
 add('Percent', function (conf, form) {
-    let result = rpm.getFieldByUid.call(form.Form || form, conf.srcUid, true).Value;
-    if (!result) {
+    const srcField = rpm.getFieldByUid.call(form.Form || form, conf.srcUid, true);
+    const value = srcField.Value;
+    if (!value) {
         return null;
     }
-    result = +result;
-    assert(!isNaN(result));
+    let result = +value;
+    if (isNaN(result)) {
+        assert(!conf.isTableField, `Non-table field expected: ${JSON.stringify(srcField)}`);
+        result = REGEX_PERCENTS.exec(value);
+        assert(result, `Unknown percentage format: ${JSON.stringify(srcField)}`);
+        result = +result[1] / 100;
+    }
+    assert(!isNaN(result), 'Number expected: ' + result);
     return conf.isTableField ? result / 100 : result;
 });
 

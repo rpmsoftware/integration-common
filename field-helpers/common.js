@@ -1,14 +1,18 @@
-const assert = require('assert');
+const { getEager, validateString } = require('../util');
+const { FIELD_TYPE } = require('../api-wrappers');
 
 module.exports = {
     DEFAULT_ACCESSOR_NAME: 'default',
-    getFullType: function (fieldType, subType) {
-        if (typeof fieldType === 'object') {
-            subType = fieldType.SubType;
-            fieldType = fieldType.FieldType;
+    getFullType: function (fieldTypeOrField, subType) {
+        if (typeof fieldTypeOrField === 'object') {
+            subType = fieldTypeOrField.SubType;
+            fieldTypeOrField = fieldTypeOrField.FieldType;
         }
-        assert.equal(typeof fieldType, 'number');
-        assert.equal(typeof subType, 'number');
-        return `RPM_${fieldType}_${subType}`;
+        if (typeof fieldTypeOrField !== 'number' || typeof subType !== 'number') {
+            fieldTypeOrField = getEager(FIELD_TYPE, validateString(fieldTypeOrField));
+            subType = getEager(fieldTypeOrField.subTypes, validateString(subType)).value;
+            fieldTypeOrField = fieldTypeOrField.value;
+        }
+        return `RPM_${fieldTypeOrField}_${subType}`;
     }
 };

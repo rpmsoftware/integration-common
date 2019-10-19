@@ -215,6 +215,38 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     return api.request('ActionEdit', data);
 };
 
+API.prototype.addFormAction = function (formID, data) {
+    if (this.validateParameters) {
+        formID = rpmUtil.normalizeInteger(formID);
+        data = data.Action || data;
+        assert.equal(typeof data, 'object');
+        rpmUtil.validateString(data.Description);
+        assert(data.Due);
+    }
+    let action = Object.assign({}, data, { Form: { FormID: formID } });
+    action.Assignee = {
+        ParticipantID: (action.Assignee ? action.Assignee.ParticipantID : action.ParticipantID) || undefined,
+        UserID: (action.Assignee ? action.Assignee.UserID : action.UserID) || undefined
+    };
+    this.validateParameters && assert(+action.Assignee.UserID || +action.Assignee.ParticipantID,
+        'Assignee UserID or ParticipantID required');
+
+    return this.request('ActionEdit', { Action: action });
+};
+
+API.prototype.editFormAction = function (formID, actionID, data) {
+    if (this.validateParameters) {
+        formID = rpmUtil.normalizeInteger(formID);
+        actionID = rpmUtil.normalizeInteger(actionID);
+        data = data.Action || data;
+        assert.equal(typeof data, 'object');
+        rpmUtil.validateString(data.Description);
+        assert(data.Due);
+    }
+    let action = Object.assign({}, data, { Form: { FormID: formID }, ActionID: actionID });
+    return this.request('ActionEdit', { Action: action });
+};
+
 const PROC_PROMISE_PROPERTY = Symbol();
 
 API.prototype.getProcesses = function () {
@@ -521,7 +553,7 @@ API.prototype.getFormList = function (processID, viewID, refType) {
         request.IncludeArchived = !!viewID;
     }
     if (refType !== undefined) {
-        this.validateParameters && assert.strictEqual(type, 'number');
+        this.validateParameters && assert.strictEqual(typeof refType, 'number');
         request.ReferenceType = refType;
     }
     return this.request('ProcFormList', request);
@@ -573,7 +605,7 @@ API.prototype.addFormFile = function (formID, fileName, fileData, folderID, desc
         Description: description || undefined,
         FolderID: +folderID || undefined,
         IsStaffOnly: !shared
-    });
+    }, false);
 };
 
 API.prototype.editFormFile = async function (fileID, formID, fileName, folderID, description, shared) {
@@ -628,7 +660,7 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
         properties = {};
     }
     fields = fields || [];
-    properties = { Form: properties };
+    properties = { Form: Object.assign({}, properties) };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
     properties.Form.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
@@ -891,14 +923,15 @@ API.prototype.editCustomer = function (nameOrID, data) {
         };
     }
     data = data.Customer || data;
+    const customer = Object.assign({}, data);;
     if (typeof nameOrID === 'number') {
-        data.CustomerID = nameOrID;
+        customer.CustomerID = nameOrID;
     } else if (data.Name) {
         throw new Error('CustomerID has to be integer');
     } else {
-        data.Name = nameOrID;
+        customer.Name = nameOrID;
     }
-    return this.request('CustomerEdit', { Customer: data }).then(result => this._normalizeCustomer(result));
+    return this.request('CustomerEdit', { Customer: customer }).then(result => this._normalizeCustomer(result));
 };
 
 API.prototype.addCustomerContact = function (customerID, contact, primary) {
@@ -1048,6 +1081,10 @@ API.prototype.getProcessActions = function (processID) {
     return this.request('ProcActions', { ProcessID: rpmUtil.normalizeInteger(processID) });
 };
 
+API.prototype.getFormActions = function (formID) {
+    return this.request('ProcActions', { FormID: rpmUtil.normalizeInteger(formID) });
+};
+
 API.prototype.addFormParticipant = function (form, process, name) {
     if (name === undefined) {
         name = process;
@@ -1159,6 +1196,19 @@ API.prototype.createAccessValidator = async function (inConfig) {
     };
 }
 
+API.prototype.addNoteByFormID = function (formID, note, noteForStaff, user) {
+    if (this.validateParameters) {
+        formID = rpmUtil.normalizeInteger(formID);
+    }
+    return this.request('ProcFormNoteAdd', {
+        Form: {
+            FormID: formID,
+            NoteBy: user || undefined,
+            NoteForStaff: noteForStaff,
+            Note: note
+        }
+    });
+};
 
 exports.RpmApi = API;
 
@@ -1744,6 +1794,15 @@ function validateFieldType(field, fieldTypeName, subTypeName) {
     return field;
 }
 
+function isFieldType() {
+    try {
+        validateFieldType.apply(undefined, arguments);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
 function validateProcessReference(field, processID) {
     field = validateFieldType(field, 'FormReference', 'RestrictedReference');
     if (processID !== undefined && field.ProcessID !== processID) {
@@ -1761,10 +1820,16 @@ function isProcessReference(field, processID) {
     }
 }
 
+function isCustomerReference(field) {
+    return isFieldType(field, 'FormReference', 'Customer');
+}
+
 
 exports.validateFieldType = validateFieldType;
 exports.validateProcessReference = validateProcessReference;
 exports.isProcessReference = isProcessReference;
+exports.isFieldType = isFieldType;
+exports.isCustomerReference = isCustomerReference;
 
 
 Object.seal(DATA_TYPE);

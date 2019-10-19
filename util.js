@@ -292,13 +292,12 @@ var arrayPrototypeExtensions = {
 
     },
 
-    find: function (callback, includeIndex) {
-        for (var ii = 0; ii < this.length; ii++) {
-            var element = this[ii];
-            if (callback(element, ii)) {
-                return includeIndex ? { value: element, index: ii } : element;
-            }
+    demand: function () {
+        const result = this.find.apply(this, arguments);
+        if (result === undefined) {
+            throw new Error('Array element not found');
         }
+        return result;
     },
 
     toObject: function (keyProperty) {
@@ -718,3 +717,9 @@ exports.toMoment = function (value) {
 const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];
 
 exports.toBase64 = data => (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64');
+
+exports.createPropertySorter = (property) => (a, b) => {
+    const nameA = a[property];
+    const nameB = b[property];
+    return nameA === nameB ? 0 : (nameA < nameB ? -1 : 1);
+};
