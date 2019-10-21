@@ -1,4 +1,5 @@
 'use strict';
+const debug = require('debug')('rpm:util');
 const fs = require('fs');
 const moment = require('moment');
 const assert = require('assert');
@@ -472,7 +473,7 @@ exports.createObjectSerializer = function (object, fileName) {
 
     function doSave() {
         triggered = false;
-        console.log('Saving state');
+        debug('Saving state');
         fs.writeFile(fileName, JSON.stringify(object), err => {
             running = false;
             if (err) {
@@ -563,7 +564,7 @@ var PARALLEL_REQUESTS = 20;
 exports.createParallelRunner = function (parallelRequests) {
     if (typeof parallelRequests !== 'number' || parallelRequests < 1) {
         parallelRequests = PARALLEL_REQUESTS;
-        console.log('Using default number of parallel requests: ', PARALLEL_REQUESTS);
+        debug('Using default number of parallel requests: ', PARALLEL_REQUESTS);
     }
     var queue = [];
     var running = 0;

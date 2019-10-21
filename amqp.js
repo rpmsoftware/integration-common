@@ -1,4 +1,5 @@
 const amqplib = require('amqplib');
+const debug = require('debug')('rpm:amqp');
 const DEFAULT_URL = process.env.CLOUDAMQP_URL || 'amqp://localhost';
 const { logErrorStack } = require('./util');
 
@@ -7,7 +8,7 @@ class Sender {
         this.channel = channel;
         this.queue = queue;
         channel.assertQueue(queue, { durable: true });
-        console.log('Sender created. Queue: %s', queue);
+        debug('Sender created. Queue: %s', queue);
     }
 
     async close(closeConnection) {
@@ -32,11 +33,11 @@ class Sender {
 }
 
 async function createChannel(url) {
-    console.log('AMQP. Connecting to ', url);
+    debug('AMQP. Connecting to ', url);
     const connect = await amqplib.connect(url);
     try {
         const channel = await connect.createChannel();
-        console.log('Channel created. URL: %s', url);
+        debug('Channel created. URL: %s', url);
         return channel;
     } catch (error) {
         connect.close();
@@ -74,7 +75,7 @@ exports.createReciever = async function (queue, url, callback) {
         });
         return p;
     }, { noAck: false });
-    console.log('Listening');
+    debug('Listening');
     return channel;
 };
 

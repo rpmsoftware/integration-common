@@ -1,3 +1,4 @@
+const debug = require('debug')('rpm:api');
 const rpmUtil = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
@@ -30,8 +31,6 @@ function API(url, key, postRequest) {
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
-    this.logger = rpmUtil.logger;
-
     let formUrlTemplate = new URL(url).hostname.split('.');
     assert.equal(formUrlTemplate[0], 'api');
     formUrlTemplate[0] = 'secure';
@@ -82,11 +81,11 @@ API.prototype.request = function (endPoint, data, log) {
     const url = api.getUrl(endPoint);
     if (log === undefined) {
         log = api.logRequests;
-        if (log === undefined) {
-            log = true;
-        }
     }
-    this.logger.debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
+    if (log === undefined) {
+        log = true;
+    }
+    debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
     return this.postRequest(url, data, api.getHeaders()).then(data => {
         const responseTime = new Date();

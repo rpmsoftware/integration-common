@@ -1,6 +1,7 @@
 'use strict';
 (() => {
 
+    const debug = require('debug')('rpm:webhooks');
     var util = require('util');
     var lib = require('./express');
     var enumObjectType = require('./api-wrappers').OBJECT_TYPE;
@@ -13,7 +14,7 @@
     };
 
     function validateHeaders(headers) {
-        console.log('validateHeaders()');
+        debug('validateHeaders()');
         for (var key in headerPatterns) {
             var value = headers[key];
             if (!headerPatterns[key].test(value)) {
@@ -117,7 +118,7 @@
     }
 
     function validateSignature(signRecieved, data, secret) {
-        console.log('validateSignature()');
+        debug('validateSignature()');
         var signCalculated = getSignature(data, secret);
         if (signCalculated !== signRecieved) {
             throw new Error(util.format('Wrong signature. Calculated: %s, recieved: %s', signCalculated, signRecieved));

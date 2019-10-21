@@ -1,4 +1,5 @@
 /* global Promise */
+const debug = require('debug')('rpm:office365wh');
 const uuid = require('node-uuid');
 const Microsoft = require("node-outlook").Microsoft;
 const outlook = Microsoft.OutlookServices;
@@ -225,7 +226,7 @@ function respondToSubscriptionValidation(req, res) {
     if (validationToken) {
         res.type('txt');
         res.status(200);
-        console.log('Responding to Subscription Validation Request with "%s"', validationToken);
+        debug('Responding to Subscription Validation Request with "%s"', validationToken);
         res.send(validationToken);
     }
     return !!validationToken;
