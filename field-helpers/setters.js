@@ -296,40 +296,35 @@ add('FieldTable',
         const existingRows = form ? rpm.getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
 
-        let getRowID;
-        if (Array.isArray(data)) {
-            getRowID = () => (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
+        const isArray = !Array.isArray(data);
+        let getExistingRow;
+        if (isArray) {
+            getExistingRow = () => existingRows && existingRows.shift();
         } else if (config.key) {
-            const rowIDs = {};
-            const keylessRows = [];
-            for (let row of existingRows) {
-                const field = rpm.getFieldByUid.call(row, config.key, true);
-                let key = field.Values[0];
-                key = key && key.Value;
-                if (key && !rowIDs[key]) {
-                    rowIDs[key] = row.RowID;
-                } else {
-                    keylessRows.push(row.RowID);
-                }
+            const getKey = row => {
+                let key = rpm.getFieldByUid.call(row, config.key, true).Values[0];
+                return key && key.Value;
+            };
+            getExistingRow = key => {
+                assert(key !== undefined, 'Row key is required');
+                const idx = existingRows.findIndex(r => key === getKey(r));
+                return idx < 0 ? undefined : existingRows.splice(idx, 1);
             }
-            const blankID = config.createKeys ? 0 : undefined;
-            getRowID = key => key === undefined ? keylessRows.shift() :
-                (rowIDs[key] || keylessRows.shift() || blankID);
         } else {
-            getRowID = rowID => +rowID || undefined;
+            getExistingRow = rowID => existingRows.find(r => r.RowID === +rowID) || undefined;
         }
 
-        const rows = [];
+        let rows = [];
         let errors = [];
         let rownum = 0;
         for (let key in data) {
             const srcRow = data[key];
-            const rowID = getRowID(key);
-            if (rowID === undefined) {
+            const existingRow = getExistingRow(key);
+            if (!existingRow && !isArray) {
                 continue;
             }
             let fieldValues = [];
-            rows.push({ RowID: rowID, Fields: fieldValues });
+            rows.push({ RowID: existingRow && existingRow.RowID || 0, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
                 if (!srcRow.hasOwnProperty(tabFieldConf.srcField)) {
@@ -347,13 +342,8 @@ add('FieldTable',
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
         }
-        const emptyFields = config.tableFields.map(tabFieldConf => ({ Values: [], Uid: tabFieldConf.dstUid }));
-        let id;
-        while ((id = getRowID())) {
-            rows.push({ RowID: id, Fields: emptyFields });
-        }
-        if (rows.length < 1) {
-            return;
+        if (!isArray) {
+            rows = rows.concat(existingRows);
         }
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
