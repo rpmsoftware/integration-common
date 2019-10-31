@@ -296,7 +296,7 @@ add('FieldTable',
         const existingRows = form ? rpm.getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
 
-        const isArray = !Array.isArray(data);
+        const isArray = Array.isArray(data);
         let getExistingRow;
         if (isArray) {
             getExistingRow = () => existingRows && existingRows.shift();
@@ -308,10 +308,15 @@ add('FieldTable',
             getExistingRow = key => {
                 assert(key !== undefined, 'Row key is required');
                 const idx = existingRows.findIndex(r => key === getKey(r));
-                return idx < 0 ? undefined : existingRows.splice(idx, 1);
+                return idx < 0 ? undefined : existingRows.splice(idx, 1)[0];
             }
         } else {
-            getExistingRow = rowID => existingRows.find(r => r.RowID === +rowID) || undefined;
+            getExistingRow = rowID => {
+                const key = +rowID;
+                assert(typeof key === 'number', 'Numeric key is required: ' + rowID);
+                const idx = existingRows.findIndex(r => key === r.RowID);
+                return idx < 0 ? undefined : existingRows.splice(idx, 1)[0];
+            }
         }
 
         let rows = [];
@@ -341,6 +346,8 @@ add('FieldTable',
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
+            existingRow && config.key && !fieldValues.find(f => f.Uid === config.key) &&
+                fieldValues.push(rpm.getFieldByUid.call(existingRow, config.key, true));
         }
         if (!isArray) {
             rows = rows.concat(existingRows);
