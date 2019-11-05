@@ -331,6 +331,10 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         return this.getApi().createForm(this.ProcessID, fields, properties, fireWebEvent);
     },
 
+    editForm: function (formNumber, fields, properties, fireWebEvent) {
+        return this.getApi().editForm(this.ProcessID, formNumber, fields, properties, fireWebEvent);
+    },
+
     getFormList: function (viewID, refType) {
         return this.getApi().getFormList(this.ProcessID, viewID, refType);
     },
