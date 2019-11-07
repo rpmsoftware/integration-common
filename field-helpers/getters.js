@@ -25,6 +25,17 @@ const COMMON_GETTERS = {
         }
     },
 
+    getFormOwner: {
+        get: async function (config, form) {
+            form = form.Form || form;
+            const staff = (await this.api.getStaffList()).StaffList.demand(s => s.Name === form.Owner);
+            return await this.api.getStaff(staff.ID);
+        },
+        init: function (conf) {
+            return conf;
+        }
+    },
+
     getIfField: {
         get: function (config, form) {
             form = form.Form || form;
@@ -278,6 +289,7 @@ async function init(conf, rpmFields) {
 
 
 async function initField(conf, rpmField, rpmFields) {
+    console.log(conf)
     let type;
     if (rpmField) {
         type = common.getFullType(rpmField);
@@ -293,6 +305,7 @@ async function initField(conf, rpmField, rpmFields) {
     } else {
         getter = getters[common.DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
     }
+    console.log(getter)
     if (getter.init) {
         const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
         conf = newConf || conf;
