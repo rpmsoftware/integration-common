@@ -289,7 +289,6 @@ async function init(conf, rpmFields) {
 
 
 async function initField(conf, rpmField, rpmFields) {
-    console.log(conf)
     let type;
     if (rpmField) {
         type = common.getFullType(rpmField);
@@ -305,7 +304,6 @@ async function initField(conf, rpmField, rpmFields) {
     } else {
         getter = getters[common.DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
     }
-    console.log(getter)
     if (getter.init) {
         const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
         conf = newConf || conf;
