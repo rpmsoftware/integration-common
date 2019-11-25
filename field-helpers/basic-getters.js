@@ -10,8 +10,8 @@ const BASIC_FIELD_GETTERS = {
             };
         },
         get: async function (cfg, object) {
-            const value = getField.call(object, cfg.srcField, true).Value || undefined;
-            return value && (await this.api.getFormList(cfg.process)).Forms.demand(f => f.T === value).N;
+            const id = getField.call(object, cfg.srcField, true).ID || undefined;
+            return id && (await this.api.getFormList(cfg.process)).Forms.demand(f => f.ID === id).N;
         }
     }
 };
