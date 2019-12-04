@@ -187,31 +187,33 @@ API.prototype.getCustomerUsers = function () {
 };
 
 API.prototype.createFormAction = function (description, formOrID, due, userID) {
-    var api = this;
     if (!userID && typeof formOrID !== 'object') {
-        return api.demandForm(formOrID).then(form => api.createFormAction(description, form, due, userID));
+        return this.demandForm(formOrID).then(form => this.createFormAction(description, form, due, userID));
     }
     if (!userID) {
         assert.equal(typeof formOrID, 'object');
         formOrID = formOrID.Form || formOrID;
         userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
         userID = userID && userID.UserID;
-        formOrID = formOrID.FormID;
     }
-    var data = {
+    if (typeof formOrID === 'object') {
+        formOrID = (formOrID.Form || formOrID).FormID;
+    }
+    assert(+formOrID);
+    assert(+userID);
+    return this.request('ActionEdit', {
         Action: {
             Description: description,
             Form: {
-                FormID: rpmUtil.normalizeInteger(formOrID)
+                FormID: +formOrID
             },
             StaffOnly: true,
-            Due: rpmUtil.normalizeDate(due),
+            Due: rpmUtil.toMoment(due).format('YYYY-MM-DD'),
             Assignee: {
-                UserID: rpmUtil.normalizeInteger(userID)
+                UserID: +userID
             }
         }
-    };
-    return api.request('ActionEdit', data);
+    });
 };
 
 API.prototype.addFormAction = function (formID, data) {
