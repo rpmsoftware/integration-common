@@ -1,7 +1,14 @@
 const assert = require('assert');
-const rpmUtil = require('../util');
-const rpm = require('../api-wrappers');
-const common = require('./common');
+const { validateString, toArray, getEager, isEmpty } = require('../util');
+const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
+const {
+    getField,
+    getFieldByUid,
+    validateProcessReference,
+    DATA_TYPE,
+    OBJECT_TYPE,
+    REF_DATA_TYPE
+} = require('../api-wrappers');
 
 const dummy = () => { };
 
@@ -13,7 +20,7 @@ const COMMON_GETTERS = {
 
     getID: function (config, form) {
         form = form.Form || form;
-        return rpm.getFieldByUid.call(form, config.srcUid, true).ID;
+        return getFieldByUid.call(form, config.srcUid, true).ID;
     },
 
     getFormNumber: {
@@ -44,9 +51,9 @@ const COMMON_GETTERS = {
         },
         init: function (conf, rpmField, rpmFields) {
             conf.srcUid = rpmField.Uid;
-            conf.ifUid = rpmFields.getField(rpmUtil.validateString(conf.ifField), true).Uid;
-            rpmUtil.validateString(conf.ifField);
-            const values = rpmUtil.toArray(conf.ifValues);
+            conf.ifUid = rpmFields.getField(validateString(conf.ifField), true).Uid;
+            validateString(conf.ifField);
+            const values = toArray(conf.ifValues);
             assert(values.length > 0, 'No values');
             conf.ifValues = values;
             return conf;
@@ -70,8 +77,8 @@ const COMMON_GETTERS = {
             const targetField = conf.fieldPath.pop();
             const fieldPath = [];
             for (let f of conf.fieldPath) {
-                f = rpm.getField.call(rpmFields, rpmUtil.validateString(f), true);
-                rpm.validateProcessReference(f);
+                f = getField.call(rpmFields, validateString(f), true);
+                validateProcessReference(f);
                 fieldPath.push({ name: f.Name, uid: f.Uid });
                 rpmFields = await this.api.getFields(f.ProcessID);
             }
@@ -98,7 +105,7 @@ for (let name in COMMON_GETTERS) {
 }
 
 function addCommon(name, get, init) {
-    rpmUtil.validateString(name);
+    validateString(name);
     assert(!COMMON_GETTERS[name], `Getter already exists: "${name}"`);
     COMMON_GETTERS[name] = { get, init };
 }
@@ -112,9 +119,9 @@ function add(subtype, name, get, init) {
     if (typeof name === 'function') {
         init = get;
         get = name;
-        name = common.DEFAULT_ACCESSOR_NAME;
+        name = DEFAULT_ACCESSOR_NAME;
     }
-    const fullType = common.getFullType(fieldType, rpmUtil.getEager(subTypes, subtype));
+    const fullType = getFullType(fieldType, getEager(subTypes, subtype));
     let accs = SPECIFIC_GETTERS[fullType];
     if (!accs) {
         accs = SPECIFIC_GETTERS[fullType] = {};
@@ -127,13 +134,13 @@ function add(subtype, name, get, init) {
     return accs[name] = { get, init };
 }
 
-fieldType = rpm.OBJECT_TYPE.CustomField;
-subTypes = rpm.DATA_TYPE;
+fieldType = OBJECT_TYPE.CustomField;
+subTypes = DATA_TYPE;
 
 const REGEX_PERCENTS = /^(\d+(\.\d+)?)%$/;
 
 add('Percent', function (conf, form) {
-    const srcField = rpm.getFieldByUid.call(form.Form || form, conf.srcUid, true);
+    const srcField = getFieldByUid.call(form.Form || form, conf.srcUid, true);
     const value = srcField.Value;
     if (!value) {
         return null;
@@ -194,15 +201,21 @@ async function initTableFields(config, rpmField) {
     config.tableFields = [];
     const rpmTableFields = defRow.Fields;
     for (let tabField of rpmTableFields) {
-        let tabFieldConf = tableFields.find(fc => fc.srcField === tabField.Name) || {};
+        let tabFieldConf = tableFields.find(fc => fc.srcField === tabField.Name);
+        if (!tabFieldConf) {
+            if (config.selectedFieldsOnly) {
+                continue;
+            }
+            tabFieldConf = {};
+        }
         tabFieldConf = await initField.call(this, tabFieldConf, tabField, rpmTableFields);
-        rpmUtil.validateString(tabFieldConf.srcField);
+        validateString(tabFieldConf.srcField);
         tabFieldConf.isTableField = true;
         config.tableFields.push(tabFieldConf);
     }
     config.keyRowID = !!config.keyRowID;
     if (config.key) {
-        rpmUtil.validateString(config.key);
+        validateString(config.key);
         assert(config.tableFields.find(c => c.srcField === config.key), `No key field "${config.key}"`);
     } else {
         config.key = undefined;
@@ -239,7 +252,7 @@ add('FieldTable', async function (conf, form) {
             resultRow[fieldConf.srcField] = await get.call(this, fieldConf, tableForm);
         }
         if (conf.key) {
-            result[rpmUtil.getEager(resultRow, conf.key)] = resultRow;
+            result[getEager(resultRow, conf.key)] = resultRow;
         } else if (conf.keyRowID) {
             result[srcRow.RowID] = resultRow;
         } else {
@@ -250,12 +263,12 @@ add('FieldTable', async function (conf, form) {
 }, initTableFields);
 
 
-fieldType = rpm.OBJECT_TYPE.FormReference;
-subTypes = rpm.REF_DATA_TYPE;
+fieldType = OBJECT_TYPE.FormReference;
+subTypes = REF_DATA_TYPE;
 
 add('RestrictedReference', 'getNumber', async function (config, form) {
     form = form.Form || form;
-    let dst = rpm.getFieldByUid.call(form, config.srcUid, true).ID;
+    let dst = getFieldByUid.call(form, config.srcUid, true).ID;
     if (!dst) {
         return null;
     }
@@ -265,14 +278,105 @@ add('RestrictedReference', 'getNumber', async function (config, form) {
 
 add('RestrictedReference', 'getID', function (config, form) {
     form = form.Form || form;
-    return rpm.getFieldByUid.call(form, config.srcUid, true).ID;
+    return getFieldByUid.call(form, config.srcUid, true).ID;
 });
 
+const FORM_PROPERTY_GETTERS = {
+    _number: 'Number',
+};
+for (let prop in FORM_PROPERTY_GETTERS) {
+    const propertyGetter = FORM_PROPERTY_GETTERS[prop];
+    if (typeof propertyGetter === 'string') {
+        FORM_PROPERTY_GETTERS[prop] = form => (form.Form || form)[propertyGetter];
+    }
+}
+
+add('RestrictedReference', 'getReferencedObject', async function (getterConfig, form) {
+    form = form.Form || form;
+    let targetForm = getFieldByUid.call(form, getterConfig.srcUid, true).ID;
+    if (!targetForm) {
+        return;
+    }
+    targetForm = await this.api.demandForm(targetForm);
+    const result = {};
+    for (let dstProp in getterConfig.fieldMap) {
+        const getterConf = getterConfig.fieldMap[dstProp];
+        result[dstProp] = await(typeof getterConf === 'string' ?
+            getEager(FORM_PROPERTY_GETTERS, getterConf)(targetForm) :
+            get.call(this, getterConf, targetForm)
+        );
+    }
+    return result;
+}, async function (config, rpmField) {
+    const refFormFields = await this.api.getFields(rpmField.ProcessID);
+    const fieldMap = {};
+    const array = Array.isArray(config.fields);
+    for (let dstProp in config.fields) {
+        let resultFieldConf = config.fields[dstProp];
+        if (typeof resultFieldConf === 'string' && FORM_PROPERTY_GETTERS[resultFieldConf]) {
+            if (array) {
+                dstProp = resultFieldConf;
+            }
+        } else {
+            resultFieldConf = await init.call(this, resultFieldConf, refFormFields);
+            if (array) {
+                dstProp = resultFieldConf.srcField;
+            }
+        }
+        assert(!fieldMap[dstProp], `Duplicate destination "${dstProp}"`);
+        fieldMap[dstProp] = resultFieldConf;
+    }
+    assert(!isEmpty(fieldMap));
+    return { fieldMap };
+});
+
+add('CustomerLocation', 'getReferencedObject', async function (config, form) {
+    form = form.Form || form;
+    const locationID = getFieldByUid.call(form, config.srcUid, true).ID;
+    if (!locationID) {
+        return;
+    }
+    const customerID = getFieldByUid.call(form, config.parentField.uid, true).ID;
+    const customer = await this.api.demandCustomer(customerID);
+    const location = customer.Locations.demand(l => l.LocationID === locationID);
+    let result;
+    if (config.fieldMap) {
+        result = {};
+        for (let dst in config.fieldMap) {
+            result[dst] = location[config.fieldMap[dst]];
+        }
+    } else {
+        result = location;
+    }
+    return result;
+
+}, async function (config, rpmField, rpmFields) {
+    const parentField = rpmFields.demand(f => f.Uid === rpmField.ParentUid);
+    let fieldMap;
+    if (config && config.fields) {
+        assert.equal(typeof config.fields, 'object');
+        if (Array.isArray(config.fields)) {
+            fieldMap = {};
+            for (let src of config.fields) {
+                fieldMap[src] = validateString(src);
+            }
+        } else {
+            fieldMap = config.fields;
+        }
+    }
+    return {
+        parentField: {
+            name: parentField.Name,
+            uid: parentField.Uid
+        },
+        fieldMap
+    }
+});
 
 const DEFAULT_GETTER = {
     get: function (config, form) {
         form = form.Form || form;
-        return rpm.getFieldByUid.call(form, config.srcUid, true).Value;
+        return getFieldByUid.call(form, config.srcUid, true).Value;
     }
 };
 
@@ -282,7 +386,7 @@ async function init(conf, rpmFields) {
     }
     let rpmField;
     if (conf.srcField) {
-        rpmField = rpm.getField.call(rpmFields, rpmUtil.validateString(conf.srcField), true);
+        rpmField = getField.call(rpmFields, validateString(conf.srcField), true);
     }
     return initField.call(this, conf, rpmField, rpmFields);
 }
@@ -291,7 +395,7 @@ async function init(conf, rpmFields) {
 async function initField(conf, rpmField, rpmFields) {
     let type;
     if (rpmField) {
-        type = common.getFullType(rpmField);
+        type = getFullType(rpmField);
     }
     const getters = rpmField && SPECIFIC_GETTERS[type] || COMMON_GETTERS;
     const getterName = conf.getter;
@@ -302,7 +406,7 @@ async function initField(conf, rpmField, rpmFields) {
             throw new Error('Unknown getter: ' + JSON.stringify(conf));
         }
     } else {
-        getter = getters[common.DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
+        getter = getters[DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
     }
     if (getter.init) {
         const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
@@ -325,7 +429,7 @@ async function initField(conf, rpmField, rpmFields) {
 
 function findGetter(fieldConfig) {
     const getters = fieldConfig.srcType && SPECIFIC_GETTERS[fieldConfig.srcType] || COMMON_GETTERS;
-    const name = fieldConfig.getter || common.DEFAULT_ACCESSOR_NAME;
+    const name = fieldConfig.getter || DEFAULT_ACCESSOR_NAME;
     const result = getters[name] || COMMON_GETTERS[name] || DEFAULT_GETTER;
     return result.get;
 }
