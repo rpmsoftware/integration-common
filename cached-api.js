@@ -32,6 +32,7 @@ module.exports = function (apiConfig) {
         'getForms',
         'getFormList',
         'getViews',
+        'getProcessViews',
         'getFields',
         'getInfo',
         'getProcessActions',

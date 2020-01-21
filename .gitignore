@@ -4,4 +4,4 @@ node_modules
 *.log
 *.csv
 probe*
-*temp.json
+temp*

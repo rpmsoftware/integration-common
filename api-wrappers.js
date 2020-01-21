@@ -147,16 +147,16 @@ var INFO_PROTO = {
 
 API.prototype.getViews = function (viewCategory, templateID) {
     return this.request('ProcViews', {
-        'ViewCategory': rpmUtil.normalizeInteger(viewCategory),
-        'ObjectSpecificID': rpmUtil.normalizeInteger(templateID)
+        ViewCategory: rpmUtil.normalizeInteger(viewCategory),
+        ObjectSpecificID: rpmUtil.normalizeInteger(templateID)
     });
 };
 
 API.prototype.getProcessViews = function (processID) {
-    return this.getViews(VIEW_CATEGORY.FormsPerTemplate, processID);
+    return this.request('ProcViews', { ProcessID: rpmUtil.normalizeInteger(processID) });
 };
 
-var VIEW_CATEGORY = {
+exports.VIEW_CATEGORY = {
     Reps: 1,
     Customers: 5,
     Agencies: 200,
