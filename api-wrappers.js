@@ -1053,24 +1053,22 @@ API.prototype.editAgency = function (id, data) {
 };
 
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
-    var api = this;
-    var request = {};
+    const request = {};
     if (typeof repNameOrID === 'number') {
         request.RepID = repNameOrID;
     } else {
         request.Rep = repNameOrID;
         request[typeof agencyNameOrID === 'number' ? 'AgencyID' : 'Agency'] = agencyNameOrID;
     }
-    return api.request('Rep', request).then(r => extractContact(api.tweakDates(r)));
+    return this.request('Rep', request).then(r => extractContact(this.tweakDates(r)));
 };
 
 API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {
-    var api = this;
-    var request = {
+    const request = {
         AssignmentCode: assignCode
     };
     request[typeof supplierNameOrID === 'number' ? 'SupplierID' : 'Supplier'] = supplierNameOrID;
-    return api.request('Rep', request).then(r => extractContact(api.tweakDates(r)));
+    return this.request('Rep', request).then(r => extractContact(this.tweakDates(r)));
 };
 
 API.prototype.errorToFormAction = function (error, form, user) {

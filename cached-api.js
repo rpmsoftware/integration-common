@@ -56,6 +56,7 @@ module.exports = function (apiConfig) {
         'demandAgency',
         'demandAccount',
         'getRep',
+        'getRepByAssignment',
         'getAccountGroups',
         '_getFileCached'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
