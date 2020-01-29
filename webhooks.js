@@ -81,9 +81,9 @@
     function isWebHooksRequest(obj) {
         return typeof obj === 'object' &&
             typeof obj.ObjectID === 'number' &&
-            typeof obj.ParentID === 'number' &&
+            (!obj.ParentID || typeof obj.ParentID === 'number') &&
             typeof obj.ObjectType === 'number' &&
-            typeof obj.ParentType === 'number' &&
+            (!obj.ParentType || typeof obj.ParentType === 'number') &&
             (!obj.StatusID || typeof obj.StatusID === 'number') &&
             typeof obj.EventName === 'string'
     }
