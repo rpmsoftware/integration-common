@@ -1033,23 +1033,31 @@ API.prototype.getAgency = async function (nameOrID, demand) {
     }
 };
 
-API.prototype.createAgency = function (data) {
+API.prototype.createAgency = function (data, fireWebEvent) {
     if (typeof data !== 'object') {
         data = { Agency: data };
     }
-    return this.request('AgencyAdd', { Agency: data }).then(a => extractContact(this.tweakDates(a)));
+    return this.request('AgencyAdd', { Agency: data, WebhookEvaluate: !!fireWebEvent })
+        .then(a => extractContact(this.tweakDates(a)));
 };
 
-API.prototype.editAgency = function (id, data) {
-    data = data || id;
-    assert.equal(typeof data, 'object');
+API.prototype.editAgency = function (id, data, fireWebEvent) {
     const type = typeof id;
-    if (type === 'number') {
-        data.AgencyID = id;
-    } else if (type === 'string') {
-        data.Agency = id;
+    if (type === 'object') {
+        fireWebEvent = data;
+        data = id;
+    } else {
+        data = Object.assign({}, data);
+        assert.equal(typeof data, 'object');
+        if (type === 'number') {
+            data.AgencyID = id;
+        } else {
+            assert.equal(type, 'string');
+            data.Agency = id;
+        }
     }
-    return this.request('AgencyEdit', { Agency: data }).then(a => extractContact(this.tweakDates(a)));
+    return this.request('AgencyEdit', { Agency: data, WebhookEvaluate: !!fireWebEvent })
+        .then(a => extractContact(this.tweakDates(a)));
 };
 
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
