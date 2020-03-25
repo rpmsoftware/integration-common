@@ -1887,3 +1887,17 @@ exports.getDefinitionRow = function (field) {
     assert.equal(typeof defRow, 'object', 'No definition row');
     return defRow;
 };
+
+exports.toSimpleField = function (field) {
+    let v = field.Values;
+    if (!Array.isArray(v)) {
+        return field;
+    }
+    assert(v.length < 2);
+    v = v[0];
+    if (v) {
+        field = Object.assign({}, field, v);
+        delete field.Values;
+    }
+    return field;
+};
