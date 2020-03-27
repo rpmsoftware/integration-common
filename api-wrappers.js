@@ -116,8 +116,14 @@ API.prototype.checkUserPassword = function (userName, password) {
     return this.request('UserPasswordCheck', { Username: userName, Password: password }, false);
 };
 
-API.prototype.getStaffList = function (includeGuests) {
-    return this.request('StaffList', { IncludeGuest: rpmUtil.toBoolean(includeGuests) });
+API.prototype.getStaffList = function (includeGuests, includeApiUser) {
+    if (includeGuests !== undefined) {
+        includeGuests = rpmUtil.toBoolean(includeGuests);
+    }
+    if (includeApiUser !== undefined) {
+        includeApiUser = rpmUtil.toBoolean(includeApiUser);
+    }
+    return this.request('StaffList', { IncludeGuest: includeGuests, IncludeApiUser: includeApiUser });
 };
 
 API.prototype.getStaffGroups = function () {
