@@ -325,7 +325,7 @@ add('FieldTable',
         for (let key in data) {
             const srcRow = data[key];
             const existingRow = getExistingRow(key);
-            if (!existingRow && !isArray) {
+            if (!(existingRow || isArray || config.createKeys)) {
                 continue;
             }
             let fieldValues = [];
