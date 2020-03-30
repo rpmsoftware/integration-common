@@ -2,7 +2,7 @@ const assert = require('assert');
 const { validateString, isEmpty, toBoolean, normalizeInteger } = require('./util');
 const { Client } = require('node-rest-client');
 const moment = require("moment");
-const debug = require('debug')('rpm:api');
+const debug = require('debug')('rpm:freshdesk');
 
 const DEFAULT_HEADERS = {
     'Content-Type': 'application/json'
