@@ -1,7 +1,8 @@
 const assert = require('assert');
-const rpmUtil = require('./util');
+const { validateString, isEmpty, toBoolean, normalizeInteger } = require('./util');
 const { Client } = require('node-rest-client');
 const moment = require("moment");
+const debug = require('debug')('rpm:api');
 
 const DEFAULT_HEADERS = {
     'Content-Type': 'application/json'
@@ -18,8 +19,8 @@ class API {
             key = url.key;
             url = url.url;
         }
-        rpmUtil.validateString(url);
-        rpmUtil.validateString(key);
+        validateString(url);
+        validateString(key);
         this.url = url.toLowerCase().ensureRight('/').ensureRight('api/').ensureRight('v2/').toString();
         Object.defineProperty(this, 'client', { value: new Client({ user: key, password: 'X' }) });
     }
@@ -40,7 +41,7 @@ class API {
                 }
             }
         }
-        return this.requestEndpoint('get', endpoint, parameters && !rpmUtil.isEmpty(parameters) ?
+        return this.requestEndpoint('get', endpoint, parameters && !isEmpty(parameters) ?
             { parameters } : undefined);
     }
 
@@ -56,7 +57,7 @@ class API {
     }
 
     request(method, url, options) {
-        rpmUtil.logger.debug(`${method.toUpperCase()} ${url} ${this.logRequestData && options ? '\n' + JSON.stringify(options) : ''}`);
+        debug(`${method.toUpperCase()} ${url} ${this.logRequestData && options ? '\n' + JSON.stringify(options) : ''}`);
         options = options || {};
         options.headers = DEFAULT_HEADERS;
         return new Promise((resolve, reject) => {
@@ -93,7 +94,7 @@ class API {
         before = before ? (moment.isMoment(before) ? before : moment(before)).toISOString() : undefined;
         after = after ? (moment.isMoment(after) ? after : moment(after)).toISOString() : undefined;
         if (billable !== undefined) {
-            billable = rpmUtil.toBoolean(billable);
+            billable = toBoolean(billable);
         }
         return this.getPaged('time_entries', {
             executed_after: after,
@@ -107,11 +108,11 @@ class API {
     }
 
     getAgent(id) {
-        return this.get('agents/' + rpmUtil.normalizeInteger(id));
+        return this.get('agents/' + normalizeInteger(id));
     }
 
     getCompany(id) {
-        return this.get('companies/' + rpmUtil.normalizeInteger(id));
+        return this.get('companies/' + normalizeInteger(id));
     }
 
     getCompanies() {
@@ -119,7 +120,7 @@ class API {
     }
 
     getTicket(id) {
-        return this.get('tickets/' + rpmUtil.normalizeInteger(id));
+        return this.get('tickets/' + normalizeInteger(id));
     }
 
     getTickets(since) {
