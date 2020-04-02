@@ -3,11 +3,11 @@ const { RpmApi } = require('./api-wrappers');
 const rpmUtil = require('./util');
 
 async function getProcess(nameOrID, demand) {
-    return (await this.getProcesses()).getProcess(nameOrID, demand);
+    return (await this._getProcesses()).getProcess(nameOrID, demand);
 };
 
 async function getActiveProcess(nameOrID, demand) {
-    return (await this.getProcesses()).getActiveProcess(nameOrID, demand);
+    return (await this._getProcesses()).getActiveProcess(nameOrID, demand);
 };
 
 module.exports = function (apiConfig) {
@@ -28,7 +28,7 @@ module.exports = function (apiConfig) {
 
     Object.defineProperty(api, 'cache', { value: cache });
     [
-        'getProcesses',
+        '_getProcesses',
         'getForms',
         'getFormList',
         'getViews',
@@ -105,7 +105,7 @@ module.exports = function (apiConfig) {
     api.createForm = async function () {
         const result = await createForm.apply(this, arguments);
         clearFormRelated(result);
-        cache.clear('getProcesses');
+        cache.clear('_getProcesses');
         return result;
     };
 
@@ -169,7 +169,7 @@ module.exports = function (apiConfig) {
                 cache.clear('getForms');
                 cache.clear('getFormList');
             }
-            cache.clear('getProcesses');
+            cache.clear('_getProcesses');
             return result;
         };
     });

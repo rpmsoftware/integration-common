@@ -135,17 +135,7 @@ exports.isEmpty = function (object) {
     return true;
 };
 
-function getValues(object) {
-    if (Array.isArray(object)) {
-        return object;
-    }
-    if (typeof object !== 'object') {
-        throw new Error('Object is expected');
-    }
-    return Object.keys(object).map(key => object[key]);
-}
-
-exports.getValues = getValues;
+exports.getValues = Object.values;
 
 function demandDeepValue(object, keys) {
     function goDeeper(key) {
@@ -347,7 +337,7 @@ var arrayPrototypeExtensions = {
         this.forEach(e => {
             let groupValues = {};
             groupProps.forEach(p => groupValues[p] = getEager(e, p));
-            let key = `[${getValues(groupValues).join('][')}]`
+            let key = `[${Object.values(groupValues).join('][')}]`
             let grp = result[key];
             if (!grp) {
                 grp = result[key] = groupValues;
@@ -355,7 +345,7 @@ var arrayPrototypeExtensions = {
             }
             grp[aggrProp].push(getEager(e, aggrProp));
         });
-        result = getValues(result);
+        result = Object.values(result);
         result.forEach(e => e[aggrProp] = e[aggrProp].reduce(reducer));
         return result;
     },

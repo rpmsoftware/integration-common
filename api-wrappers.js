@@ -1,5 +1,16 @@
 const debug = require('debug')('rpm:api');
-const rpmUtil = require('./util');
+const {
+    normalizeDate,
+    getEager,
+    normalizeInteger,
+    validateString,
+    toBoolean,
+    toMoment,
+    createParallelRunner,
+    defineStandardProperty,
+    toBase64,
+    toArray
+} = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
 const assert = require('assert');
@@ -39,9 +50,9 @@ function API(url, key, postRequest) {
     this.validateParameters = true;
 }
 
-rpmUtil.defineStandardProperty(API.prototype, 'parallelRunner', () => {
+defineStandardProperty(API.prototype, 'parallelRunner', () => {
     if (!this._parallelRunner) {
-        this._parallelRunner = rpmUtil.createParallelRunner(MAX_PARALLEL_CALLS);
+        this._parallelRunner = createParallelRunner(MAX_PARALLEL_CALLS);
     }
     return this._parallelRunner;
 });
@@ -50,7 +61,7 @@ API.prototype.getFormUrl = function (formID) {
     if (typeof formID === 'object') {
         formID = (formID.Form || formID).FormID;
     }
-    return util.format(this.formUrlTemplate, rpmUtil.normalizeInteger(formID));
+    return util.format(this.formUrlTemplate, normalizeInteger(formID));
 }
 
 API.prototype.getUrl = function (endPoint) {
@@ -118,10 +129,10 @@ API.prototype.checkUserPassword = function (userName, password) {
 
 API.prototype.getStaffList = function (includeGuests, includeApiUser) {
     if (includeGuests !== undefined) {
-        includeGuests = rpmUtil.toBoolean(includeGuests);
+        includeGuests = toBoolean(includeGuests);
     }
     if (includeApiUser !== undefined) {
-        includeApiUser = rpmUtil.toBoolean(includeApiUser);
+        includeApiUser = toBoolean(includeApiUser);
     }
     return this.request('StaffList', { IncludeGuest: includeGuests, IncludeApiUser: includeApiUser });
 };
@@ -131,7 +142,7 @@ API.prototype.getStaffGroups = function () {
 };
 
 API.prototype.getStaff = function (staffID) {
-    return this.request('Staff', { StaffID: rpmUtil.normalizeInteger(staffID) });
+    return this.request('Staff', { StaffID: normalizeInteger(staffID) });
 };
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
@@ -153,13 +164,13 @@ var INFO_PROTO = {
 
 API.prototype.getViews = function (viewCategory, templateID) {
     return this.request('ProcViews', {
-        ViewCategory: rpmUtil.normalizeInteger(viewCategory),
-        ObjectSpecificID: rpmUtil.normalizeInteger(templateID)
+        ViewCategory: normalizeInteger(viewCategory),
+        ObjectSpecificID: normalizeInteger(templateID)
     });
 };
 
 API.prototype.getProcessViews = function (processID) {
-    return this.request('ProcViews', { ProcessID: rpmUtil.normalizeInteger(processID) });
+    return this.request('ProcViews', { ProcessID: normalizeInteger(processID) });
 };
 
 exports.VIEW_CATEGORY = {
@@ -214,7 +225,7 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
                 FormID: +formOrID
             },
             StaffOnly: true,
-            Due: rpmUtil.toMoment(due).format('YYYY-MM-DD'),
+            Due: toMoment(due).format('YYYY-MM-DD'),
             Assignee: {
                 UserID: +userID
             }
@@ -224,10 +235,10 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
 
 API.prototype.addFormAction = function (formID, data) {
     if (this.validateParameters) {
-        formID = rpmUtil.normalizeInteger(formID);
+        formID = normalizeInteger(formID);
         data = data.Action || data;
         assert.equal(typeof data, 'object');
-        rpmUtil.validateString(data.Description);
+        validateString(data.Description);
         assert(data.Due);
     }
     let action = Object.assign({}, data, { Form: { FormID: formID } });
@@ -243,11 +254,11 @@ API.prototype.addFormAction = function (formID, data) {
 
 API.prototype.editFormAction = function (formID, actionID, data) {
     if (this.validateParameters) {
-        formID = rpmUtil.normalizeInteger(formID);
-        actionID = rpmUtil.normalizeInteger(actionID);
+        formID = normalizeInteger(formID);
+        actionID = normalizeInteger(actionID);
         data = data.Action || data;
         assert.equal(typeof data, 'object');
-        rpmUtil.validateString(data.Description);
+        validateString(data.Description);
         assert(data.Due);
     }
     let action = Object.assign({}, data, { Form: { FormID: formID }, ActionID: actionID });
@@ -256,7 +267,7 @@ API.prototype.editFormAction = function (formID, actionID, data) {
 
 const PROC_PROMISE_PROPERTY = Symbol();
 
-API.prototype.getProcesses = function () {
+API.prototype._getProcesses = function () {
     const api = this;
     if (!api[PROC_PROMISE_PROPERTY]) {
         api[PROC_PROMISE_PROPERTY] = api.request('Procs').then(response => {
@@ -270,6 +281,24 @@ API.prototype.getProcesses = function () {
         });
     }
     return api[PROC_PROMISE_PROPERTY];
+};
+
+API.prototype.getProcesses = async function () {
+    const permissions = Object.values(arguments).map(p => getEager(PROCESS_PERMISSIONS, p));
+    let result = await this._getProcesses();
+    if (permissions.length > 0) {
+        result = Object.assign(Object.create(PROCESSES_PROTO), result,
+            { Procs: result.Procs.filter(p => permissions.indexOf(p.Permission) >= 0) }
+        );
+    }
+    return result;
+};
+
+API.prototype.getUserProcesses = async function () {
+    const result = await this._getProcesses();
+    return Object.assign(Object.create(PROCESSES_PROTO), result,
+        { Procs: result.Procs.filter(p => PROCESS_PERMISSIONS_HIDDEN.indexOf(p.Permission) < 0) }
+    );
 };
 
 function getProcess(obj) {
@@ -434,11 +463,11 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
         if (typeof processNameOrID === 'string') {
             body.Process = processNameOrID;
         } else {
-            body.ProcessID = rpmUtil.normalizeInteger(processNameOrID);
+            body.ProcessID = normalizeInteger(processNameOrID);
         }
         properties.Number = formNumberOrID;
     } else {
-        properties.FormID = rpmUtil.normalizeInteger(formNumberOrID);
+        properties.FormID = normalizeInteger(formNumberOrID);
     }
     fields = fields || [];
     properties.Fields = Array.isArray(fields) ? fields :
@@ -452,26 +481,26 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
 
 API.prototype._archiveForm = function (formID) {
     if (this.validateParameters) {
-        formID = rpmUtil.normalizeInteger(formID);
+        formID = normalizeInteger(formID);
     }
     return this.request('ProcFormArchive', { FormID: formID });
 };
 
 API.prototype._unarchiveForm = function (formID) {
     if (this.validateParameters) {
-        formID = rpmUtil.normalizeInteger(formID);
+        formID = normalizeInteger(formID);
     }
     return this.request('ProcFormUnarchive', { FormID: formID });
 };
 
 API.prototype.setFormArchived = function (formID, archived) {
-    return (archived === undefined || rpmUtil.toBoolean(archived)) ?
+    return (archived === undefined || toBoolean(archived)) ?
         this._archiveForm(formID) :
         this._unarchiveForm(formID);
 };
 
 API.prototype.trashForm = function (formID) {
-    return this.request('ProcFormTrash', { FormID: rpmUtil.normalizeInteger(formID) });
+    return this.request('ProcFormTrash', { FormID: normalizeInteger(formID) });
 };
 
 function isReferenceField(field) {
@@ -498,7 +527,7 @@ const PROCESS_FIELDS_PROTO = {
 Object.setPrototypeOf(PROCESS_FIELDS_PROTO, RESPONSE_PROTO);
 
 API.prototype.getFields = async function (processID) {
-    processID = rpmUtil.normalizeInteger(processID);
+    processID = normalizeInteger(processID);
     const response = await this.request('ProcFields', { ProcessID: processID });
     const process = response.Process;
     delete response.Process;
@@ -511,22 +540,22 @@ API.prototype.getFields = async function (processID) {
 };
 
 API.prototype.getProcessSecurity = function (processId) {
-    return this.request('ProcSecurity', { ProcessID: rpmUtil.normalizeInteger(processId) });
+    return this.request('ProcSecurity', { ProcessID: normalizeInteger(processId) });
 };
 
 API.prototype.getActionTypes = function (processId) {
-    return this.request('ActionTypes', { ProcessID: rpmUtil.normalizeInteger(processId) });
+    return this.request('ActionTypes', { ProcessID: normalizeInteger(processId) });
 };
 
 API.prototype.getForms = function (processOrId, viewID) {
     const baseRequest = {};
     if (typeof processOrId === 'number') {
-        baseRequest.ProcessID = rpmUtil.normalizeInteger(processOrId);
+        baseRequest.ProcessID = normalizeInteger(processOrId);
     } else {
-        baseRequest.Process = rpmUtil.validateString(processOrId);
+        baseRequest.Process = validateString(processOrId);
     }
     if (viewID) {
-        baseRequest.ViewID = rpmUtil.normalizeInteger(viewID);
+        baseRequest.ViewID = normalizeInteger(viewID);
     }
     const api = this;
     return api.request('ProcForms', baseRequest).catch(error => {
@@ -598,16 +627,16 @@ API.prototype.getForm = function () {
 
 API.prototype.getFile = function (fileID, returnUrl) {
     if (this.validateParameters) {
-        fileID = rpmUtil.normalizeInteger(fileID);
+        fileID = normalizeInteger(fileID);
     }
-    return this.request('ProcFormFile', { FileID: fileID, ReturnDownloadUrl: rpmUtil.toBoolean(returnUrl) });
+    return this.request('ProcFormFile', { FileID: fileID, ReturnDownloadUrl: toBoolean(returnUrl) });
 };
 
 API.prototype.addFormFile = function (formID, fileName, fileData, folderID, description, shared) {
     if (this.validateParameters) {
-        fileData = rpmUtil.toBase64(fileData);
-        formID = rpmUtil.normalizeInteger(formID);
-        fileName = rpmUtil.validateString(fileName);
+        fileData = toBase64(fileData);
+        formID = normalizeInteger(formID);
+        fileName = validateString(fileName);
     }
     return this.request('ProcFormFileAdd', {
         FormID: formID,
@@ -621,9 +650,9 @@ API.prototype.addFormFile = function (formID, fileName, fileData, folderID, desc
 
 API.prototype.editFormFile = async function (fileID, formID, fileName, folderID, description, shared) {
     if (this.validateParameters) {
-        fileID = rpmUtil.normalizeInteger(fileID);
-        fileName = fileName === undefined ? undefined : rpmUtil.validateString(fileName);
-        folderID = folderID === undefined ? undefined : rpmUtil.normalizeInteger(folderID);
+        fileID = normalizeInteger(fileID);
+        fileName = fileName === undefined ? undefined : validateString(fileName);
+        folderID = folderID === undefined ? undefined : normalizeInteger(folderID);
     }
     return this.request('ProcFormFileEdit', {
         FileID: fileID,
@@ -777,8 +806,8 @@ API.prototype.getCustomers = function () {
 };
 
 API.prototype.tweakDates = function (object) {
-    object.Added = object.Added && rpmUtil.normalizeDate(object.Added);
-    object.Modified = object.Modified ? rpmUtil.normalizeDate(object.Modified) : object.Added;
+    object.Added = object.Added && normalizeDate(object.Added);
+    object.Modified = object.Modified ? normalizeDate(object.Modified) : object.Added;
     return object;
 };
 
@@ -826,7 +855,7 @@ API.prototype.getAccount = function (account, supplier, demand) {
 };
 
 API.prototype.getAccounts = function (modifiedAfter) {
-    modifiedAfter = modifiedAfter ? rpmUtil.normalizeDate(modifiedAfter) : new Date(0);
+    modifiedAfter = modifiedAfter ? normalizeDate(modifiedAfter) : new Date(0);
     var api = this;
     return api.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(response => {
         response.Accounts.forEach(a => api.tweakDates(a));
@@ -851,7 +880,7 @@ API.prototype.getAccountGroupsInUse = function () {
                 SupplierID: acc.SupplierID
             };
         });
-        return rpmUtil.getValues(result);
+        return Object.values(result);
     });
 };
 
@@ -1095,11 +1124,11 @@ API.prototype.errorToFormAction = function (error, form, user) {
 };
 
 API.prototype.getProcessActions = function (processID) {
-    return this.request('ProcActions', { ProcessID: rpmUtil.normalizeInteger(processID) });
+    return this.request('ProcActions', { ProcessID: normalizeInteger(processID) });
 };
 
 API.prototype.getFormActions = function (formID) {
-    return this.request('ProcActions', { FormID: rpmUtil.normalizeInteger(formID) });
+    return this.request('ProcActions', { FormID: normalizeInteger(formID) });
 };
 
 API.prototype.addFormParticipant = function (form, process, name) {
@@ -1112,16 +1141,16 @@ API.prototype.addFormParticipant = function (form, process, name) {
         const { Agency, Username, AgencyID } = name;
         Object.assign(request, { Agency, Username, AgencyID });
     } else {
-        request.Username = rpmUtil.validateString(name);
+        request.Username = validateString(name);
     }
     if (typeof form === 'number') {
-        request.Form.FormID = rpmUtil.normalizeInteger(form);
+        request.Form.FormID = normalizeInteger(form);
     } else {
-        request.Form.Number = rpmUtil.validateString(form);
+        request.Form.Number = validateString(form);
         if (typeof process === 'number') {
             request.ProcessID = process;
         } else {
-            request.Process = rpmUtil.validateString(process);
+            request.Process = validateString(process);
         }
     }
     return this.request('ProcFormParticipantAdd', request).then(form => this._extendForm(form));
@@ -1156,7 +1185,7 @@ API.prototype.createStaff = function (contact, role, enabled) {
     contact = contact || {};
     return this.request('StaffAdd', {
         Staff: role === undefined && enabled === undefined ? (contact.Staff || contact) : {
-            RoleID: role && (role.ID || rpmUtil.normalizeInteger(role)),
+            RoleID: role && (role.ID || normalizeInteger(role)),
             Contact: contact,
             Enabled: !!enabled
         }
@@ -1165,7 +1194,7 @@ API.prototype.createStaff = function (contact, role, enabled) {
 
 API.prototype.getSupplier = function (id) {
     if (this.validateParameters) {
-        id = rpmUtil.normalizeInteger(id);
+        id = normalizeInteger(id);
     }
     return this.request('Supplier', { SupplierID: id });
 };
@@ -1177,10 +1206,10 @@ API.prototype.createAccessValidator = async function (inConfig) {
         roles: []
     };
     if (inConfig.users) {
-        config.users = rpmUtil.toArray(inConfig.users).toSet();
+        config.users = toArray(inConfig.users).toSet();
     }
     if (inConfig.roles) {
-        const roles = rpmUtil.toArray(inConfig.roles).toSet();
+        const roles = toArray(inConfig.roles).toSet();
         if (roles.length > 0) {
             let rpmRoles = await this.getRoles();
             rpmRoles = rpmRoles.Roles;
@@ -1215,7 +1244,7 @@ API.prototype.createAccessValidator = async function (inConfig) {
 
 API.prototype.addNoteByFormID = function (formID, note, noteForStaff, user) {
     if (this.validateParameters) {
-        formID = rpmUtil.normalizeInteger(formID);
+        formID = normalizeInteger(formID);
     }
     return this.request('ProcFormNoteAdd', {
         Form: {
@@ -1871,7 +1900,7 @@ function isTableField(field) {
 exports.isTableField = isTableField;
 
 const STAFF_FILTERS = {};
-['Role', 'StaffGroup', 'Enabled'].forEach(prop => STAFF_FILTERS[prop] = rpmUtil.getEager(OBJECT_TYPE, prop));
+['Role', 'StaffGroup', 'Enabled'].forEach(prop => STAFF_FILTERS[prop] = getEager(OBJECT_TYPE, prop));
 exports.STAFF_FILTERS = Object.seal(STAFF_FILTERS);
 
 exports.getStaffFilters = function (field) {
@@ -1907,3 +1936,20 @@ exports.toSimpleField = function (field) {
     }
     return field;
 };
+
+const PROCESS_PERMISSIONS = {
+    NA: 0,
+    HideAll: 1,
+    Edit: 3,
+    EditOwnHideOthers: 8,
+    ReadOwnHideOthers: 10,
+    ReadAll: 11,
+    Start: 12,
+    StartOwnHideOthers: 13,
+    EditOwnReadOthers: 14,
+    StartOwnReadOthers: 15,
+    StartHideAll: 17
+};
+
+const PROCESS_PERMISSIONS_HIDDEN = ['NA', 'HideAll'].map(p => getEager(PROCESS_PERMISSIONS, p));
+
