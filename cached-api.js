@@ -151,13 +151,13 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    ['trashForm', 'setFormArchived'].forEach(prop => {
+    ['trashForm', '_archiveForm', '_unarchiveForm'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
-            const id = rpmUtil.normalizeInteger(arguments[0]);
+            const id = +arguments[0];
             const result = await original.apply(this, arguments);
             let getter = 'demandForm';
-            const cached = cache.clear(getter, [id])[0];
+            const cached = !isNaN(id) && cache.clear(getter, [id])[0];
             if (cached) {
                 cache.clear(getter, [cached.ProcessID, cached.Form.Number]);
                 cache.clear(getter, [cached.Process, cached.Form.Number]);
