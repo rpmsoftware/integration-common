@@ -1,9 +1,9 @@
-var rpm = require('./api-wrappers');
+const { ObjectType, FieldSubType } = require('./enums');
 
-var factories = {};
-factories[rpm.OBJECT_TYPE.CustomField] = {};
+const factories = {};
+factories[ObjectType.CustomField] = {};
 
-factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tableField, useUids) {
+factories[ObjectType.CustomField][FieldSubType.FieldTable] = function (tableField, useUids) {
     const tableFieldName = tableField.Name;
     const definitionRow = tableField.Rows.find(row => row.IsDefinition);
     const tableFields = definitionRow.Fields;
@@ -50,7 +50,7 @@ factories[rpm.OBJECT_TYPE.CustomField][rpm.DATA_TYPE.FieldTable] = function (tab
                     value = {
                         ID: option.ID,
                     };
-                } else if (field.FieldType === rpm.OBJECT_TYPE.FormReference) {
+                } else if (field.FieldType === ObjectType.FormReference) {
                     value = {
                         ID: value || 0,
                     };

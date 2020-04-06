@@ -4,11 +4,14 @@ const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const {
     getField,
     getFieldByUid,
-    validateProcessReference,
-    DATA_TYPE,
-    OBJECT_TYPE,
-    REF_DATA_TYPE
+    validateProcessReference
 } = require('../api-wrappers');
+
+const {
+    FieldSubType,
+    ObjectType,
+    RefSubType
+} = require('../enums');
 
 const dummy = () => { };
 
@@ -134,8 +137,8 @@ function add(subtype, name, get, init) {
     return accs[name] = { get, init };
 }
 
-fieldType = OBJECT_TYPE.CustomField;
-subTypes = DATA_TYPE;
+fieldType = ObjectType.CustomField;
+subTypes = FieldSubType;
 
 const REGEX_PERCENTS = /^(\d+(\.\d+)?)%$/;
 
@@ -263,8 +266,8 @@ add('FieldTable', async function (conf, form) {
 }, initTableFields);
 
 
-fieldType = OBJECT_TYPE.FormReference;
-subTypes = REF_DATA_TYPE;
+fieldType = ObjectType.FormReference;
+subTypes = RefSubType;
 
 add('RestrictedReference', 'getNumber', async function (config, form) {
     form = form.Form || form;
@@ -301,7 +304,7 @@ add('RestrictedReference', 'getReferencedObject', async function (getterConfig, 
     const result = {};
     for (let dstProp in getterConfig.fieldMap) {
         const getterConf = getterConfig.fieldMap[dstProp];
-        result[dstProp] = await(typeof getterConf === 'string' ?
+        result[dstProp] = await (typeof getterConf === 'string' ?
             getEager(FORM_PROPERTY_GETTERS, getterConf)(targetForm) :
             get.call(this, getterConf, targetForm)
         );

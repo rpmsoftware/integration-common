@@ -2,9 +2,9 @@
 (() => {
 
     const debug = require('debug')('rpm:webhooks');
-    var util = require('util');
-    var lib = require('./express');
-    var enumObjectType = require('./api-wrappers').OBJECT_TYPE;
+    const util = require('util');
+    const lib = require('./express');
+    const { ObjectType } = require('./enums');
 
     var headerPatterns = {
         'x-rpm-instanceid': /^\d+$/,
@@ -59,8 +59,8 @@
         this.ParentID = processId;
         this.EventName = eventName;
         this.RequestID = ++WebHooksRequestData.prototype.RequestId;
-        this.ObjectType = enumObjectType.Form;
-        this.ParentType = enumObjectType.PMTemplate;
+        this.ObjectType = ObjectType.Form;
+        this.ParentType = ObjectType.PMTemplate;
         if (statusId) {
             this.StatusID = statusId;
         }

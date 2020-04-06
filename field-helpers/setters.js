@@ -6,6 +6,12 @@ const createHash = require('string-hash');
 const { format } = require('util');
 const common = require('./common');
 
+const {
+    FieldSubType,
+    ObjectType,
+    RefSubType
+} = require('../enums');
+
 
 function normalizeIndex(value) {
     if (typeof value === 'string') {
@@ -162,8 +168,8 @@ function getErrorMessage(config, error) {
     return `"${config.dstField}". ${error}`;
 }
 
-let fieldType = rpm.OBJECT_TYPE.CustomField;
-let subTypes = rpm.DATA_TYPE;
+let fieldType = ObjectType.CustomField;
+let subTypes = FieldSubType;
 
 function add(subtype, name, convert, init) {
     if (typeof name === 'function') {
@@ -445,8 +451,8 @@ add('List', function (config, data) {
     return config;
 });
 
-fieldType = rpm.OBJECT_TYPE.FormReference;
-subTypes = rpm.REF_DATA_TYPE;
+fieldType = ObjectType.FormReference;
+subTypes = RefSubType;
 
 add('Customer', 'demand', async function (config, data) {
     const api = this.api || this;
