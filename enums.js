@@ -1,3 +1,5 @@
+const { getEager } = require('./util');
+
 const FieldSubType = exports.FieldSubType = {
     NA: 0,
     Text: 1,
@@ -523,7 +525,7 @@ const ProcessPermission = exports.ProcessPermission = {
 
 exports.ProcessPermissionsHidden = ['NA', 'HideAll'].map(p => getEager(ProcessPermission, p));
 
-exports.RefTypes = ['Rep', 'Manager'];
+exports.RepTypes = ['Rep', 'Manager'];
 
 exports.FieldFormat = {
     String: 1,    // Account, Role, Supplier, [list field]
