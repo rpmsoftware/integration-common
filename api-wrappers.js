@@ -7,7 +7,7 @@ const {
     FieldSubType,
     ProcessPermission,
     ProcessPermissionsHidden
-} = require('./enums');
+} = require('./api-enums');
 
 const {
     normalizeDate,

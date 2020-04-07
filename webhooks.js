@@ -4,7 +4,7 @@
     const debug = require('debug')('rpm:webhooks');
     const util = require('util');
     const lib = require('./express');
-    const { ObjectType } = require('./enums');
+    const { ObjectType } = require('./api-enums');
 
     var headerPatterns = {
         'x-rpm-instanceid': /^\d+$/,

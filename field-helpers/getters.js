@@ -11,7 +11,7 @@ const {
     FieldSubType,
     ObjectType,
     RefSubType
-} = require('../enums');
+} = require('../api-enums');
 
 const dummy = () => { };
 

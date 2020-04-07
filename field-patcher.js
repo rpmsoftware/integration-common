@@ -1,4 +1,4 @@
-const { ObjectType, FieldSubType } = require('./enums');
+const { ObjectType, FieldSubType } = require('./api-enums');
 
 const factories = {};
 factories[ObjectType.CustomField] = {};
