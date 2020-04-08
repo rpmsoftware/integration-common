@@ -489,7 +489,7 @@ exports.MeasurementUnit = {
     lbs: { value: 12, text: 'lbs', subType: FieldSubType.MeasureWeight },
     kdaN: { value: 13, text: 'kdaN', subType: FieldSubType.MeasureForce },
     lbf: { value: 14, text: 'lbf', subType: FieldSubType.MeasureForce },
-    KGPerCubicMeters: { value: 15, text: 'km/m³', subType: FieldSubType.MeasureDensity },
+    KGPerCubicMeters: { value: 15, text: 'kg/m³', subType: FieldSubType.MeasureDensity },
     lbsPerGallon: { value: 16, text: 'lb/gal', subType: FieldSubType.MeasureDensity },
     CubicMetersPerMinute: { value: 17, text: 'm³/min', subType: FieldSubType.MeasureFlow },
     GallonsPerMinute: { value: 18, text: 'gal/min', subType: FieldSubType.MeasureFlow },
