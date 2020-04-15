@@ -1266,6 +1266,24 @@ API.prototype.addNoteByFormID = function (formID, note, noteForStaff, user) {
     });
 };
 
+API.prototype.addNoteByFormNumber = function (processNameOrID, formNumber, note, noteForStaff, user) {
+    const body = {
+        Form: {
+            Number: validateString(formNumber),
+            NoteBy: user || undefined,
+            NoteForStaff: noteForStaff,
+            Note: note
+        }
+    };
+    if (typeof processNameOrID === 'number') {
+        body.ProcessID = normalizeInteger(processNameOrID);
+    } else {
+        body.Process = validateString(processNameOrID);
+    }
+    return this.request('ProcFormNoteAdd', body);
+};
+
+
 exports.RpmApi = API;
 
 exports.FIELD_FORMAT = FieldFormat;

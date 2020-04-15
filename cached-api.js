@@ -92,7 +92,7 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    ['createForm', 'editForm', 'addFormParticipant'].forEach(prop => {
+    ['createForm', 'editForm', 'addFormParticipant', 'addNoteByFormID', 'addNoteByFormNumber'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
