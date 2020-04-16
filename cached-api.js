@@ -58,7 +58,8 @@ module.exports = function (apiConfig) {
         'getRep',
         'getRepByAssignment',
         'getAccountGroups',
-        '_getFileCached'
+        '_getFileCached',
+        'getTableFillsList'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
 
     ['createAccount', 'editAccount'].forEach(prop => {
@@ -151,7 +152,7 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    ['trashForm', '_archiveForm', '_unarchiveForm'].forEach(prop => {
+    ['trashForm', '_archiveForm', '_unarchiveForm', 'evaluateForm'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const id = +arguments[0];

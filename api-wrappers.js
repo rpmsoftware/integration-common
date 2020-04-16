@@ -1283,6 +1283,16 @@ API.prototype.addNoteByFormNumber = function (processNameOrID, formNumber, note,
     return this.request('ProcFormNoteAdd', body);
 };
 
+API.prototype.getTableFillsList = function () {
+    return this.request('ProcTableFillsList');
+};
+
+API.prototype.evaluateForm = function (formID) {
+    if (this.validateParameters) {
+        formID = normalizeInteger(formID);
+    }
+    return this.request('ProcFormEvaluate', { FormID: formID });
+};
 
 exports.RpmApi = API;
 
@@ -1394,12 +1404,14 @@ exports.isListField = function (field) {
     return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
 };
 
-function isTableField(field) {
-    const customField = FIELD_TYPE.CustomField;
-    return field.FieldType === customField.value && (
-        field.SubType == customField.subTypes.FieldTable.value ||
-        field.SubType == customField.subTypes.FieldTableDefinedRow.value
-    );
+function isTableField(field, definedRows) {
+    if (field.FieldType !== ObjectType.CustomField) {
+        return false;
+    }
+    const st = field.SubType;
+    return definedRows === undefined ?
+        (st === FieldSubType.FieldTable || st === FieldSubType.FieldTableDefinedRow) :
+        (st === (definedRows ? FieldSubType.FieldTableDefinedRow : FieldSubType.FieldTable));
 }
 
 exports.isTableField = isTableField;
@@ -1423,9 +1435,7 @@ exports.getStaffFilters = function (field) {
 
 exports.getDefinitionRow = function (field) {
     assert(isTableField(field));
-    const defRow = field.Rows.find(row => row.IsDefinition);
-    assert.equal(typeof defRow, 'object', 'No definition row');
-    return defRow;
+    return field.Rows.demand(row => row.IsDefinition);
 };
 
 exports.toSimpleField = function (field) {
