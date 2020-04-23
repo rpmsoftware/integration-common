@@ -1287,6 +1287,10 @@ API.prototype.getTableFillsList = function () {
     return this.request('ProcTableFillsList');
 };
 
+API.prototype.getProcessFlows = function () {
+    return this.request('ProcFlows');
+};
+
 API.prototype.evaluateForm = function (formID) {
     if (this.validateParameters) {
         formID = normalizeInteger(formID);
