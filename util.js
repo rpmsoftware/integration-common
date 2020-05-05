@@ -714,3 +714,5 @@ exports.createPropertySorter = (property) => (a, b) => {
     const nameB = b[property];
     return nameA === nameB ? 0 : (nameA < nameB ? -1 : 1);
 };
+
+exports.getDataURLPrefix = type => `data:${type.toLowerCase()};base64,`;

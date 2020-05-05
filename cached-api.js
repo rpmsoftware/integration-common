@@ -1,5 +1,6 @@
 const Cache = require('./cache');
 const { RpmApi } = require('./api-wrappers');
+const { ObjectType } = require('./api-enums');
 const rpmUtil = require('./util');
 
 async function getProcess(nameOrID, demand) {
@@ -14,6 +15,22 @@ module.exports = function (apiConfig) {
     const api = new RpmApi(apiConfig);
 
     const cache = new Cache();
+
+    cache.clearFormRelated = function (result) {
+        const form = result.Form;
+        let getter = 'demandForm';
+        this.clear(getter, form.FormID);
+        this.clear(getter, [result.ProcessID, form.Number]);
+        this.clear(getter, [result.Process, form.Number]);
+        getter = 'getForms';
+        this.clear(getter, result.ProcessID);
+        this.clear(getter, result.Process);
+        getter = 'getFormList';
+        this.clear(getter, result.ProcessID);
+        this.clear(getter, result.Process);
+        return result;
+    };
+
 
     api._getFileCached = api.getFile;
 
@@ -78,26 +95,11 @@ module.exports = function (apiConfig) {
         };
     });
 
-    function clearFormRelated(result) {
-        const form = result.Form;
-        let getter = 'demandForm';
-        cache.clear(getter, form.FormID);
-        cache.clear(getter, [result.ProcessID, form.Number]);
-        cache.clear(getter, [result.Process, form.Number]);
-        getter = 'getForms';
-        cache.clear(getter, result.ProcessID);
-        cache.clear(getter, result.Process);
-        getter = 'getFormList';
-        cache.clear(getter, result.ProcessID);
-        cache.clear(getter, result.Process);
-        return result;
-    };
-
     ['createForm', 'editForm', 'addFormParticipant', 'addNoteByFormID', 'addNoteByFormNumber'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            clearFormRelated(result);
+            cache.clearFormRelated(result);
             return result;
         };
     });
@@ -105,7 +107,7 @@ module.exports = function (apiConfig) {
     const createForm = api.createForm;
     api.createForm = async function () {
         const result = await createForm.apply(this, arguments);
-        clearFormRelated(result);
+        cache.clearFormRelated(result);
         cache.clear('_getProcesses');
         return result;
     };
@@ -152,28 +154,39 @@ module.exports = function (apiConfig) {
         return result;
     };
 
+    const cleanAfterFormID = id => {
+        id = +id;
+        let getter = 'demandForm';
+        const cached = !isNaN(id) && cache.clear(getter, [id])[0];
+        if (cached) {
+            cache.clear(getter, [cached.ProcessID, cached.Form.Number]);
+            cache.clear(getter, [cached.Process, cached.Form.Number]);
+            cache.clear('getForms', cached.ProcessID);
+            cache.clear('getFormList', cached.ProcessID);
+            cache.clear('getForms', cached.Process);
+            cache.clear('getFormList', cached.Process);
+        } else {
+            cache.clear('getForms');
+            cache.clear('getFormList');
+        }
+        cache.clear('_getProcesses');
+    };
+
     ['trashForm', '_archiveForm', '_unarchiveForm', 'evaluateForm'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
-            const id = +arguments[0];
             const result = await original.apply(this, arguments);
-            let getter = 'demandForm';
-            const cached = !isNaN(id) && cache.clear(getter, [id])[0];
-            if (cached) {
-                cache.clear(getter, [cached.ProcessID, cached.Form.Number]);
-                cache.clear(getter, [cached.Process, cached.Form.Number]);
-                cache.clear('getForms', cached.ProcessID);
-                cache.clear('getFormList', cached.ProcessID);
-                cache.clear('getForms', cached.Process);
-                cache.clear('getFormList', cached.Process);
-            } else {
-                cache.clear('getForms');
-                cache.clear('getFormList');
-            }
-            cache.clear('_getProcesses');
+            cleanAfterFormID(arguments[0]);
             return result;
         };
     });
+
+    const original = api.addSignature;
+    api.addSignature = async function () {
+        const result = await original.apply(this, arguments);
+        +arguments[0] === ObjectType.Form && cleanAfterFormID(arguments[1]);
+        return result;
+    };
 
     ['createAgency', 'editAgency'].forEach(prop => {
         const original = api[prop];
@@ -238,4 +251,4 @@ module.exports = function (apiConfig) {
     };
 
     return api;
-}
+};

@@ -19,7 +19,8 @@ const {
     createParallelRunner,
     defineStandardProperty,
     toBase64,
-    toArray
+    toArray,
+    getDataURLPrefix
 } = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
@@ -1296,6 +1297,49 @@ API.prototype.evaluateForm = function (formID) {
         formID = normalizeInteger(formID);
     }
     return this.request('ProcFormEvaluate', { FormID: formID });
+};
+
+const URI_PREFIX_PNG = getDataURLPrefix('image/png');
+
+API.prototype.addSignature = function (objectTypeID, objectID, signature, name, company, date, alternateID) {
+    let body = typeof objectTypeID === 'object' ? objectTypeID : {
+        ObjectTypeID: objectTypeID,
+        ObjectID: objectID,
+        AlternateID: alternateID,
+        File: signature,
+        Name: name,
+        Company: company,
+        Date: date
+    };
+    if (this.validateParameters) {
+        body.ObjectTypeID = normalizeInteger(body.ObjectTypeID);
+        body.ObjectID = normalizeInteger(body.ObjectID);
+        validateString(body.Name);
+        body.AlternateID === undefined || validateString(body.AlternateID);
+        body.Company === undefined || validateString(body.Company);
+        if (Buffer.isBuffer(body.File)) {
+            body.File = body.File.toString('base64');
+        }
+        validateString(body.File);
+        if (!body.File.toLowerCase().startsWith(URI_PREFIX_PNG)) {
+            body.File = URI_PREFIX_PNG + body.File;
+        }
+        if (body.Date !== undefined) {
+            const d = moment.isMoment(body.Date) ? body.Date : moment(body.Date);
+            assert(d.isValid());
+            body.Date = d.format(ISO_DATE_TIME_FORMAT);
+        }
+    }
+    return this.request('SignatureAdd', body);
+};
+
+
+API.prototype.addFormSignature = function (formID, signature, name, company, date, alternateID) {
+    return this.addSignature(ObjectType.Form, formID, signature, name, company, date, alternateID);
+};
+
+API.prototype.getFormSignatures = function (formID) {
+    return this.request('ProcFormSignatures', { FormID: this.validateParameters ? normalizeInteger(formID) : formID });
 };
 
 exports.RpmApi = API;
