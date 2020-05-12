@@ -112,9 +112,9 @@ module.exports = function (apiConfig) {
         return result;
     };
 
-    const createFormAction = api.createFormAction;
-    api.createFormAction = async function () {
-        const result = await createFormAction.apply(this, arguments);
+    const editFormAction = api.editFormAction;
+    api.editFormAction = async function () {
+        const result = await editFormAction.apply(this, arguments);
         const form = result.Action.Form;
         let getter = 'demandForm';
         cache.clear(getter, form.FormID);

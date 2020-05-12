@@ -29,6 +29,9 @@ const util = require('util');
 
 const MAX_PARALLEL_CALLS = 20;
 
+const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
+const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
 }
@@ -229,51 +232,25 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     }
     assert(+formOrID);
     assert(+userID);
-    return this.request('ActionEdit', {
-        Action: {
-            Description: description,
-            Form: {
-                FormID: +formOrID
-            },
-            StaffOnly: true,
-            Due: toMoment(due).format('YYYY-MM-DD'),
-            Assignee: {
-                UserID: +userID
-            }
+    return this.editFormAction(+formOrID, {
+        Description: description,
+        StaffOnly: true,
+        Due: toMoment(due).format(ISO_DATE_FORMAT),
+        Assignee: {
+            UserID: +userID
         }
     });
 };
 
-API.prototype.addFormAction = function (formID, data) {
+API.prototype.editFormAction = function (formID, data) {
     if (this.validateParameters) {
         formID = normalizeInteger(formID);
-        data = data.Action || data;
         assert.equal(typeof data, 'object');
         validateString(data.Description);
         assert(data.Due);
+        assert(+action.Assignee.UserID || +action.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
     }
-    let action = Object.assign({}, data, { Form: { FormID: formID } });
-    action.Assignee = {
-        ParticipantID: (action.Assignee ? action.Assignee.ParticipantID : action.ParticipantID) || undefined,
-        UserID: (action.Assignee ? action.Assignee.UserID : action.UserID) || undefined
-    };
-    this.validateParameters && assert(+action.Assignee.UserID || +action.Assignee.ParticipantID,
-        'Assignee UserID or ParticipantID required');
-
-    return this.request('ActionEdit', { Action: action });
-};
-
-API.prototype.editFormAction = function (formID, actionID, data) {
-    if (this.validateParameters) {
-        formID = normalizeInteger(formID);
-        actionID = normalizeInteger(actionID);
-        data = data.Action || data;
-        assert.equal(typeof data, 'object');
-        validateString(data.Description);
-        assert(data.Due);
-    }
-    let action = Object.assign({}, data, { Form: { FormID: formID }, ActionID: actionID });
-    return this.request('ActionEdit', { Action: action });
+    return this.request('ActionEdit', { Action: Object.assign({}, data, { Form: { FormID: formID } }) });
 };
 
 const PROC_PROMISE_PROPERTY = Symbol();
