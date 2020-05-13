@@ -248,7 +248,7 @@ API.prototype.editFormAction = function (formID, data) {
         assert.equal(typeof data, 'object');
         validateString(data.Description);
         assert(data.Due);
-        assert(+action.Assignee.UserID || +action.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
+        assert(+data.Assignee.UserID || +data.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
     }
     return this.request('ActionEdit', { Action: Object.assign({}, data, { Form: { FormID: formID } }) });
 };
