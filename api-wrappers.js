@@ -12,6 +12,7 @@ const {
 const {
     normalizeDate,
     getEager,
+    demandDeepValue,
     normalizeInteger,
     validateString,
     toBoolean,
@@ -243,14 +244,21 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
 };
 
 API.prototype.editFormAction = function (formID, data) {
+    if (data === undefined) {
+        data = formID;
+        formID = undefined;
+    }
     if (this.validateParameters) {
-        formID = normalizeInteger(formID);
+        data = data.Action || data;
+        formID = normalizeInteger(formID || demandDeepValue(data, 'Form', 'FormID'));
         assert.equal(typeof data, 'object');
         validateString(data.Description);
         assert(data.Due);
         assert(+data.Assignee.UserID || +data.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
     }
-    return this.request('ActionEdit', { Action: Object.assign({}, data, { Form: { FormID: formID } }) });
+    data = Object.assign({}, data);
+    formID && Object.assign(data, { Form: { FormID: formID } });
+    return this.request('ActionEdit', this.validateParameters ? { Action: data } : data);
 };
 
 const PROC_PROMISE_PROPERTY = Symbol();
@@ -1476,4 +1484,3 @@ exports.toSimpleField = function (field) {
     }
     return field;
 };
-
