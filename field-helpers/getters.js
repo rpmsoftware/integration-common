@@ -377,9 +377,25 @@ add('CustomerLocation', 'getReferencedObject', async function (config, form) {
 });
 
 const DEFAULT_GETTER = {
+    init: function (conf) {
+        return {
+            pattern: conf.pattern || undefined
+        };
+    },
     get: function (config, form) {
         form = form.Form || form;
-        return getFieldByUid.call(form, config.srcUid, true).Value;
+        let value = getFieldByUid.call(form, config.srcUid, true).Value;
+        if (config.pattern) {
+            if (!(config.pattern instanceof RegExp)) {
+                config.pattern = new RegExp(config.pattern);
+            }
+            const parts = config.pattern.exec(value);
+            if (!parts) {
+                throw new Error(`Could not parse value "${value}"`);
+            }
+            value = parts[parts.length > 1 ? 1 : 0];
+        }
+        return value;
     }
 };
 

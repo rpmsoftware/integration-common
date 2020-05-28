@@ -486,7 +486,7 @@ API.prototype._unarchiveForm = function (formID) {
     if (this.validateParameters) {
         formID = normalizeInteger(formID);
     }
-    return this.request('ProcFormUnarchive', { FormID: formID });
+    return this.request('ProcFormActivate', { FormID: formID });
 };
 
 API.prototype.setFormArchived = function (formID, archived) {

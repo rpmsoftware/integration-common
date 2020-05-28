@@ -564,7 +564,7 @@ add('RestrictedReference', async function (config, data) {
             return { ID: data };
         }
         data = await this.api.demandForm(data);
-        return data.Form.Number;
+        data = data.Form.Number;
     }
     return data;
 });
