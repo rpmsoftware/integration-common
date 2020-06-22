@@ -4,7 +4,8 @@ const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const {
     getField,
     getFieldByUid,
-    validateProcessReference
+    validateProcessReference,
+    getDefinitionRow
 } = require('../api-wrappers');
 
 const {
@@ -195,8 +196,7 @@ add('FieldTableDefinedRow', async function (conf, form) {
 
 
 async function initTableFields(config, rpmField) {
-    const defRow = rpmField.Rows.find(row => row.IsDefinition);
-    assert(defRow, 'No definition row');
+    const defRow = getDefinitionRow(rpmField);
 
     let tableFields = config.tableFields;
     tableFields = Array.isArray(tableFields) ? tableFields.map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
@@ -217,12 +217,8 @@ async function initTableFields(config, rpmField) {
         config.tableFields.push(tabFieldConf);
     }
     config.keyRowID = !!config.keyRowID;
-    if (config.key) {
-        validateString(config.key);
-        assert(config.tableFields.find(c => c.srcField === config.key), `No key field "${config.key}"`);
-    } else {
-        config.key = undefined;
-    }
+    config.useUids = !!config.useUids || undefined;
+    config.key = config.key ? config.tableFields.demand(c => c.srcField === config.key)[config.useUids ? 'srcUid' : 'srcField'] : undefined;
     return config;
 }
 
@@ -235,6 +231,7 @@ add('FieldTable', async function (conf, form) {
     }
 
     const result = conf.key || conf.keyRowID ? {} : [];
+    const prop = conf.useUids ? 'srcUid' : 'srcField';
     for (let srcRow of srcRows) {
         const resultRow = {};
         const tableForm = {
@@ -252,7 +249,7 @@ add('FieldTable', async function (conf, form) {
             })
         };
         for (let fieldConf of conf.tableFields) {
-            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, tableForm);
+            resultRow[fieldConf[prop]] = await get.call(this, fieldConf, tableForm);
         }
         if (conf.key) {
             result[getEager(resultRow, conf.key)] = resultRow;

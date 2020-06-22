@@ -1,6 +1,6 @@
 const { throwError, normalizeInteger, validateString, toBoolean, toArray, getEager } = require('../util');
 const moment = require('moment');
-const rpm = require('../api-wrappers');
+const { getField, getFieldByUid, ISO_DATE_FORMAT, ISO_DATE_TIME_FORMAT } = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');
 const { format } = require('util');
@@ -193,7 +193,7 @@ function add(subtype, name, convert, init) {
 add('FieldTableDefinedRow',
     async function (config, data, form) {
         data = data[config.srcField] || data;
-        const existingRows = form && rpm.getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
+        const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
 
         function getRowID(templateID) {
             const result = existingRows && existingRows.find(r => r.TemplateDefinedRowID === templateID);
@@ -236,7 +236,7 @@ add('FieldTableDefinedRow',
 add('FieldTable', 'delimetered',
     async function (config, data, form) {
         data = data[config.srcField];
-        const existingRows = form && rpm.getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
+        const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
         function getRowID() {
             return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
         }
@@ -287,7 +287,7 @@ add('FieldTable', 'delimetered',
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
-            tabFieldConf = await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true));
+            tabFieldConf = await initField.call(this, tabFieldConf, getField.call(defRow, tableFieldName, true));
             tabFieldConf.isTableField = true;
             result.tableFields.push(tabFieldConf);
         }
@@ -299,7 +299,7 @@ add('FieldTable',
     async function (config, data, form) {
         data = data[config.srcField] || data;
         assert.equal(typeof data, 'object', 'Object is expected');
-        const existingRows = form ? rpm.getField.call(form.Form || form, config.dstField, true)
+        const existingRows = form ? getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
 
         const isArray = Array.isArray(data);
@@ -308,7 +308,7 @@ add('FieldTable',
             getExistingRow = () => existingRows && existingRows.shift();
         } else if (config.key) {
             const getKey = row => {
-                let key = rpm.getFieldByUid.call(row, config.key, true).Values[0];
+                let key = getFieldByUid.call(row, config.key, true).Values[0];
                 return key && key.Value;
             };
             getExistingRow = key => {
@@ -353,7 +353,7 @@ add('FieldTable',
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
             existingRow && config.key && !fieldValues.find(f => f.Uid === config.key) &&
-                fieldValues.push(rpm.getFieldByUid.call(existingRow, config.key, true));
+                fieldValues.push(getFieldByUid.call(existingRow, config.key, true));
         }
         if (!isArray) {
             rows = rows.concat(existingRows);
@@ -380,7 +380,7 @@ async function initTableFields(config, rpmField) {
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
-            tabFieldConf = await initField.call(this, tabFieldConf, rpm.getField.call(defRow, tableFieldName, true));
+            tabFieldConf = await initField.call(this, tabFieldConf, getField.call(defRow, tableFieldName, true));
             if (!tabFieldConf.srcField) {
                 tabFieldConf.srcField = tabFieldConf.dstField;
             }
@@ -391,7 +391,7 @@ async function initTableFields(config, rpmField) {
             tabField.UserCanEdit && push(await initField.call(this, { srcField: tabField.Name }, tabField));
         }
     }
-    config.key = config.key ? rpm.getField.call(defRow, validateString(config.key), true).Uid : undefined;
+    config.key = config.key ? getField.call(defRow, validateString(config.key), true).Uid : undefined;
     config.createKeys = config.key && !!config.tableFields.find(tf => tf.dstUid === config.key);
     return config;
 }
@@ -412,7 +412,7 @@ add('Date', function (config, data) {
     data = data[config.srcField];
     if (config.normalize) {
         data = toMoment(config, data);
-        data = data ? data.format('YYYY-MM-DD') : null;
+        data = data ? data.format(ISO_DATE_FORMAT) : null;
     }
     return { Value: data };
 });
@@ -421,7 +421,7 @@ add('DateTime', function (config, data) {
     data = data[config.srcField];
     if (config.normalize) {
         data = toMoment(config, data);
-        data = data ? data.format('YYYY-MM-DD HH:mm:ss') : null;
+        data = data ? data.format(ISO_DATE_TIME_FORMAT) : null;
     }
     return { Value: data };
 });

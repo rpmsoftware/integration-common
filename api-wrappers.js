@@ -604,7 +604,7 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
     } else {
         request = { FormID: processOrFormId };
     }
-    return api.request('ProcForm', request).then(api._extendForm.bind(api));
+    return api.request('ProcForm', request).then(form => this._extendForm(form));
 };
 
 API.prototype._extendForm = function (form) {
@@ -703,7 +703,7 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
     if (fireWebEvent) {
         properties.WebhookEvaluate = true;
     }
-    return this.request('ProcFormAdd', properties).then(this._extendForm.bind(this));
+    return this.request('ProcFormAdd', properties).then(form => this._extendForm(form));
 };
 
 const FORM_PROTO = {
@@ -730,7 +730,7 @@ API.prototype.createFormSet = function (parentFormID, fields) {
             FormID: parentFormID,
             Fields: Array.isArray(fields) ? fields : Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }))
         }
-    }).then(extendForm);
+    }).then(form => this._extendForm(form));
 };
 
 API.prototype.setFormStatus = function (form, status) {
@@ -1249,7 +1249,7 @@ API.prototype.addNoteByFormID = function (formID, note, noteForStaff, user) {
             NoteForStaff: noteForStaff,
             Note: note
         }
-    });
+    }).then(form => this._extendForm(form));
 };
 
 API.prototype.addNoteByFormNumber = function (processNameOrID, formNumber, note, noteForStaff, user) {
