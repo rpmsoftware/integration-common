@@ -27,6 +27,12 @@ const COMMON_GETTERS = {
         return getFieldByUid.call(form, config.srcUid, true).ID;
     },
 
+    getValueAndID: function (config, form) {
+        form = form.Form || form;
+        const { Value, ID } = getFieldByUid.call(form, config.srcUid, true);
+        return { Value, ID };
+    },
+
     getFormNumber: {
         get: function (config, form) {
             return (form.Form || form).Number;
@@ -413,16 +419,13 @@ async function initField(conf, rpmField, rpmFields) {
     if (rpmField) {
         type = getFullType(rpmField);
     }
-    const getters = rpmField && SPECIFIC_GETTERS[type] || COMMON_GETTERS;
+    const specificGetters = type && SPECIFIC_GETTERS[type];
     const getterName = conf.getter;
-    let getter;
-    if (getterName) {
-        getter = getters[getterName];
-        if (!getter) {
-            throw new Error('Unknown getter: ' + JSON.stringify(conf));
-        }
-    } else {
-        getter = getters[DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER;
+    let getter = getterName ?
+        (specificGetters && specificGetters[getterName] || COMMON_GETTERS[getterName]) :
+        (specificGetters && specificGetters[DEFAULT_ACCESSOR_NAME] || COMMON_GETTERS[DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER);
+    if (!getter) {
+        throw new Error('Unknown getter: ' + JSON.stringify(conf));
     }
     if (getter.init) {
         const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
