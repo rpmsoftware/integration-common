@@ -1020,8 +1020,11 @@ API.prototype.editCustomerLocation = function (customerID, locationID, location)
     });
 };
 
-API.prototype.getSuppliers = async function () {
-    const result = await this.request('Suppliers');
+API.prototype.getSuppliers = async function (includeArchived) {
+    if (this.validateParameters) {
+        includeArchived = !!includeArchived || undefined;
+    }
+    const result = await this.request('Suppliers', { IncludeArchived: includeArchived });
     result.Suppliers.forEach(s => this.tweakDates(s));
     return result;
 };
