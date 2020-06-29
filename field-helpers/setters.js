@@ -577,9 +577,6 @@ const defaultConverter = {
 };
 
 async function initField(conf, rpmField) {
-    if (!rpmField.UserCanEdit) {
-        throw new Error('Field is readonly: ' + rpmField.Name);
-    }
     const key = common.getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
     const setter = conf.setter;
