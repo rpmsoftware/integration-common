@@ -3,7 +3,7 @@ const debug = require('debug')('rpm:office365wh');
 const uuid = require('node-uuid');
 const Microsoft = require("node-outlook").Microsoft;
 const outlook = Microsoft.OutlookServices;
-const office365 = require('./wrappers');
+const { getODataEtag, getODataType, logMsError } = require('./lib');
 
 const ODATA_TYPE_PUSH_SUBSCRIPTION = "#Microsoft.OutlookServices.PushSubscription";
 
@@ -201,9 +201,9 @@ exports.Subscription = Subscription;
 
 function isResource(object) {
     return Boolean(object &&
-        office365.getODataType(object) &&
+        getODataType(object) &&
         object['@odata.id'] &&
-        office365.getODataEtag(object) &&
+        getODataEtag(object) &&
         object.Id);
 }
 
@@ -213,7 +213,7 @@ const ODATA_TYPE_NOTIFICATION = "#Microsoft.OutlookServices.Notification";
 
 exports.isNotification = function (object) {
     const changeType = CHANGE_TYPES[object.ChangeType];
-    return Boolean(office365.getODataType(object) === ODATA_TYPE_NOTIFICATION &&
+    return Boolean(getODataType(object) === ODATA_TYPE_NOTIFICATION &&
         typeof object.SequenceNumber === 'number' &&
         object.SubscriptionId &&
         object.SubscriptionExpirationDateTime &&
@@ -246,7 +246,7 @@ exports.createOffice365WebHookCallback = function (callback) {
                 callback(body, req);
             }
         } catch (error) {
-            office365.logMsError(error);
+            logMsError(error);
         }
     };
 
