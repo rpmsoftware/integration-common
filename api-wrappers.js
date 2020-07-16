@@ -1214,7 +1214,7 @@ API.prototype.createAccessValidator = async function (inConfig) {
             rpmRoles = rpmRoles.Roles;
             for (let roleName of roles) {
                 const role = rpmRoles.find(r => r.Name === roleName);
-                role ? config.roles.push(role.ID) : console.warn('Role not found: ' + roleName);
+                role ? config.roles.push(role.ID) : debug('Role not found: ' + roleName);
             }
         }
     }

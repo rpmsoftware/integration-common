@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.26.3",
+    "version": "4.27.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "field-helpers/*",
@@ -16,6 +16,7 @@
         "api-wrappers.js",
         "cache.js",
         "cached-api.js",
+        "conditions.js",
         "express.js",
         "field-accessors.js",
         "field-patcher.js",
