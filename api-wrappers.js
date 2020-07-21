@@ -440,7 +440,7 @@ API.prototype.getRoles = function () {
 };
 
 API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, fireWebEvent) {
-    if (typeof formNumberOrID === 'object') {
+    if (formNumberOrID===undefined || typeof formNumberOrID === 'object') {
         fireWebEvent = properties;
         properties = fields;
         fields = formNumberOrID;
