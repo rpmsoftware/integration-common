@@ -1,4 +1,3 @@
-/* global Promise */
 const debug = require('debug')('rpm:office365wh');
 const uuid = require('node-uuid');
 const Microsoft = require("node-outlook").Microsoft;

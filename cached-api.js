@@ -5,11 +5,11 @@ const rpmUtil = require('./util');
 
 async function getProcess(nameOrID, demand) {
     return (await this._getProcesses()).getProcess(nameOrID, demand);
-};
+}
 
 async function getActiveProcess(nameOrID, demand) {
     return (await this._getProcesses()).getActiveProcess(nameOrID, demand);
-};
+}
 
 module.exports = function (apiConfig) {
     const api = new RpmApi(apiConfig);

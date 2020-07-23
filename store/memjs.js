@@ -1,3 +1,5 @@
+/* global process */
+
 const Client = require('memjs').Client;
 
 class MemJsClient extends require('./common').Store {

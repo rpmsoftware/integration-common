@@ -1,4 +1,3 @@
-/* global Promise */
 var assert = require('assert');
 var tedious = require('tedious');
 var util = require('util');

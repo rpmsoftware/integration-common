@@ -1,4 +1,6 @@
-'use strict';
+/* global Buffer */
+/* global process */
+
 const debug = require('debug')('rpm:util');
 const fs = require('fs');
 const moment = require('moment');

@@ -1,3 +1,6 @@
+/* global process */
+/* global Buffer */
+
 const amqplib = require('amqplib');
 const debug = require('debug')('rpm:amqp');
 const DEFAULT_URL = process.env.CLOUDAMQP_URL || 'amqp://localhost';
@@ -66,8 +69,7 @@ exports.createReciever = async function (queue, url, callback) {
         let data = msg.content.toString();
         try {
             data = JSON.parse(data);
-        } catch (error) {
-        }
+        } catch (error) { }
         p = p.then(callback(data, msg, channel));
         p = p.then(() => channel.ack(msg), error => {
             channel.ack(msg);

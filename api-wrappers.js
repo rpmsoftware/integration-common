@@ -1,3 +1,4 @@
+/* global Buffer */
 const debug = require('debug')('rpm:api');
 
 const {
@@ -959,7 +960,7 @@ API.prototype.editCustomer = function (nameOrID, data) {
         };
     }
     data = data.Customer || data;
-    const customer = Object.assign({}, data);;
+    const customer = Object.assign({}, data);
     if (typeof nameOrID === 'number') {
         customer.CustomerID = nameOrID;
     } else if (data.Name) {
@@ -1313,7 +1314,7 @@ API.prototype.addSignature = function (objectTypeID, objectID, signature, name, 
             body.File = URI_PREFIX_PNG + body.File;
         }
         if (body.Date !== undefined) {
-            const d = moment.isMoment(body.Date) ? body.Date : moment(body.Date);
+            const d = toMoment(body.Date);
             assert(d.isValid());
             body.Date = d.format(ISO_DATE_TIME_FORMAT);
         }

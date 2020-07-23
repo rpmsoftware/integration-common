@@ -1,5 +1,3 @@
-/*global fetch*/
-
 function core(url, data, headers) {
   return fetch(url, {
     method: 'POST',

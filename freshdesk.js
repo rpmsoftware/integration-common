@@ -1,3 +1,5 @@
+/* global Buffer */
+
 const assert = require('assert');
 const { validateString, isEmpty, toBoolean, normalizeInteger } = require('./util');
 const { Client } = require('node-rest-client');
@@ -27,7 +29,7 @@ class API {
 
     getUrl(endpoint) {
         return this.url + endpoint;
-    };
+    }
 
     getPaged(endpoint, parameters) {
         return this.get(endpoint, Object.assign({}, GET_DEFAULTS, parameters || undefined));
@@ -83,7 +85,7 @@ class API {
 
             })
         });
-    };
+    }
 
     getTimeEntries(before, after, billable) {
         if (typeof before === 'object' && !moment.isMoment(before)) {
