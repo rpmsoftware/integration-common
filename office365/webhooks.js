@@ -1,5 +1,5 @@
 const debug = require('debug')('rpm:office365wh');
-const uuid = require('node-uuid');
+const uuid = require('uuid');
 const Microsoft = require("node-outlook").Microsoft;
 const outlook = Microsoft.OutlookServices;
 const { getODataEtag, getODataType, logMsError } = require('./lib');
