@@ -26,7 +26,7 @@ class Cache {
         const deletedEntities = [];
         Object.keys(this.cache).forEach(prop => {
             if (prop.startsWith(key)) {
-                deletedEntities.push(this.cache[prop]);
+                deletedEntities.push(this.cache[prop].value);
                 delete this.cache[prop];
             }
         });

@@ -117,7 +117,7 @@ API.prototype.request = function (endPoint, data, log) {
     return this.postRequest(url, data, api.getHeaders()).then(data => {
         const responseTime = new Date();
         if (!data.Result) {
-            throw new Error(typeof data === 'object' ? data.toString() : data);
+            throw typeof data === 'object' ? data : new Error(data + '');
         }
         const isError = data.Result.Error;
         data = isError || data.Result || data;
@@ -441,7 +441,7 @@ API.prototype.getRoles = function () {
 };
 
 API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, fireWebEvent) {
-    if (formNumberOrID===undefined || typeof formNumberOrID === 'object') {
+    if (formNumberOrID === undefined || typeof formNumberOrID === 'object') {
         fireWebEvent = properties;
         properties = fields;
         fields = formNumberOrID;
@@ -452,8 +452,8 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     if (fireWebEvent === undefined && type === 'boolean') {
         fireWebEvent = properties;
         properties = {};
-    } else if (type !== 'object') {
-        properties = {};
+    } else {
+        properties = type === 'object' ? Object.assign({}, properties) : {};
     }
     const body = { Form: properties, OverwriteWithNull: true };
     if (processNameOrID) {
@@ -463,8 +463,10 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
             body.ProcessID = normalizeInteger(processNameOrID);
         }
         properties.Number = formNumberOrID;
+    } else if (typeof formNumberOrID === 'number') {
+        properties.FormID = formNumberOrID;
     } else {
-        properties.FormID = normalizeInteger(formNumberOrID);
+        properties.AlternateID = formNumberOrID;
     }
     fields = fields || [];
     properties.Fields = Array.isArray(fields) ? fields :
@@ -472,7 +474,6 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     if (fireWebEvent) {
         body.WebhookEvaluate = true;
     }
-
     return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
@@ -496,8 +497,10 @@ API.prototype.setFormArchived = function (formID, archived) {
         this._unarchiveForm(formID);
 };
 
-API.prototype.trashForm = function (formID) {
-    return this.request('ProcFormTrash', { FormID: normalizeInteger(formID) });
+API.prototype.trashForm = function (id) {
+    const body = {};
+    body[typeof id === 'number' ? 'FormID' : 'AlternateID'] = id;
+    return this.request('ProcFormTrash', body);
 };
 
 function isReferenceField(field) {
@@ -597,15 +600,24 @@ API.prototype.getFormList = function (processID, viewID, refType) {
 };
 
 API.prototype.demandForm = function (processOrFormId, formNumber) {
-    var api = this;
-    var request;
+    let request;
+    assert(arguments.length <= 2);
+    const type = typeof processOrFormId;
     if (arguments.length > 1) {
-        request = new BaseProcessData(processOrFormId);
-        request.FormNumber = formNumber;
-    } else {
+        assert(typeof formNumber === 'string');
+        request = { FormNumber: formNumber };
+        if (type === 'number') {
+            request.ProcessID = processOrFormId;
+        } else {
+            assert(type === 'string');
+            request.Process = processOrFormId;
+        }
+    } else if (type === 'number') {
         request = { FormID: processOrFormId };
+    } else {
+        request = { AlternateID: processOrFormId };
     }
-    return api.request('ProcForm', request).then(form => this._extendForm(form));
+    return this.request('ProcForm', request).then(form => this._extendForm(form));
 };
 
 API.prototype._extendForm = function (form) {
@@ -679,14 +691,6 @@ function getFieldByUid(uid, eager) {
     return result;
 }
 exports.getFieldByUid = getFieldByUid;
-
-function BaseProcessData(processOrId) {
-    if (typeof processOrId === 'number') {
-        this.ProcessID = processOrId;
-    } else {
-        this.Process = processOrId + '';
-    }
-}
 
 API.prototype.createForm = function (processOrId, fields, properties, fireWebEvent) {
     const type = typeof properties;
@@ -981,7 +985,6 @@ API.prototype.addCustomerContact = function (customerID, contact, primary) {
 };
 
 API.prototype.editCustomerContact = function (customerID, contactID, data, primary) {
-    customerID = objectToId(customerID, 'CustomerID');
     if (typeof contactID === 'object') {
         primary = data;
         data = contactID;
@@ -990,7 +993,7 @@ API.prototype.editCustomerContact = function (customerID, contactID, data, prima
         data.ContactID = contactID;
     }
     return this.request('CustomerContactEdit', {
-        CustomerID: customerID,
+        CustomerID: objectToId(customerID, 'CustomerID'),
         IsPrimary: !!primary,
         Contact: data
     }).then(result => result.Contact);

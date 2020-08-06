@@ -20,6 +20,7 @@ module.exports = function (apiConfig) {
         const form = result.Form;
         let getter = 'demandForm';
         this.clear(getter, form.FormID);
+        this.clear(getter, form.AlternateID);
         this.clear(getter, [result.ProcessID, form.Number]);
         this.clear(getter, [result.Process, form.Number]);
         getter = 'getForms';
@@ -116,40 +117,23 @@ module.exports = function (apiConfig) {
     api.editFormAction = async function () {
         const result = await editFormAction.apply(this, arguments);
         const form = result.Action.Form;
-        let getter = 'demandForm';
-        cache.clear(getter, form.FormID);
-        cache.clear(getter, form.ProcessID);
         cache.clear('getForms', form.ProcessID);
         cache.clear('getFormList', form.ProcessID);
+        cleanAfterFormID(form.FormID);
         return result;
     };
-
-    async function clearAfterFile(formID) {
-        let getter = 'demandForm';
-        cache.clear(getter, formID);
-        const form = await this.demandForm(formID);
-        cache.put(getter, [formID], form);
-        cache.put(getter, [form.ProcessID, form.Form.Number], form);
-        cache.put(getter, [form.Process, form.Form.Number], form);
-        getter = 'getForms';
-        cache.clear(getter, form.ProcessID);
-        cache.clear(getter, form.Process);
-        getter = 'getFormList';
-        cache.clear(getter, form.ProcessID);
-        cache.clear(getter, form.Process);
-    }
 
     const addFormFile = api.addFormFile;
     api.addFormFile = async function () {
         const result = await addFormFile.apply(this, arguments);
-        await clearAfterFile.call(this, result.FileAttachment.FormID);
+        cleanAfterFormID(result.FileAttachment.FormID);
         return result;
     };
 
     const editFormFile = api.editFormFile;
     api.editFormFile = async function () {
         const result = await editFormFile.apply(this, arguments);
-        await clearAfterFile.call(this, result.FileAttachment.FormID);
+        cleanAfterFormID(result.FileAttachment.FormID);
         cache.clear('_getFileCached', result.FileAttachment.FileID);
         return result;
     };
@@ -157,14 +141,9 @@ module.exports = function (apiConfig) {
     const cleanAfterFormID = id => {
         id = +id;
         let getter = 'demandForm';
-        const cached = !isNaN(id) && cache.clear(getter, [id])[0];
+        const cached = !isNaN(id) && cache.clear(getter, id)[0];
         if (cached) {
-            cache.clear(getter, [cached.ProcessID, cached.Form.Number]);
-            cache.clear(getter, [cached.Process, cached.Form.Number]);
-            cache.clear('getForms', cached.ProcessID);
-            cache.clear('getFormList', cached.ProcessID);
-            cache.clear('getForms', cached.Process);
-            cache.clear('getFormList', cached.Process);
+            cache.clearFormRelated(cached);
         } else {
             cache.clear('getForms');
             cache.clear('getFormList');
