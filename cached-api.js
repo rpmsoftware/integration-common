@@ -84,8 +84,8 @@ module.exports = function (apiConfig) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.put('demandAccount', [result.Account, result.Supplier], result);
-            cache.put('demandAccount', [result.AccountID], result);
+            cache.clear('demandAccount', [result.Account, result.Supplier]);
+            cache.clear('demandAccount', [result.AccountID]);
             cache.clear('getAccounts');
             cache.clear('searchCustomers');
             cache.clear('getCustomerAccounts', result.Customer);
@@ -172,8 +172,8 @@ module.exports = function (apiConfig) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             let getter = 'demandAgency';
-            cache.put(getter, result.AgencyID, result);
-            cache.put(getter, result.Agency, result);
+            cache.clear(getter, result.AgencyID);
+            cache.clear(getter, result.Agency);
             cache.clear('getAgencies');
             return result;
         };
@@ -201,8 +201,8 @@ module.exports = function (apiConfig) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             const getter = 'demandCustomer';
-            cache.put(getter, result.CustomerID, result);
-            cache.put(getter, result.Name, result);
+            cache.clear(getter, result.CustomerID);
+            cache.clear(getter, result.Name);
             cache.clear('getCustomers');
             return result;
         };
