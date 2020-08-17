@@ -17,11 +17,11 @@ function initMulti(conf) {
 }
 
 function isTrue(form) {
-    return toBoolean(getOperandValue(this, form));
+    return toBoolean(getOperandValue(this.operand, form));
 }
 
 function isEmpty(form) {
-    const value = getOperandValue(this, form);
+    const value = getOperandValue(this.operand, form);
     return value === undefined || value === null || value === '';
 }
 
@@ -154,7 +154,7 @@ function initOperand(config) {
     } else if (config.property) {
         resultConfig = { property: validateString(config.property) };
     } else {
-        assert(config.value, '"property", "field" or "value" is required');
+        assert(config.value !== undefined, '"property", "field" or "value" is required');
         resultConfig = { value: config.value };
     }
     return resultConfig;
@@ -182,7 +182,7 @@ function getOperandValue(operandConfig, form) {
     form = form.Form || form;
     let result;
     const { field, property, value } = operandConfig;
-    if (value) {
+    if (value !== undefined) {
         result = value;
     } else if (field) {
         assert(property);
