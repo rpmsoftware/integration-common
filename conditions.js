@@ -111,7 +111,7 @@ const OPERATORS = {
             const statuses = {};
             for (let status of toArray(getEager(conf, 'statuses'))) {
                 const { ID, Text } = this.StatusLevels.demand(s => s.Text === status);
-                statuses[status.ID] = { ID, Text };
+                statuses[ID] = { ID, Text };
             }
             const resultConf = { statuses: Object.values(statuses), not: !!conf.not || undefined };
             assert(resultConf.statuses.length > 0);
