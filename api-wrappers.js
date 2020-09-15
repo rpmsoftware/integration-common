@@ -40,7 +40,7 @@ function setParent(obj, parent) {
 
 function API(url, key, postRequest) {
     if (typeof url === 'object') {
-        postRequest = key;
+        postRequest = url.postRequest;
         key = url.key;
         url = url.url;
     }
@@ -48,7 +48,7 @@ function API(url, key, postRequest) {
     this.url = url.ensureRight('api2.svc/').toString();
     this.key = key;
     if (!postRequest) {
-        postRequest = 'node-rest';
+        postRequest = 'node-fetch';
     }
     if (typeof postRequest === 'string') {
         postRequest = require('./rest-posters/' + postRequest)();
@@ -1332,6 +1332,13 @@ API.prototype.addFormSignature = function (formID, signature, name, company, dat
 
 API.prototype.getFormSignatures = function (formID) {
     return this.request('ProcFormSignatures', { FormID: this.validateParameters ? normalizeInteger(formID) : formID });
+};
+
+API.prototype.getCommAgencies = function (run) {
+    if (this.validateParameters) {
+        run = run ? validateString(run) : 'all';
+    }
+    return this.request('CommAgencies', { Run: run });
 };
 
 exports.RpmApi = API;

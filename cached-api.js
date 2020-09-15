@@ -11,8 +11,10 @@ async function getActiveProcess(nameOrID, demand) {
     return (await this._getProcesses()).getActiveProcess(nameOrID, demand);
 }
 
-module.exports = function (apiConfig) {
-    const api = new RpmApi(apiConfig);
+module.exports = function (api) {
+    if (!(api instanceof RpmApi)) {
+        api = new RpmApi(api);
+    }
 
     const cache = new Cache();
 
