@@ -2,7 +2,7 @@ const assert = require('assert');
 const { getEager, toBoolean, validateString, toArray, normalizeInteger } = require('./util');
 const { getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT } = require('./api-wrappers');
 const operators = require('operators');
-const moment = require('moment');
+const moment = require('dayjs');
 const debug = require('debug')('rpm:contitions');
 
 function initMulti(conf) {
@@ -103,7 +103,8 @@ const OPERATORS = {
                 }
             }
             increment && m.add(increment, conf.unit);
-            return moment().isSameOrAfter(m);
+            const now = moment();
+            return now.isSame(m) || now.isAfter(m);
         }
     },
     formStatus: {

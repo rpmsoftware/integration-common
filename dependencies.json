@@ -1,7 +1,6 @@
 {
     "to-csv": "^0.x.x",
     "tedious": "^1.x.x",
-    "string": "^3.x.x",
-    "node-rest-client": "^1.x.x",
-    "moment": ""
+    "string": "",
+    "node-fetch": ""
 }

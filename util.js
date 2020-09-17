@@ -3,7 +3,7 @@
 
 const debug = require('debug')('rpm:util');
 const fs = require('fs');
-const moment = require('moment');
+const moment = require('dayjs');
 const assert = require('assert');
 require('string').extendPrototype();
 
@@ -704,7 +704,7 @@ exports.validateString = function (value) {
 };
 
 exports.toMoment = function (value) {
-    return moment.isMoment(value) ? value : moment(value);
+    return value instanceof moment ? value : moment(value);
 };
 
 const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];

@@ -1,5 +1,5 @@
 const { throwError, normalizeInteger, validateString, toBoolean, toArray, getEager } = require('../util');
-const moment = require('moment');
+const moment = require('dayjs');
 const { getField, getFieldByUid, ISO_DATE_FORMAT, ISO_DATE_TIME_FORMAT } = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');

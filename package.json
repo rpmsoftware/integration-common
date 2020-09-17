@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.29.0",
+    "version": "4.30.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "field-helpers/*",
@@ -31,8 +31,8 @@
     "license": "ISC",
     "private": true,
     "dependencies": {
+        "dayjs": "^1.8.36",
         "debug": "^4.1.1",
-        "moment": "^2.24.0",
         "string": "^3.3.3"
     }
 }
