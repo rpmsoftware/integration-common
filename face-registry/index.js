@@ -29,6 +29,7 @@ class FaceRegistry {
         assert.strictEqual(personId.faceId, detectedFace.faceId);
         personId = personId.candidates[0];
         if (personId) {
+            debug('Found: %j', personId);
             personId = personId.personId;
             assert(personId);
             let dstForm = await this.getPersonFormID(personId);
