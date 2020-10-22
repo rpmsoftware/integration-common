@@ -11,6 +11,15 @@ const RE_FORM_NUMBER = new RegExp(`^${FORM_ID_PREFIX}(\\d+)$`, 'i');
 
 class FaceRegistry {
 
+    constructor(instanceID, subscriberID, faceRegistryProcess) {
+        assert.strictEqual(typeof instanceID, 'number');
+        assert.strictEqual(typeof subscriberID, 'number');
+        assert.strictEqual(typeof faceRegistryProcess, 'number');
+        this.instanceID = instanceID;
+        this.subscriberID = subscriberID;
+        this.faceRegistryProcess = faceRegistryProcess;
+    }
+
     async identifyPersonFromImage(processID, image) {
         assert.strictEqual(typeof processID, 'number')
         debug('identifyPersonFromImage(%d)', processID);
@@ -113,22 +122,15 @@ class FaceRegistry {
 async function init(rpmApi, faceApi, faceRegistryProcess) {
     assert(rpmApi instanceof RpmApi);
     assert(faceApi instanceof MsFaceApi);
-    validateString(faceRegistryProcess);
-    let { InstanceID: instanceID, SubscriberID: subscriberID } = await rpmApi.getInfo();
-    instanceID = normalizeInteger(instanceID);
-    subscriberID = normalizeInteger(subscriberID);
-    faceRegistryProcess = (await rpmApi.getProcesses()).getActiveProcess(faceRegistryProcess, true).ProcessID;
-    const result = {
-        instanceID,
-        subscriberID,
-        faceRegistryProcess,
-    };
-    Object.defineProperties(result, {
+    if (typeof faceRegistryProcess !== 'number') {
+        validateString(faceRegistryProcess);
+        faceRegistryProcess = (await rpmApi.getProcesses()).getActiveProcess(faceRegistryProcess, true).ProcessID;
+    }
+    const { InstanceID, SubscriberID } = await rpmApi.getInfo();
+    return Object.defineProperties(new FaceRegistry(+InstanceID, +SubscriberID, faceRegistryProcess), {
         rpmApi: { value: rpmApi, configurable: true },
         faceApi: { value: faceApi, configurable: true }
     });
-    Object.setPrototypeOf(result, FaceRegistry.prototype);
-    return result;
 }
 
 module.exports = { FaceRegistry, init };
