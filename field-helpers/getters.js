@@ -53,6 +53,24 @@ const COMMON_GETTERS = {
         }
     },
 
+    getFormStarted: {
+        get: async function (config, form) {
+            return (form.Form || form).Modified;
+        },
+        init: function (conf) {
+            return conf;
+        }
+    },
+
+    getFormModified: {
+        get: async function (config, form) {
+            return (form.Form || form).Modified;
+        },
+        init: function (conf) {
+            return conf;
+        }
+    },
+
     getIfField: {
         get: function (config, form) {
             form = form.Form || form;

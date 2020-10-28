@@ -581,5 +581,6 @@ exports.StaticViewColumnUids = {
     FormID: '710_639',
     Archived: '710_235',
     Agency: '710_152',
-    FormNumber: '710_34'
+    FormNumber: '710_34',
+    FormStarted: '710_36'
 };
