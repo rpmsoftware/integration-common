@@ -9,7 +9,6 @@ const common = require('./common');
 const {
     FieldSubType,
     ObjectType,
-    RefSubType
 } = require('../api-enums');
 
 
@@ -452,7 +451,7 @@ add('List', function (config, data) {
 });
 
 fieldType = ObjectType.FormReference;
-subTypes = RefSubType;
+subTypes = ObjectType;
 
 add('Customer', 'demand', async function (config, data) {
     const api = this.api || this;
@@ -556,11 +555,10 @@ add('CustomerAccount', 'getOrCreate',
 );
 
 
-add('RestrictedReference', async function (config, data) {
-    data = data[config.srcField];
-    if (!data) return null;
+add('RestrictedReference', async function ({ srcField, isTableField }, data) {
+    data = data[srcField] || (isTableField ? 0 : null);
     if (typeof data === 'number') {
-        if (config.isTableField) {
+        if (isTableField) {
             return { ID: data };
         }
         data = await this.api.demandForm(data);
@@ -569,6 +567,21 @@ add('RestrictedReference', async function (config, data) {
     return data;
 });
 
+async function defaultBasicReference({ srcField, isTableField }, data) {
+    data = data[srcField] || (isTableField ? 0 : null);
+    return (typeof data === 'number' && isTableField) ? { ID: data } : data;
+}
+
+[
+    'Customer',
+    'CustomerContact',
+    'CustomerLocation',
+    'AgentCompany',
+    'AgentRep',
+    'CustomerAccount',
+    'Staff',
+    'Supplier'
+].forEach(subType => add(subType, defaultBasicReference));
 
 const defaultConverter = {
     convert: function (config, data) {
