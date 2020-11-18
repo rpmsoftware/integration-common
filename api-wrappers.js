@@ -845,9 +845,9 @@ API.prototype.demandAccount = async function (account, supplier) {
     return this.tweakDates(acc);
 };
 
-API.prototype.getAccount = function (account, supplier, demand) {
+API.prototype.getAccount = async function (account, supplier, demand) {
     try {
-        return this.demandAccount(account, supplier);
+        return await this.demandAccount(account, supplier);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_ACCOUNT_NOT_FOUND) {
             throw e;
@@ -922,7 +922,7 @@ API.prototype.demandCustomer = async function (nameOrID) {
 
 API.prototype.getCustomer = async function (nameOrID, demand) {
     try {
-        return this.demandCustomer(nameOrID);
+        return await this.demandCustomer(nameOrID);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_CUSTOMER_NOT_FOUND) {
             throw e;
@@ -1063,7 +1063,7 @@ API.prototype.demandAgency = async function (nameOrID) {
 
 API.prototype.getAgency = async function (nameOrID, demand) {
     try {
-        return this.demandAgency(nameOrID);
+        return await this.demandAgency(nameOrID);
     } catch (e) {
         if (demand || e.Message !== errors.MSG_AGENCY_NOT_FOUND) {
             throw e;
