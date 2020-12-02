@@ -14,5 +14,6 @@ module.exports = {
             fieldTypeOrField = fieldTypeOrField.value;
         }
         return `RPM_${fieldTypeOrField}_${subType}`;
-    }
+    },
+    isEmptyValue: v => v === undefined || v === null || v === ''
 };

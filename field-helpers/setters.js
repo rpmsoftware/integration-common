@@ -1,15 +1,18 @@
 const { throwError, normalizeInteger, validateString, toBoolean, toArray, getEager } = require('../util');
 const moment = require('dayjs');
-const { getField, getFieldByUid, ISO_DATE_FORMAT, ISO_DATE_TIME_FORMAT } = require('../api-wrappers');
+const {
+    getField,
+    getFieldByUid,
+    ISO_DATE_FORMAT,
+    ISO_DATE_TIME_FORMAT,
+    isTableField,
+    toSimpleField
+} = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');
 const { format } = require('util');
-const common = require('./common');
-
-const {
-    FieldSubType,
-    ObjectType,
-} = require('../api-enums');
+const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
+const { FieldSubType, ObjectType } = require('../api-enums');
 
 
 function normalizeIndex(value) {
@@ -36,58 +39,54 @@ function validateIndex(array, indexOrValue) {
 
 const COMMON_SETTERS = {
     constant: {
-        convert: function (config) {
-            return config.value;
+        convert: function ({ value }) {
+            return value;
         },
-        init: function (config) {
-            assert.notStrictEqual(config.value, undefined);
+        init: function ({ value }) {
+            assert.notStrictEqual(value, undefined);
+            return { value };
         }
     },
 
     pattern: {
-        convert: function (config, data) {
-            data = data[config.srcField];
+        convert: function ({ srcField, pattern }, data) {
+            data = data[srcField];
             data = data && data.trim();
-            return data ? format(config.pattern, data) : null;
+            return data ? format(pattern, data) : null;
         },
-        init: function (config) {
-            validateString(config.srcField);
-            config.pattern = config.pattern && config.pattern.trim();
-            validateString(config.pattern);
-            return config;
+        init: function ({ pattern }) {
+            pattern = pattern ? validateString(pattern) : undefined;
+            return { pattern };
         }
     },
 
-    strHash: function (config, data) {
-        data = data[config.srcField];
+    strHash: function ({ srcField }, data) {
+        data = data[srcField];
         data = data && data.trim();
         return data ? '' + createHash(data) : null;
     },
 
-    trim: function (config, data) {
-        data = data[config.srcField];
+    trim: function ({ srcField }, data) {
+        data = data[srcField];
         return data && data.trim() || null;
     },
 
-    formNumberToID: async function (config, data) {
-        assert(config.processID > 0);
-        const srcValue = data[config.srcField];
-        if (!srcValue) {
-            return 0;
-        }
-        const form = await this.api.demandForm(config.processID, srcValue);
-        return form.Form.FormID;
+    formNumberToID: async function ({ srcField, processID }, data) {
+        assert(processID > 0);
+        const srcValue = data[srcField];
+        return srcValue ? (await this.api.demandForm(processID, srcValue)).Form.FormID : 0;
     },
 
     dictionary: {
         convert: async function (config, data) {
-            const srcValue = data[config.srcField];
+            const { srcField, pattern, keyColumns, view, process, valueColumn, demand } = config;
+            const srcValue = data[srcField];
             if (!srcValue) {
                 return null;
             }
             let keys;
-            if (config.pattern) {
-                keys = new RegExp(config.pattern).exec(srcValue);
+            if (pattern) {
+                keys = new RegExp(pattern).exec(srcValue);
                 if (!keys) {
                     throwFieldError(config, `Could  not parse "${srcValue}"`);
                 }
@@ -95,21 +94,20 @@ const COMMON_SETTERS = {
             } else {
                 keys = [srcValue];
             }
-            const l = config.keyColumns.length;
+            const l = keyColumns.length;
             if (keys.length < l) {
                 throwFieldError(config, `${l} key(s) expected. [${keys.join(',')}]`);
             }
-            let forms = await this.api.getForms(config.process, config.view);
+            let forms = await this.api.getForms(process, view);
             const columns = forms.Columns;
-            const keyIdx = [];
-            config.keyColumns.forEach(c => {
+            const keyIdx = keyColumns.map(c => {
                 const idx = validateIndex(columns, c);
                 if (keyIdx.indexOf(idx) >= 0) {
                     throw new Error('Duplicate key index: ' + c);
                 }
-                keyIdx.push(idx);
+                return idx;
             });
-            const valueIdx = validateIndex(columns, config.valueColumn);
+            const valueIdx = validateIndex(columns, valueColumn);
             let result = forms.Forms.find(form => {
                 const values = form.Values;
                 for (let ii = 0; ii < l; ii++) {
@@ -122,27 +120,22 @@ const COMMON_SETTERS = {
             if (result) {
                 result = result.Values[valueIdx];
             }
-            if (!result && config.demand) {
+            if (!result && demand) {
                 throwFieldError(config, `Unknown value: [${keys.join(',')}]`);
             }
             return result || null;
         },
 
-        init: async function (config) {
-            const api = this.api;
-            validateString(config.srcField);
+        init: async function ({ process, view, keyColumns, valueColumn }) {
+            const { api } = this;
             let proc = await api.getProcesses();
-            proc = proc.getActiveProcess(config.process, true);
-            config.process = proc.ProcessID;
-            if (config.view) {
-                const view = await proc.getView(config.view, true);
-                config.view = view.ID;
-            }
-            const keyColumns = toArray(config.keyColumns).map(normalizeIndex);
+            proc = proc.getActiveProcess(process, true);
+            process = proc.ProcessID;
+            view = view ? (await proc.getView(view, true)).ID : undefined;
+            keyColumns = toArray(keyColumns).map(normalizeIndex);
             assert(keyColumns.length > 0, 'Must have at least one dictionary key column');
-            config.keyColumns = keyColumns;
-            config.valueColumn = normalizeIndex(config.valueColumn);
-            return config;
+            valueColumn = normalizeIndex(valueColumn);
+            return { process, view, keyColumns, valueColumn };
         }
     }
 };
@@ -158,13 +151,12 @@ const SPECIFIC_SETTERS = {};
 
 const VALUE_ERROR = exports.VALUE_ERROR = 'ValueError';
 
-function throwFieldError(config, error) {
-    // throw new Error(error);
-    throwError(`${config.dstField}. ${error}`, VALUE_ERROR);
+function throwFieldError({ dstField }, error) {
+    throwError(`${dstField}. ${error}`, VALUE_ERROR);
 }
 
-function getErrorMessage(config, error) {
-    return `"${config.dstField}". ${error}`;
+function getErrorMessage({ dstField }, error) {
+    return `"${dstField}". ${error}`;
 }
 
 let fieldType = ObjectType.CustomField;
@@ -174,25 +166,25 @@ function add(subtype, name, convert, init) {
     if (typeof name === 'function') {
         init = convert;
         convert = name;
-        name = common.DEFAULT_ACCESSOR_NAME;
+        name = DEFAULT_ACCESSOR_NAME;
     }
-    const fullType = common.getFullType(fieldType, getEager(subTypes, subtype));
+    const fullType = getFullType(fieldType, getEager(subTypes, subtype));
     let gens = SPECIFIC_SETTERS[fullType];
     if (!gens) {
         gens = SPECIFIC_SETTERS[fullType] = {};
     }
     if (init) {
-        assert.equal(typeof init, 'function');
+        assert.strictEqual(typeof init, 'function');
     }
-    assert.equal(typeof convert, 'function');
+    assert.strictEqual(typeof convert, 'function');
     init = init || undefined;
     return gens[name] = { convert, init };
 }
 
 add('FieldTableDefinedRow',
-    async function (config, data, form) {
-        data = data[config.srcField] || data;
-        const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
+    async function ({ srcField, dstField, tableRows, tableFields }, data, form) {
+        data = data[srcField] || data;
+        const existingRows = form && getField.call(form.Form || form, dstField, true).Rows.filter(r => !r.IsDefinition);
 
         function getRowID(templateID) {
             const result = existingRows && existingRows.find(r => r.TemplateDefinedRowID === templateID);
@@ -202,7 +194,7 @@ add('FieldTableDefinedRow',
         const rows = [];
         const errors = [];
         let rownum = 0;
-        for (let rowDef of config.tableRows) {
+        for (let rowDef of tableRows) {
             const srcRow = data[rowDef.name];
             if (!srcRow) {
                 continue;
@@ -210,7 +202,7 @@ add('FieldTableDefinedRow',
             const fieldValues = [];
             rows.push({ RowID: getRowID(rowDef.id), TemplateDefinedRowID: rowDef.id, Fields: fieldValues });
             ++rownum;
-            for (let tabFieldConf of config.tableFields) {
+            for (let tabFieldConf of tableFields) {
                 const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
@@ -218,7 +210,7 @@ add('FieldTableDefinedRow',
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                    toArray(err).forEach(err => errors.push(`"${dstField}".${rownum}.` + err));
                 }
                 fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
@@ -273,16 +265,16 @@ add('FieldTable', 'delimetered',
         }
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     },
-    async function (config, rpmField) {
+    async function ({ colDelimiter, rowDelimiter, tableFields }, rpmField) {
         const result = {
             tableFields: [],
-            colDelimiter: config.colDelimiter ? validateString(config.colDelimiter) : undefined
+            colDelimiter: colDelimiter ? validateString(colDelimiter) : undefined,
+            rowDelimiter: validateString(rowDelimiter)
         };
-        ['srcField', 'rowDelimiter'].forEach(prop => result[prop] = validateString(config[prop]));
         const defRow = rpmField.Rows.find(row => row.IsDefinition);
         assert(defRow, 'No definition row');
-        for (let tableFieldName in config.tableFields) {
-            let tabFieldConf = config.tableFields[tableFieldName];
+        for (let tableFieldName in tableFields) {
+            let tabFieldConf = tableFields[tableFieldName];
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
@@ -297,7 +289,7 @@ add('FieldTable', 'delimetered',
 add('FieldTable',
     async function (config, data, form) {
         data = data[config.srcField] || data;
-        assert.equal(typeof data, 'object', 'Object is expected');
+        assert.strictEqual(typeof data, 'object', 'Object is expected');
         const existingRows = form ? getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
 
@@ -361,21 +353,19 @@ add('FieldTable',
     }, initTableFields
 );
 
-async function initTableFields(config, rpmField) {
+async function initTableFields({ tableFields: srcTableFields, key, createKeys }, rpmField) {
     const defRow = rpmField.Rows.find(row => row.IsDefinition);
     assert(defRow, 'No definition row');
-    const tableFields = config.tableFields;
-    config.tableFields = [];
+    const tableFields = [];
 
-
-    function push(c) {
+    const push = c => {
         c.isTableField = true;
-        config.tableFields.push(c);
-    }
+        tableFields.push(c);
+    };
 
-    if (tableFields) {
-        for (let tableFieldName in tableFields) {
-            let tabFieldConf = tableFields[tableFieldName]
+    if (srcTableFields) {
+        for (let tableFieldName in srcTableFields) {
+            let tabFieldConf = srcTableFields[tableFieldName]
             if (typeof tabFieldConf !== 'object') {
                 tabFieldConf = { srcField: tabFieldConf + '' }
             }
@@ -390,9 +380,9 @@ async function initTableFields(config, rpmField) {
             tabField.UserCanEdit && push(await initField.call(this, { srcField: tabField.Name }, tabField));
         }
     }
-    config.key = config.key ? getField.call(defRow, validateString(config.key), true).Uid : undefined;
-    config.createKeys = config.key && !!config.tableFields.find(tf => tf.dstUid === config.key);
-    return config;
+    key = key ? getField.call(defRow, validateString(key), true).Uid : undefined;
+    createKeys = key && !!tableFields.find(tf => tf.dstUid === key);
+    return { tableFields, key, createKeys };
 }
 
 
@@ -425,9 +415,9 @@ add('DateTime', function (config, data) {
     return { Value: data };
 });
 
-add('YesNo', function (config, data) {
-    data = data[config.srcField];
-    if (config.normalize) {
+add('YesNo', function ({ srcField, normalize }, data) {
+    data = data[srcField];
+    if (normalize) {
         data = (data === undefined || data === null) ? null : (toBoolean(data) ? 'Yes' : 'No');
     }
     return { Value: data };
@@ -446,8 +436,7 @@ add('List', function (config, data) {
         { Value: value }
     );
 }, async function (config, rpmField) {
-    config.options = getEager(rpmField, 'Options');
-    return config;
+    return { options: getEager(rpmField, 'Options') };
 });
 
 fieldType = ObjectType.FormReference;
@@ -461,16 +450,16 @@ add('Customer', 'demand', async function (config, data) {
     if (!cust) throwFieldError(config, `Customer "${name}" does not exist`);
     return { ID: cust.CustomerID, Value: cust.Name };
 });
-add('Customer', 'get', async function (config, data) {
+add('Customer', 'get', async function ({ srcField }, data) {
     const api = this.api || this;
-    let cust = data[config.srcField];
+    let cust = data[srcField];
     if (!cust) return null;
     cust = await api.getCustomer(cust);
     return cust ? { ID: cust.CustomerID, Value: cust.Name } : { ID: 0, Value: null };
 });
-add('Customer', 'getOrCreate', async function (config, data) {
+add('Customer', 'getOrCreate', async function ({ srcField }, data) {
     const api = this.api || this;
-    const cust = data[config.srcField];
+    const cust = data[srcField];
     if (!cust) return null;
     let result = await api.getCustomer(cust);
     if (!result) {
@@ -488,17 +477,17 @@ add('AgentCompany', 'demand', async function (config, data) {
     if (!agency) throwFieldError(config, `Agency "${name}" does not exist`)
     return { ID: agency.AgencyID, Value: agency.Agency };
 });
-add('AgentCompany', 'get', async function (config, data) {
+add('AgentCompany', 'get', async function ({ srcField }, data) {
     const api = this.api || this;
-    let agency = data[config.srcField];
+    let agency = data[srcField];
     // if (agency === undefined) return;
     if (!agency) return null;
     agency = await api.getAgency(agency);
     return agency ? { ID: agency.AgencyID, Value: agency.Agency } : { ID: 0, Value: null };
 });
-add('AgentCompany', 'getOrCreate', async function (config, data) {
+add('AgentCompany', 'getOrCreate', async function ({ srcField }, data) {
     const api = this.api || this;
-    const agency = data[config.srcField];
+    const agency = data[srcField];
     // if (agency === undefined) return;
     if (!agency) return null;
     let result = await api.getAgency(agency);
@@ -548,9 +537,11 @@ add('CustomerAccount', 'getOrCreate',
             throwFieldError(config, `Expected account "${accountName}"`);
         }
         return { ID: account.AccountID, Value: account.Account };
-    }, function (config) {
-        ['account', 'customer', 'supplier'].forEach(prop => validateString(config[prop]));
-        return config;
+    }, function ({ account, customer, supplier }) {
+        validateString(account);
+        validateString(customer);
+        validateString(supplier);
+        return { account, customer, supplier };
     }
 );
 
@@ -584,56 +575,74 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
 ].forEach(subType => add(subType, defaultBasicReference));
 
 const defaultConverter = {
-    convert: function (config, data) {
-        return data[config.srcField] || null;
+    convert: function ({ srcField }, data) {
+        return data[srcField] || null;
     }
 };
 
+const CONDITIONS = {
+    gt: function (src, dstField) {
+        src = +src;
+        const dstValue = +(dstField && dstField.Value);
+        return !isNaN(src) && (isNaN(dstValue) || src - dstValue > 0);
+    },
+    ne: function (src, dstField) {
+        return !dstField || src !== dstField.Value;
+    },
+    emptySource: function (src) {
+        return isEmptyValue(src);
+    },
+    emptyDestination: function (src, dstField) {
+        return !dstField || dstField.ID === 0 || isEmptyValue(dstField.Value);
+    },
+};
+
 async function initField(conf, rpmField) {
-    const key = common.getFullType(rpmField);
+    const key = getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
-    const setter = conf.setter;
+    let { setter, condition, srcField, normalize } = conf;
     if (setter) {
         gen = gen[setter] || COMMON_SETTERS[setter];
         if (!gen) {
             throw new Error('Unknown RPM value generator: ' + JSON.stringify(conf));
         }
     } else {
-        gen = gen[common.DEFAULT_ACCESSOR_NAME] || defaultConverter;
+        gen = gen[DEFAULT_ACCESSOR_NAME] || defaultConverter;
     }
-    if (gen.init) {
-        const newConf = await gen.init.call(this, conf, rpmField);
-        conf = newConf || conf;
-    } else {
-        conf.normalize = conf.hasOwnProperty('normalize') ? toBoolean(conf.normalize) : true;
-    }
-    if (conf.hasOwnProperty('srcField')) {
-        validateString(conf.srcField);
-    } else {
-        conf.srcField = rpmField.Name;
-    }
-    if (setter) {
-        conf.setter = setter;
-    } else {
-        delete conf.setter;
-    }
+    conf = gen.init ? await gen.init.call(this, conf, rpmField) : {};
+    assert.strictEqual(typeof conf, 'object');
+    conf.normalize = normalize === undefined || toBoolean(normalize);
+    conf.setter = setter || undefined;
+    conf.srcField = srcField === undefined ? rpmField.Name : validateString(srcField);
     conf.type = key;
     conf.dstUid = validateString(rpmField.Uid);
     conf.dstField = validateString(rpmField.Name);
     conf.processID = rpmField.ProcessID;
+    if (condition && !isTableField(rpmField)) {
+        getEager(CONDITIONS, validateString(condition));
+        conf.condition = condition;
+    }
     return conf;
 }
 
-function getSetter(fieldConfig) {
-    let converter = SPECIFIC_SETTERS[fieldConfig.type] || COMMON_SETTERS;
-    const name = fieldConfig.setter || common.DEFAULT_ACCESSOR_NAME;
-    const result = converter && converter[name] || COMMON_SETTERS[name] || defaultConverter;
-    return result.convert;
+function getSetter({ type, setter }) {
+    let converter = SPECIFIC_SETTERS[type] || COMMON_SETTERS;
+    const name = setter || DEFAULT_ACCESSOR_NAME;
+    return (converter && converter[name] || COMMON_SETTERS[name] || defaultConverter).convert;
 }
 
 async function setField(conf, data, form) {
     const setter = getSetter(conf);
     let result;
+    let { condition, valueIsId, srcField, dstUid } = conf;
+    if (condition) {
+        condition = getEager(CONDITIONS, condition);
+        const srcValue = data[srcField];
+        const dstField = form ? toSimpleField(getFieldByUid.call(form.Form || form, dstUid, true)) : undefined;
+        if (!condition(srcValue, dstField)) {
+            return;
+        }
+    }
     try {
         result = await setter.call(this, conf, data, form);
         if (result === undefined) { // Workaround for tables
@@ -645,7 +654,7 @@ async function setField(conf, data, form) {
         }
         result = { ID: 0, Value: null, Errors: error.message || error };
     }
-    return (result && typeof result === 'object') ? result : (conf.valueIsId ?
+    return (result && typeof result === 'object') ? result : (valueIsId ?
         { ID: result ? normalizeInteger(result) : 0 } :
         { Value: result }
     );
