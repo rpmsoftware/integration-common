@@ -54,6 +54,7 @@ function createExpressApp(port, options) {
         port = process.env.PORT;
     }
     app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(bodyParser.json({ type: 'application/json' }));
     app.use(bodyParser.text({ type: '*/*' }));
     app.startServer = function () {
         var srv = (heroku ? app : https.createServer(options, app)).listen(port);
