@@ -190,7 +190,7 @@ function getOperandValue(operandConfig, form) {
         result = toSimpleField(getFieldByUid.call(form, field.Uid || field, true))[property];
     } else {
         assert(property);
-        result = getEager(form, property);
+        result = form[property];
     }
     return result;
 }
