@@ -5,6 +5,7 @@
     const util = require('util');
     const lib = require('./express');
     const { ObjectType } = require('./api-enums');
+    const assert = require('assert');
 
     const headerPatterns = {
         'x-rpm-instanceid': /^\d+$/,
@@ -29,7 +30,12 @@
             try {
                 validateHeaders(req.headers);
                 validateSignature(req.headers['x-rpm-signature'], req.body, secret);
-                body = JSON.parse(req.body);
+                body = req.body;
+                const type = typeof body;
+                if (type !== 'object') {
+                    assert.strictEqual(type, 'string');
+                    body = JSON.parse(body);
+                }
                 validateWebHooksRequest(body);
                 body.time = new Date();
             } catch (err) {
