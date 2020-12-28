@@ -24,7 +24,7 @@
     }
 
     function createRpmWebHookCallback(secret, callback) {
-        return function (req, res) {
+        return (req, res) => {
             let body;
             try {
                 validateHeaders(req.headers);
@@ -33,9 +33,9 @@
                 validateWebHooksRequest(body);
                 body.time = new Date();
             } catch (err) {
-                console.error('Validation error:', err);
                 res.status(400).send(err);
-                return;
+                console.error('Body:', req.body);
+                throw err;
             }
             res.send();
             body.InstanceID = req.headers['x-rpm-instanceid'];
