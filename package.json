@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.33.4",
+    "version": "4.33.5",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -32,8 +32,8 @@
     "license": "ISC",
     "private": true,
     "dependencies": {
-        "dayjs": "^1.8.36",
-        "debug": "^4.1.1",
+        "dayjs": "^1.10.2",
+        "debug": "^4.3.1",
         "string": "^3.3.3"
     }
 }

@@ -440,22 +440,19 @@ API.prototype.getRoles = function () {
     return this.request('Roles');
 };
 
-API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, fireWebEvent) {
+API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, control) {
     if (formNumberOrID === undefined || typeof formNumberOrID === 'object') {
-        fireWebEvent = properties;
+        control = properties;
         properties = fields;
         fields = formNumberOrID;
         formNumberOrID = processNameOrID;
         processNameOrID = undefined;
     }
-    const type = typeof properties;
-    if (fireWebEvent === undefined && type === 'boolean') {
-        fireWebEvent = properties;
-        properties = {};
-    } else {
-        properties = type === 'object' ? Object.assign({}, properties) : {};
-    }
-    const body = { Form: properties, OverwriteWithNull: true };
+    let { OverwriteWithNull, WebhookEvaluate } = control || {};
+    OverwriteWithNull = OverwriteWithNull === undefined ? true : toBoolean(OverwriteWithNull);
+    WebhookEvaluate !== undefined && (WebhookEvaluate = toBoolean(WebhookEvaluate));
+    properties = typeof properties === 'object' ? Object.assign({}, properties) : {};
+    const body = { Form: properties, OverwriteWithNull, WebhookEvaluate };
     if (processNameOrID) {
         if (typeof processNameOrID === 'string') {
             body.Process = processNameOrID;
@@ -471,9 +468,6 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     fields = fields || [];
     properties.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
-    if (fireWebEvent) {
-        body.WebhookEvaluate = true;
-    }
     return this._extendForm(await this.request('ProcFormEdit', body));
 };
 
