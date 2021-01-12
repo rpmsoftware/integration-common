@@ -459,12 +459,9 @@ add('Customer', 'get', async function ({ srcField }, data) {
 });
 add('Customer', 'getOrCreate', async function ({ srcField }, data) {
     const api = this.api || this;
-    const cust = data[srcField];
+    let cust = data[srcField];
     if (!cust) return null;
-    let result = await api.getCustomer(cust);
-    if (!result) {
-        result = await api.createCustomer(cust);
-    }
+    cust = await api.getCustomer(cust) || await api.createCustomer(cust);
     return { ID: cust.CustomerID, Value: cust.Name };
 });
 

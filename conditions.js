@@ -20,11 +20,17 @@ function isTrue(form) {
     return toBoolean(getOperandValue(this.operand, form));
 }
 
-function isEmpty(form) {
-    const value = getOperandValue(this.operand, form);
-    return value === undefined || value === null || value === '';
+function initIsEmpty(conf) {
+    const resultConf = init1.call(this, conf);
+    resultConf.trim = toBoolean(conf.trim);
+    return resultConf;
 }
 
+function isEmpty(data) {
+    let value = getOperandValue(this.operand, data);
+    typeof value === 'string' && this.trim && (value = value.trim());
+    return value === undefined || value === null || value === '';
+}
 
 const OPERATORS = {
     and: {
@@ -66,11 +72,11 @@ const OPERATORS = {
         process: function (form) { return !isTrue.call(this, form); }
     },
     empty: {
-        init: init1,
+        init: initIsEmpty,
         process: isEmpty
     },
     notEmpty: {
-        init: init1,
+        init: initIsEmpty,
         process: function (form) { return !isEmpty.call(this, form); }
     },
     expired: {
