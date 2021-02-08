@@ -1,4 +1,12 @@
-const { throwError, normalizeInteger, validateString, toBoolean, toArray, getEager } = require('../util');
+const {
+    throwError,
+    normalizeInteger,
+    validateString,
+    toBoolean,
+    toArray,
+    getEager,
+    getDeepValue
+} = require('../util');
 const moment = require('dayjs');
 const {
     getField,
@@ -13,7 +21,6 @@ const createHash = require('string-hash');
 const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
 const { FieldSubType, ObjectType } = require('../api-enums');
-
 
 function normalizeIndex(value) {
     if (typeof value === 'string') {
@@ -50,7 +57,7 @@ const COMMON_SETTERS = {
 
     pattern: {
         convert: function ({ srcField, pattern }, data) {
-            data = data[srcField];
+            data = getDeepValue(data, srcField);
             data = data && data.trim();
             return data ? format(pattern, data) : null;
         },
@@ -61,26 +68,26 @@ const COMMON_SETTERS = {
     },
 
     strHash: function ({ srcField }, data) {
-        data = data[srcField];
+        data = getDeepValue(data, srcField);
         data = data && data.trim();
         return data ? '' + createHash(data) : null;
     },
 
     trim: function ({ srcField }, data) {
-        data = data[srcField];
+        data = getDeepValue(data, srcField);
         return data && data.trim() || null;
     },
 
     formNumberToID: async function ({ srcField, processID }, data) {
         assert(processID > 0);
-        const srcValue = data[srcField];
+        const srcValue = getDeepValue(data, srcField);
         return srcValue ? (await this.api.demandForm(processID, srcValue)).Form.FormID : 0;
     },
 
     dictionary: {
         convert: async function (config, data) {
             const { srcField, pattern, keyColumns, view, process, valueColumn, demand } = config;
-            const srcValue = data[srcField];
+            const srcValue = getDeepValue(data, srcField);
             if (!srcValue) {
                 return null;
             }
@@ -137,6 +144,23 @@ const COMMON_SETTERS = {
             valueColumn = normalizeIndex(valueColumn);
             return { process, view, keyColumns, valueColumn };
         }
+    },
+    arrayFind: {
+        convert: async function ({ srcField, keyProperty, keyValue, resultProperty }, data) {
+            const srcArray = getDeepValue(data, srcField);
+            assert(Array.isArray(srcArray));
+            let result = srcArray.find(e => e[keyProperty] === keyValue);
+            if (result && resultProperty) {
+                result = result[resultProperty];
+            }
+            return result || null;
+        },
+        init: async function ({ resultProperty, keyProperty, keyValue }) {
+            validateString(keyProperty);
+            resultProperty = resultProperty ? validateString(resultProperty) : undefined;
+            return { resultProperty, keyProperty, keyValue };
+        }
+
     }
 };
 
@@ -183,7 +207,7 @@ function add(subtype, name, convert, init) {
 
 add('FieldTableDefinedRow',
     async function ({ srcField, dstField, tableRows, tableFields }, data, form) {
-        data = data[srcField] || data;
+        data = getDeepValue(data, srcField) || data;
         const existingRows = form && getField.call(form.Form || form, dstField, true).Rows.filter(r => !r.IsDefinition);
 
         function getRowID(templateID) {
@@ -416,7 +440,7 @@ add('DateTime', function (config, data) {
 });
 
 add('YesNo', function ({ srcField, normalize }, data) {
-    data = data[srcField];
+    data = getDeepValue(data, srcField);
     if (normalize) {
         data = (data === undefined || data === null) ? null : (toBoolean(data) ? 'Yes' : 'No');
     }
@@ -452,14 +476,14 @@ add('Customer', 'demand', async function (config, data) {
 });
 add('Customer', 'get', async function ({ srcField }, data) {
     const api = this.api || this;
-    let cust = data[srcField];
+    let cust = getDeepValue(data, srcField);
     if (!cust) return null;
     cust = await api.getCustomer(cust);
     return cust ? { ID: cust.CustomerID, Value: cust.Name } : { ID: 0, Value: null };
 });
 add('Customer', 'getOrCreate', async function ({ srcField }, data) {
     const api = this.api || this;
-    let cust = data[srcField];
+    let cust = getDeepValue(data, srcField);
     if (!cust) return null;
     cust = await api.getCustomer(cust) || await api.createCustomer(cust);
     return { ID: cust.CustomerID, Value: cust.Name };
@@ -476,7 +500,7 @@ add('AgentCompany', 'demand', async function (config, data) {
 });
 add('AgentCompany', 'get', async function ({ srcField }, data) {
     const api = this.api || this;
-    let agency = data[srcField];
+    let agency = getDeepValue(data, srcField);
     // if (agency === undefined) return;
     if (!agency) return null;
     agency = await api.getAgency(agency);
@@ -484,7 +508,7 @@ add('AgentCompany', 'get', async function ({ srcField }, data) {
 });
 add('AgentCompany', 'getOrCreate', async function ({ srcField }, data) {
     const api = this.api || this;
-    const agency = data[srcField];
+    const agency = getDeepValue(data, srcField);
     // if (agency === undefined) return;
     if (!agency) return null;
     let result = await api.getAgency(agency);
@@ -544,7 +568,7 @@ add('CustomerAccount', 'getOrCreate',
 
 
 add('RestrictedReference', async function ({ srcField, isTableField }, data) {
-    data = data[srcField] || (isTableField ? 0 : null);
+    data = getDeepValue(data, srcField) || (isTableField ? 0 : null);
     if (typeof data === 'number') {
         if (isTableField) {
             return { ID: data };
@@ -555,8 +579,17 @@ add('RestrictedReference', async function ({ srcField, isTableField }, data) {
     return data;
 });
 
+add('RestrictedReference', 'title2reference', async function ({ srcField, isTableField, processID }, data) {
+    data = getDeepValue(data, srcField);
+    if (data) {
+        assert.strictEqual(typeof data, 'string');
+        data = (await this.api.getFormList(processID, true)).Forms.find(({ T }) => T === data);
+    }
+    return data ? (isTableField ? data.ID : data.N) : (isTableField ? 0 : null);
+});
+
 async function defaultBasicReference({ srcField, isTableField }, data) {
-    data = data[srcField] || (isTableField ? 0 : null);
+    data = getDeepValue(data, srcField) || (isTableField ? 0 : null);
     return (typeof data === 'number' && isTableField) ? { ID: data } : data;
 }
 
@@ -573,7 +606,7 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
 
 const defaultConverter = {
     convert: function ({ srcField }, data) {
-        return data[srcField] || null;
+        return getDeepValue(data, srcField) || null;
     }
 };
 
@@ -610,7 +643,13 @@ async function initField(conf, rpmField) {
     assert.strictEqual(typeof conf, 'object');
     conf.normalize = normalize === undefined || toBoolean(normalize);
     conf.setter = setter || undefined;
-    conf.srcField = srcField === undefined ? rpmField.Name : validateString(srcField);
+    if (srcField === undefined) {
+        srcField = rpmField.Name;
+    } else if (Array.isArray(srcField)) {
+        assert(srcField.length > 0);
+    }
+    toArray(srcField).forEach(validateString);
+    conf.srcField = srcField;
     conf.type = key;
     conf.dstUid = validateString(rpmField.Uid);
     conf.dstField = validateString(rpmField.Name);
@@ -634,7 +673,7 @@ async function setField(conf, data, form) {
     let { condition, valueIsId, srcField, dstUid } = conf;
     if (condition) {
         condition = getEager(CONDITIONS, condition);
-        const srcValue = data[srcField];
+        const srcValue = getDeepValue(data, srcField);
         const dstField = form ? toSimpleField(getFieldByUid.call(form.Form || form, dstUid, true)) : undefined;
         if (!condition(srcValue, dstField)) {
             return;

@@ -5,7 +5,10 @@ const debug = require('debug')('rpm:util');
 const fs = require('fs');
 const moment = require('dayjs');
 const assert = require('assert');
-require('string').extendPrototype();
+
+String.prototype.ensureRight = function (right) {
+    return this.endsWith(right) ? this : this + right;
+};
 
 exports.readConfig = function (envName, fileName) {
     const config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'utf8');

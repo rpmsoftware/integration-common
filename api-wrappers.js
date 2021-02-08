@@ -53,13 +53,13 @@ function API(url, key, postRequest) {
     if (typeof postRequest === 'string') {
         postRequest = require('./rest-posters/' + postRequest)();
     }
-    assert.equal(typeof postRequest, 'function');
+    assert.strictEqual(typeof postRequest, 'function');
     Object.defineProperty(this, 'postRequest', { value: postRequest });
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
     let formUrlTemplate = new URL(url).hostname.split('.');
-    assert.equal(formUrlTemplate[0], 'api');
+    assert.strictEqual(formUrlTemplate[0], 'api');
     formUrlTemplate[0] = 'secure';
     formUrlTemplate = formUrlTemplate.join('.');
     this.formUrlTemplate = `https://${formUrlTemplate}/rpm/page/form.aspx?item=%d`;
@@ -224,7 +224,7 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
         return this.demandForm(formOrID).then(form => this.createFormAction(description, form, due, userID));
     }
     if (!userID) {
-        assert.equal(typeof formOrID, 'object');
+        assert.strictEqual(typeof formOrID, 'object');
         formOrID = formOrID.Form || formOrID;
         userID = formOrID.Participants.find(participant => participant.Name === formOrID.Owner);
         userID = userID && userID.UserID;
@@ -252,7 +252,7 @@ API.prototype.editFormAction = function (formID, data) {
     if (this.validateParameters) {
         data = data.Action || data;
         formID = normalizeInteger(formID || demandDeepValue(data, 'Form', 'FormID'));
-        assert.equal(typeof data, 'object');
+        assert.strictEqual(typeof data, 'object');
         validateString(data.Description);
         assert(data.Due);
         assert(+data.Assignee.UserID || +data.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
@@ -525,7 +525,7 @@ API.prototype.getFields = async function (processID) {
     const response = await this.request('ProcFields', { ProcessID: processID });
     const process = response.Process;
     delete response.Process;
-    assert.equal(Object.keys(response).length, 0);
+    assert.strictEqual(Object.keys(response).length, 0);
     process.Fields.forEach(field =>
         Object.defineProperty(field, 'processID', { value: processID })
     );
@@ -616,7 +616,8 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
 
 API.prototype._extendForm = function (form) {
     this.assignTo(form);
-    form.Form && this.assignTo(form.Form);
+    assert(form.Form);
+    this.assignTo(form.Form);
     return extendForm(form);
 };
 
@@ -705,18 +706,29 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
     return this.request('ProcFormAdd', properties).then(form => this._extendForm(form));
 };
 
-const FORM_PROTO = {
+const FORM_PROTO = exports.FORM_PROTO = Object.defineProperties({
+    EntityType: ObjectType.Form,
+    RefType: ObjectType.RestrictedReference,
+    IDProperty: 'FormID'
+}, {
+    EntityID: { get() { return this.Form.FormID } },
+    RefName: { get() { return this.Form.Number } },
+    Archived: { get() { return this.Form.Archived } },
+});
+
+const FORM_CORE_PROTO = {
     getField,
     getFieldByUid
 };
-Object.defineProperty(FORM_PROTO, 'url', {
+Object.defineProperty(FORM_CORE_PROTO, 'url', {
     get: function () {
         return this.api.getFormUrl(this.FormID);
     }
 });
 
 function extendForm(form) {
-    Object.setPrototypeOf(form.Form || form, FORM_PROTO);
+    Object.setPrototypeOf(form, FORM_PROTO);
+    Object.setPrototypeOf(form.Form, FORM_CORE_PROTO);
     return form;
 }
 
@@ -905,7 +917,7 @@ API.prototype.demandCustomer = async function (nameOrID) {
     if (prop === 'number') {
         prop = 'CustomerID';
     } else {
-        assert.equal(prop, 'string');
+        assert.strictEqual(prop, 'string');
         prop = 'Customer';
     }
     const request = {};
@@ -1035,15 +1047,25 @@ API.prototype.getAgencies = function () {
     });
 };
 
+const AGENCY_PROTO = Object.defineProperties({
+    EntityType: ObjectType.AgentCompany,
+    RefType: ObjectType.AgentCompany,
+    IDProperty: 'AgencyID'
+}, {
+    EntityID: { get() { return this.AgencyID } },
+    RefName: { get() { return this.Agency } },
+});
+
 function extractContact(object) {
-    assert.equal(typeof object.Contact, 'object');
+    assert.strictEqual(typeof object.Contact, 'object');
     if (typeof object.Contact !== 'object') {
-        var contact = object.Contact = {};
+        const contact = object.Contact = {};
         ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(property => {
             contact[property] = object[property];
             delete object[property];
         });
     }
+    Object.defineProperty(object.Contact, 'FullName', { get() { return `${this.FirstName} ${this.LastName}` } });
     return object;
 }
 
@@ -1052,7 +1074,7 @@ API.prototype.demandAgency = async function (nameOrID) {
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
     const agency = await this.request('Agency', request);
     agency.Reps.forEach(rep => setParent(rep, agency));
-    return extractContact(this.tweakDates(agency));
+    return Object.setPrototypeOf(extractContact(this.tweakDates(agency)), AGENCY_PROTO);
 };
 
 API.prototype.getAgency = async function (nameOrID, demand) {
@@ -1070,7 +1092,7 @@ API.prototype.createAgency = function (data, fireWebEvent) {
         data = { Agency: data };
     }
     return this.request('AgencyAdd', { Agency: data, WebhookEvaluate: !!fireWebEvent })
-        .then(a => extractContact(this.tweakDates(a)));
+        .then(a => Object.setPrototypeOf(extractContact(this.tweakDates(a)), AGENCY_PROTO));
 };
 
 API.prototype.editAgency = function (id, data, fireWebEvent) {
@@ -1080,16 +1102,16 @@ API.prototype.editAgency = function (id, data, fireWebEvent) {
         data = id;
     } else {
         data = Object.assign({}, data);
-        assert.equal(typeof data, 'object');
+        assert.strictEqual(typeof data, 'object');
         if (type === 'number') {
             data.AgencyID = id;
         } else {
-            assert.equal(type, 'string');
+            assert.strictEqual(type, 'string');
             data.Agency = id;
         }
     }
     return this.request('AgencyEdit', { Agency: data, WebhookEvaluate: !!fireWebEvent })
-        .then(a => extractContact(this.tweakDates(a)));
+        .then(a => Object.setPrototypeOf(extractContact(this.tweakDates(a)), AGENCY_PROTO));
 };
 
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
@@ -1159,12 +1181,12 @@ API.prototype.getAccountGroups = function () {
 
 API.prototype.editStaff = function (staff, changes) {
     if (changes === undefined) {
-        assert.equal(typeof staff, 'object');
+        assert.strictEqual(typeof staff, 'object');
         changes = staff;
     } else {
         staff = staff && staff.StaffID || staff;
-        assert.equal(typeof staff, 'number');
-        assert.equal(typeof changes, 'object');
+        assert.strictEqual(typeof staff, 'number');
+        assert.strictEqual(typeof changes, 'object');
         changes.StaffID = staff;
     }
     return this.request('StaffEdit', { Staff: changes.Staff || changes });
