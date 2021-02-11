@@ -79,7 +79,8 @@ module.exports = function (api) {
         'getRepByAssignment',
         'getAccountGroups',
         '_getFileCached',
-        'getTableFillsList'
+        'getTableFillsList',
+        'getCommAgencies'
     ].forEach(prop => api[prop] = cache.cachify(api[prop], prop));
 
     ['createAccount', 'editAccount'].forEach(prop => {

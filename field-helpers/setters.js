@@ -99,7 +99,7 @@ const COMMON_SETTERS = {
                 }
                 keys.shift();
             } else {
-                keys = [srcValue];
+                keys = [srcValue + ''];
             }
             const l = keyColumns.length;
             if (keys.length < l) {
@@ -107,12 +107,13 @@ const COMMON_SETTERS = {
             }
             let forms = await this.api.getForms(process, view);
             const columns = forms.Columns;
-            const keyIdx = keyColumns.map(c => {
+            const keyIdx = [];
+            keyColumns.forEach(c => {
                 const idx = validateIndex(columns, c);
                 if (keyIdx.indexOf(idx) >= 0) {
                     throw new Error('Duplicate key index: ' + c);
                 }
-                return idx;
+                keyIdx.push(idx);
             });
             const valueIdx = validateIndex(columns, valueColumn);
             let result = forms.Forms.find(form => {
