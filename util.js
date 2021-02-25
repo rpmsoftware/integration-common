@@ -144,7 +144,7 @@ exports.getValues = Object.values;
 
 function demandDeepValue(object, keys) {
     function goDeeper(key) {
-        if (!object || !object.hasOwnProperty(key)) {
+        if (typeof object !== 'object') {
             throw new TypeError('No property: ' + key);
         }
         object = object[key];
@@ -721,3 +721,17 @@ exports.createPropertySorter = (property) => (a, b) => {
 };
 
 exports.getDataURLPrefix = type => `data:${type.toLowerCase()};base64,`;
+
+exports.defineLazyProperty = (obj, name, init) => {
+    const hiddenProperty = Symbol();
+    Object.defineProperty(obj, name, {
+        get() {
+            let result = this[hiddenProperty];
+            if (result === undefined) {
+                result = init.call(this);
+                Object.defineProperty(this, hiddenProperty, { value: result });
+            }
+            return result;
+        }
+    });
+};

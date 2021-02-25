@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { validateString, toArray, getEager, isEmpty } = require('../util');
+const { validateString, toArray, getEager, isEmpty, demandDeepValue } = require('../util');
 const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const {
     getField,
@@ -7,16 +7,34 @@ const {
     validateProcessReference,
     getDefinitionRow
 } = require('../api-wrappers');
-
 const {
     FieldSubType,
     ObjectType,
     RefSubType
 } = require('../api-enums');
+const { init: initCondition, process: processCondition } = require('../conditions');
 
 const dummy = () => { };
 
 const COMMON_GETTERS = {
+    property: {
+        get: async function ({ property, condition }, form) {
+            form = form.Form || form;
+            if (!condition || processCondition(condition, form)) {
+                return demandDeepValue(form, property)
+            }
+        },
+        init: function ({ property, condition }, field, fields) {
+            property = toArray(property);
+            assert(property.length > 0);
+            property.forEach(validateString);
+            return {
+                property,
+                condition: condition ? initCondition.call(fields, condition) : undefined
+            };
+        }
+    },
+
     none: {
         get: dummy,
         init: dummy
