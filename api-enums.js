@@ -582,5 +582,35 @@ exports.StaticViewColumnUids = {
     Archived: '710_235',
     Agency: '710_152',
     FormNumber: '710_34',
-    FormStarted: '710_36'
+    FormStarted: '710_36',
+    FormStatus: '710_33',
+    FormArchived: '710_235'
+};
+
+exports.WebhookEvents = {
+    FormStart: 'form.start',
+    FormEdit: 'form.edit',
+    FormTrash: 'form.trash',
+    FormRestore: 'form.restore',
+    ActionAdd: 'action.add',
+    ActionEdit: 'action.edit',
+    ActionTrash: 'action.trash',
+    AgencyAdd: 'agency.add',
+    AgencyEdit: 'agency.edit',
+    AgencyTrash: 'agency.trash',
+    RepAdd: 'rep.add',
+    RepEdit: 'rep.edit',
+    RepTrash: 'rep.trash',
+    StaffAdd: 'staff.add',
+    StaffEdit: 'staff.edit',
+    StaffTrash: 'staff.trash',
+    StaffRestore: 'staff.restore',
+    CommRunOpen: 'commrun.open',
+    CommRunClosed: 'commrun.closed',
+    CommRunImport: 'commrun.import',
+    CommRunCalculate: 'commrun.calculate',
+    FileAdd: 'file.add',
+    FileEdit: 'file.edit',
+    FileTrash: 'file.trash',
+    FileRestore: 'file.restore',
 };
