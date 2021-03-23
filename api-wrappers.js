@@ -34,6 +34,10 @@ const MAX_PARALLEL_CALLS = 20;
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
+const ENTITY_GETTERS = {};
+ENTITY_GETTERS[ObjectType.Form] = 'demandForm';
+ENTITY_GETTERS[ObjectType.AgentCompany] = 'demandAgency';
+
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
 }
@@ -1355,6 +1359,10 @@ API.prototype.getCommAgencies = function (run) {
         run = run ? validateString(run) : 'all';
     }
     return this.request('CommAgencies', { Run: run });
+};
+
+API.prototype.demandEntity = function (type, id) {
+    return this[getEager(ENTITY_GETTERS, type)](id);
 };
 
 exports.RpmApi = API;
