@@ -1,11 +1,11 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.38.0",
+    "version": "4.39.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
-        "field-helpers/*",
+        "helpers/*",
         "processors/*",
         "logger/*",
         "office365/*",

@@ -1,6 +1,5 @@
-const rpmUtil = require('integration-common/util');
-const logErrorStack = rpmUtil.logErrorStack;
-const util = require('util');
+const { logErrorStack } = require('./util');
+const { format } = require('util');
 
 exports.createErrorNotifier = function (configOrSender) {
     const sendMessage = typeof configOrSender === 'function' ? configOrSender : createMessageSender(configOrSender);
@@ -12,7 +11,7 @@ exports.createErrorNotifier = function (configOrSender) {
         if (error instanceof Error) {
             error = error.stack;
         } else if (typeof error === 'object') {
-            error = util.format('%j', error);
+            error = format('%j', error);
         }
         sendMessage(subject, error).then(undefined, logErrorStack);
     };

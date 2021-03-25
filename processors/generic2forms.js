@@ -3,7 +3,7 @@ const NAME = 'genericToForms';
 const assert = require('assert');
 const conditions = require('../conditions');
 const { getFieldEssentials } = require('../api-wrappers');
-const setters = require('../field-helpers/setters');
+const setters = require('../helpers/setters');
 const { validateString, toArray } = require('../util');
 const { render } = require('mustache');
 

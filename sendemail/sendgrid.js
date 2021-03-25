@@ -1,5 +1,5 @@
 const Svc = require('@sendgrid/mail').MailService;
-const rpmUtil = require('integration-common/util');
+const { toArray } = require('./util');
 
 function createMessageSender(apiKey, fromEmail, toEmails, ccEmails) {
     if (typeof apiKey === 'object') {
@@ -8,8 +8,8 @@ function createMessageSender(apiKey, fromEmail, toEmails, ccEmails) {
         ccEmails = apiKey.ccEmails;
         apiKey = apiKey.apiKey;
     }
-    toEmails = toEmails ? rpmUtil.toArray(toEmails) : [];
-    ccEmails = ccEmails ? rpmUtil.toArray(ccEmails) : [];
+    toEmails = toEmails ? toArray(toEmails) : [];
+    ccEmails = ccEmails ? toArray(ccEmails) : [];
     if (toEmails.length < 1 && ccEmails.length < 1) {
         throw new Error('There has to be at least one recipient');
     }

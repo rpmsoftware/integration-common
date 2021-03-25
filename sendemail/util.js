@@ -1,4 +1,4 @@
-const rpmUtil = require('integration-common/util');
+const { toArray } = require('../util');
 
 const EMAIL_PATTERN = /(^\s*(\S.*\S)\s*<\s*([\w.]+@[\w.]+)\s*>\s*$)|(^\s*([\w.]+@[\w.]+)\s*$)/;
 
@@ -15,7 +15,7 @@ function parseEmail(str) {
 
 
 function normalizeEmails(emails, typ) {
-    const result = rpmUtil.toArray(emails).map(parseEmail);
+    const result = toArray(emails).map(parseEmail);
     typ && result.forEach(email => email.type = typ);
     return result;
 }
