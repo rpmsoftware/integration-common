@@ -4,9 +4,8 @@ const { StaticViewColumnUids } = require('../api-enums');
 
 exports.init = async function ({ process, view, fieldMap }) {
     const api = this;
-    process = (await api.getProcesses()).getActiveProcess(process, true);
-    let [fields, views] = await Promise.all([process.getFields(), view ? process.getViews() : undefined]);
-    process = process.ProcessID;
+    typeof process === 'number' || (process = (await api.getProcesses()).getActiveProcess(process, true).ProcessID);
+    let [fields, views] = await Promise.all([api.getFields(process), view ? api.getProcessViews(process) : undefined]);
     view = view ? views.Views.demand(({ Name }) => Name === view).ID : undefined;
     fieldMap = Object.assign({}, fieldMap);
     for (const dstProperty in fieldMap) {

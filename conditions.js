@@ -1,46 +1,33 @@
 const assert = require('assert');
-const { getEager, toBoolean, validateString, toArray, normalizeInteger } = require('./util');
+const { getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue } = require('./util');
 const { getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT } = require('./api-wrappers');
 const operators = require('operators');
 const moment = require('dayjs');
 const debug = require('debug')('rpm:contitions');
 
-function initMulti(conf) {
-    const fields = this;
-    const operands = [];
-    assert(Array.isArray(conf.operands));
-    conf.operands.forEach(o => {
-        const c = init.call(fields, o);
-        c && operands.push(c);
+function initMulti({ operands }) {
+    assert(Array.isArray(operands));
+    const result = [];
+    operands.forEach(o => {
+        const c = init.call(this, o);
+        c && result.push(c);
     });
-    return { operands };
+    return { operands: result };
 }
 
 function isTrue(form) {
     return toBoolean(getOperandValue(this.operand, form));
 }
 
-function initIsEmpty(conf) {
-    const resultConf = init1.call(this, conf);
-    resultConf.trim = toBoolean(conf.trim);
-    return resultConf;
-}
-
-function isEmpty(data) {
-    let value = getOperandValue(this.operand, data);
-    typeof value === 'string' && this.trim && (value = value.trim());
-    return value === undefined || value === null || value === '';
-}
-
 const OPERATORS = {
     and: {
         init: initMulti,
         process: function (form) {
-            const conf = this;
+            const { operands } = this;
             form = form.Form || form;
-            let result = conf.operands.length > 0;
-            for (let c of conf.operands) {
-                result = operators.and2(result, process(c, form));
+            let result = operands.length > 0;
+            for (let c of operands) {
+                result = result && process(c, form);
                 if (!result) {
                     break;
                 }
@@ -51,11 +38,11 @@ const OPERATORS = {
     or: {
         init: initMulti,
         process: function (form) {
-            const conf = this;
+            const { operands } = this;
             form = form.Form || form;
             let result = false;
-            for (let c of conf.operands) {
-                result = operators.or2(result, process(c, form));
+            for (let c of operands) {
+                result = result || process(c, form);
                 if (result) {
                     break;
                 }
@@ -72,12 +59,18 @@ const OPERATORS = {
         process: function (form) { return !isTrue.call(this, form); }
     },
     empty: {
-        init: initIsEmpty,
-        process: isEmpty
-    },
-    notEmpty: {
-        init: initIsEmpty,
-        process: function (form) { return !isEmpty.call(this, form); }
+        init: function (conf) {
+            const resultConf = init1.call(this, conf);
+            resultConf.trim = toBoolean(conf.trim) || undefined;
+            return resultConf;
+        },
+        process: function (data) {
+            const { operand, trim } = this;
+            let value = getOperandValue(operand, data);
+            typeof value === 'string' && trim && (value = value.trim());
+            return value === undefined || value === null || value === '';
+        }
+
     },
     expired: {
         init: function (conf) {
@@ -115,14 +108,14 @@ const OPERATORS = {
     },
     formStatus: {
         init: function (conf) {
-            const statuses = {};
+            let statuses = {};
             for (let status of toArray(getEager(conf, 'statuses'))) {
                 const { ID, Text } = this.StatusLevels.demand(s => s.Text === status);
                 statuses[ID] = { ID, Text };
             }
-            const resultConf = { statuses: Object.values(statuses), not: !!conf.not || undefined };
-            assert(resultConf.statuses.length > 0);
-            return resultConf;
+            statuses = Object.values(statuses);
+            assert(statuses.length > 0);
+            return { statuses };
         },
         process: function (form) {
             form = form.Form || form;
@@ -134,13 +127,12 @@ const OPERATORS = {
                 prop = 'Text';
                 formStatus = form.Status;
             }
-            const result = !!this.statuses.find(s => s[prop] === formStatus);
-            return this.not ? !result : result;
+            return !!this.statuses.find(s => s[prop] === formStatus);
         }
     },
 };
 
-const trimField = (field) => (({ Name, Uid }) => ({ Name, Uid }))(field);
+const trimField = ({ Name, Uid }) => ({ Name, Uid });
 
 const DEFAULT_FIELD_PROPERTY = 'Value';
 
@@ -152,43 +144,40 @@ function initOperand(config) {
         config = { field: config };
     }
     assert.strictEqual(typeof config, 'object');
+    const { field, property, value } = config;
     let resultConfig;
-    if (config.field) {
+    if (field) {
         resultConfig = {
-            field: trimField(getField.call(this, config.field, true)),
-            property: config.property ? validateString(config.property) : DEFAULT_FIELD_PROPERTY
+            field: trimField(getField.call(this, field, true)),
+            property: property ? validateString(property) : DEFAULT_FIELD_PROPERTY
         };
-    } else if (config.property) {
-        resultConfig = { property: validateString(config.property) };
+    } else if (property) {
+        resultConfig = { property: toArray(property).map(validateString) };
     } else {
-        assert(config.value !== undefined, '"property", "field" or "value" is required');
-        resultConfig = { value: config.value };
+        assert(value !== undefined, '"property", "field" or "value" is required');
+        resultConfig = { value };
     }
     return resultConfig;
 }
 
-function init1(conf) {
-    const fields = this;
-    const result = { operator: conf.operator };
-    let operandConfig = getEager(conf, 'operand');
-    if (typeof operandConfig === 'string') {
-        operandConfig = { field: operandConfig };
+function init1({ operand }) {
+    typeof operand === 'string' && (operand = { field: operand });
+    assert.strictEqual(typeof operand, 'object');
+    return {
+        operand: initOperand.call(this, operand)
     }
-    assert.strictEqual(typeof operandConfig, 'object');
-    result.operand = initOperand.call(fields, operandConfig);
-    return result;
 }
 
-function init2(conf) {
-    const result = { operator: conf.operator };
-    ['operand1', 'operand2'].forEach(p => result[p] = initOperand.call(this, getEager(conf, p)));
-    return result;
+function init2({ operand1, operand2 }) {
+    return {
+        operand1: initOperand.call(this, operand1),
+        operand2: initOperand.call(this, operand2)
+    };
 }
 
-function getOperandValue(operandConfig, form) {
+function getOperandValue({ field, property, value }, form) {
     form = form.Form || form;
     let result;
-    const { field, property, value } = operandConfig;
     if (value !== undefined) {
         result = value;
     } else if (field) {
@@ -196,27 +185,25 @@ function getOperandValue(operandConfig, form) {
         result = toSimpleField(getFieldByUid.call(form, field.Uid || field, true))[property];
     } else {
         assert(property);
-        result = form[property];
+        result = getDeepValue(form, property);
     }
     return result;
 }
 
 function process2(form) {
-    const conf = this;
+    const { operator, operand1, operand2 } = this;
     form = form.Form || form;
-    const value1 = getOperandValue(conf.operand1, form);
-    const value2 = getOperandValue(conf.operand2, form);
-    const result = operators[conf.operator](value1, value2);
-    return result;
+    const value1 = getOperandValue(operand1, form);
+    const value2 = getOperandValue(operand2, form);
+    return operators[operator](value1, value2);
 }
 
 function process2numbers(form) {
-    const conf = this;
+    const { operator, operand1, operand2 } = this;
     form = form.Form || form;
-    const value1 = getOperandValue(conf.operand1, form);
-    const value2 = getOperandValue(conf.operand2, form);
-    const result = operators[conf.operator](+value1, +value2);
-    return result;
+    const value1 = getOperandValue(operand1, form);
+    const value2 = getOperandValue(operand2, form);
+    return operators[operator](+value1, +value2);
 }
 
 ['eq2', 'neq2'].forEach(o => {
@@ -248,17 +235,20 @@ function init(conf) {
             operands: conf
         }
     }
-    const { operator } = conf;
-    const initializer = getEager(OPERATORS, operator).init;
-    const result = initializer ? initializer.call(this, conf) : {};
+    const { operator, not, message } = conf;
+    const { init } = getEager(OPERATORS, operator);
+    const result = init ? init.call(this, conf) : {};
     result.operator = operator;
-    result.message = conf.message || undefined;
+    result.message = message || undefined;
+    result.not = toBoolean(not) || undefined
     return result;
 }
 
 function process(conf, form) {
-    const result = getEager(OPERATORS, conf.operator).process.call(conf, form);
-    !result && debug('Condition is not met:', conf.message || conf.operator);
+    const { not, message, operator } = conf;
+    let result = getEager(OPERATORS, operator).process.call(conf, form);
+    not && (result = !result);
+    !result && debug('Condition is not met:', message || operator);
     return result;
 }
 
