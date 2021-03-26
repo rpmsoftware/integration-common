@@ -1,24 +1,17 @@
 var assert = require('assert');
-var tedious = require('tedious');
+var { TYPES, Request, connect } = require('tedious');
 var util = require('util');
 var rpmUtil = require('./util');
-var TYPES = exports.TYPES = tedious.TYPES;
-var Request = tedious.Request;
-var Connection = tedious.Connection;
+exports.TYPES = TYPES;
 var norm = require('./normalizers');
 
 TYPES.DateTimeOffset.normalize = norm.normalizeDate;
-TYPES.DateN.normalize = norm.normalizeDate;
 TYPES.Date.normalize = norm.normalizeDate;
-TYPES.DateTime2N.normalize = norm.normalizeDate;
 TYPES.DateTime2.normalize = norm.normalizeDate;
 TYPES.VarChar.normalize = norm.returnOriginal;
 TYPES.Bit.normalize = norm.normalizeBoolean;
-TYPES.BitN.normalize = norm.normalizeBoolean;
-TYPES.IntN.normalize = norm.normalizeInt;
 TYPES.Int.normalize = norm.normalizeInt;
 TYPES.Money.normalize = norm.normalizeNumber;
-TYPES.MoneyN.normalize = norm.normalizeNumber;
 TYPES.Numeric.normalize = norm.normalizeNumber;
 TYPES.SmallMoney.normalize = norm.normalizeNumber;
 TYPES.Decimal.normalize = norm.normalizeNumber;
@@ -106,10 +99,9 @@ function executeStatement(sqlQuery, parameters, metadataOnly) {
 
 exports.createConnection = function (config) {
     return new Promise((resolve, reject) => {
-        var connection = new Connection(config);
-        connection.on('connect', err => {
+        var connection = connect(config, err => {
             if (err) {
-                connection.close();
+                connection && connection.close();
                 reject(err);
             } else {
                 connection.execute = executeStatement;
@@ -134,24 +126,11 @@ function getObjectID(object, demand) {
 
 }
 
-var nullableSubstitutions = {};
-nullableSubstitutions[TYPES.BitN.name] = TYPES.Bit;
-nullableSubstitutions[TYPES.IntN.name] = TYPES.Int;
-nullableSubstitutions[TYPES.DateN.name] = TYPES.Date;
-nullableSubstitutions[TYPES.TimeN.name] = TYPES.Time;
-nullableSubstitutions[TYPES.DateTime2N.name] = TYPES.DateTime2;
-nullableSubstitutions[TYPES.DateTimeN.name] = TYPES.DateTime;
-nullableSubstitutions[TYPES.DateTimeOffsetN.name] = TYPES.DateTimeOffset;
-nullableSubstitutions[TYPES.DecimalN.name] = TYPES.Decimal;
-nullableSubstitutions[TYPES.NumericN.name] = TYPES.Numeric;
-nullableSubstitutions[TYPES.FloatN.name] = TYPES.Float;
-nullableSubstitutions[TYPES.MoneyN.name] = TYPES.Money;
-
 function getColumnTypes(table) {
     return this.execute(util.format("select top 0 * from %s", table), undefined, true).then(response => {
         var result = {};
         response.metadata.forEach(column => {
-            var type = nullableSubstitutions[column.type.name] || column.type;
+            var { type } = column;
             assert.equal(typeof type.validate, 'function', 'validate() is absent for ' + type.name);
             assert.equal(typeof type.normalize, 'function', 'normalize() is absent for ' + type.name);
             result[column.colName] = type;
