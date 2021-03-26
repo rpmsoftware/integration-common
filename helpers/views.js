@@ -1,6 +1,15 @@
 const assert = require('assert');
-const { validateString, getEager, normalizeInteger } = require('../util');
+const { validateString, getEager, normalizeInteger, toBoolean } = require('../util');
 const { StaticViewColumnUids } = require('../api-enums');
+
+const CONVERTERS = {
+    number: value => {
+        const result = +value;
+        assert(!isNaN(result), value);
+        return result;
+    },
+    boolean: value => toBoolean(value)
+}
 
 exports.init = async function ({ process, view, fieldMap }) {
     const api = this;
@@ -10,19 +19,21 @@ exports.init = async function ({ process, view, fieldMap }) {
     fieldMap = Object.assign({}, fieldMap);
     for (const dstProperty in fieldMap) {
         let cfg = fieldMap[dstProperty];
-        const type = typeof cfg;
-        if (type === 'number') {
+        const cfgType = typeof cfg;
+        if (cfgType === 'number') {
             cfg = { index: cfg };
-        } else if (type === 'string') {
+        } else if (cfgType === 'string') {
             cfg = { field: cfg };
         }
-        let { index, name, uid, field, pattern } = cfg;
+        let { index, name, uid, field, pattern, type } = cfg;
         const columnConf =
             field !== undefined && { uid: fields.getField(field, true).Uid } ||
             uid !== undefined && { uid: getEager(StaticViewColumnUids, uid) } ||
             index !== undefined && { index: normalizeInteger(index) } ||
             { name: validateString(name) };
         columnConf.pattern = pattern ? validateString(pattern) : undefined;
+        type && getEager(CONVERTERS, validateString(type));
+        columnConf.type = type || undefined;
         fieldMap[dstProperty] = columnConf;
     }
     return { process, view, fieldMap };
@@ -38,7 +49,8 @@ exports.getForms = async function ({ process, view, fieldMap }) {
         const duplicates = {};
         for (let dstProperty in fieldMap) {
             const cfg = fieldMap[dstProperty];
-            let { uid, index, name, pattern } = cfg
+            let { uid, index, name, pattern, type: convert } = cfg;
+            convert = convert ? getEager(CONVERTERS, convert) : undefined;
             !pattern || pattern instanceof RegExp || (pattern = cfg.pattern = new RegExp(pattern));
             let idx;
             if (uid) {
@@ -50,18 +62,20 @@ exports.getForms = async function ({ process, view, fieldMap }) {
                 idx = Columns.demandIndexOf(name);
             }
             assert(!duplicates[idx]);
-            indices[dstProperty] = { index: idx, pattern };
+            indices[dstProperty] = { index: idx, pattern, convert };
             duplicates[idx] = true;
         }
     }
     return Forms.map(({ FormID, Values }) => {
         const result = {};
         for (let dstProperty in indices) {
-            const { index, pattern } = indices[dstProperty];
+            const { index, pattern, convert } = indices[dstProperty];
             let value = Values[index];
             if (value && pattern) {
                 value = pattern.exec(value);
                 value = value && value[1];
+            } else if (value && convert) {
+                value = convert(value);
             }
             result[dstProperty] = value || undefined;
         }
