@@ -1,5 +1,5 @@
 const Svc = require('@sendgrid/mail').MailService;
-const { toArray } = require('./util');
+const { toArray } = require('../util');
 
 function createMessageSender(apiKey, fromEmail, toEmails, ccEmails) {
     if (typeof apiKey === 'object') {
