@@ -1,4 +1,4 @@
-const { logErrorStack } = require('./util');
+const { logErrorStack } = require('../util');
 const { format } = require('util');
 
 exports.createErrorNotifier = function (configOrSender) {
