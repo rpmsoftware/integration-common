@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.39.5",
+    "version": "4.40.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -15,6 +15,7 @@
         "amqp.js",
         "api-enums.js",
         "api-errors.js",
+        "api-events-collector.js",
         "api-wrappers.js",
         "cache.js",
         "cached-api.js",

@@ -662,10 +662,23 @@ async function initField(conf, rpmField) {
     return conf;
 }
 
+async function initValue(conf) {
+    let { setter, srcField, normalize } = conf;
+    const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || defaultConverter);
+    const result = initGen ? await initGen.call(this, conf) : {};
+    assert.strictEqual(typeof result, 'object');
+    Array.isArray(srcField) && assert(srcField.length > 0);
+    toArray(srcField).forEach(validateString);
+    result.normalize = normalize === undefined || toBoolean(normalize);
+    result.setter = setter || undefined;
+    result.srcField = srcField;
+    return result;
+}
+
 function getSetter({ type, setter }) {
     let converter = SPECIFIC_SETTERS[type] || COMMON_SETTERS;
-    const name = setter || DEFAULT_ACCESSOR_NAME;
-    return (converter && converter[name] || COMMON_SETTERS[name] || defaultConverter).convert;
+    setter || (setter = DEFAULT_ACCESSOR_NAME);
+    return (converter && converter[setter] || COMMON_SETTERS[setter] || defaultConverter).convert;
 }
 
 async function setField(conf, data, form) {
@@ -706,4 +719,4 @@ async function set(conf, data, form) {
     return result;
 }
 
-Object.assign(exports, { initField, set });
+module.exports = { initField, set, initValue };
