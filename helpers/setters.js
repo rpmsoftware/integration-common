@@ -21,6 +21,7 @@ const createHash = require('string-hash');
 const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
 const { FieldSubType, ObjectType } = require('../api-enums');
+const { render } = require('mustache');
 
 function normalizeIndex(value) {
     if (typeof value === 'string') {
@@ -82,6 +83,16 @@ const COMMON_SETTERS = {
         assert(processID > 0);
         const srcValue = getDeepValue(data, srcField);
         return srcValue ? (await this.api.demandForm(processID, srcValue)).Form.FormID : 0;
+    },
+
+    mustache: {
+        convert: function ({ template }, data) {
+            return render(template, data);
+        },
+        init: function ({ template }) {
+            validateString(template);
+            return { template };
+        }
     },
 
     dictionary: {
@@ -667,11 +678,13 @@ async function initValue(conf) {
     const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || defaultConverter);
     const result = initGen ? await initGen.call(this, conf) : {};
     assert.strictEqual(typeof result, 'object');
-    Array.isArray(srcField) && assert(srcField.length > 0);
-    toArray(srcField).forEach(validateString);
+    if (srcField !== undefined) {
+        Array.isArray(srcField) && assert(srcField.length > 0);
+        toArray(srcField).forEach(validateString);
+        result.srcField = srcField;
+    }
     result.normalize = normalize === undefined || toBoolean(normalize);
     result.setter = setter || undefined;
-    result.srcField = srcField;
     return result;
 }
 

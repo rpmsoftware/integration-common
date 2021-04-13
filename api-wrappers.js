@@ -37,6 +37,7 @@ const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss
 const ENTITY_GETTERS = {};
 ENTITY_GETTERS[ObjectType.Form] = 'demandForm';
 ENTITY_GETTERS[ObjectType.AgentCompany] = 'demandAgency';
+ENTITY_GETTERS[ObjectType.Staff] = 'getStaff';
 
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
@@ -161,8 +162,12 @@ API.prototype.getStaffGroups = function () {
     return this.request('StaffGroups');
 };
 
-API.prototype.getStaff = function (staffID) {
-    return this.request('Staff', { StaffID: normalizeInteger(staffID) });
+API.prototype.getStaff = async function (staffID) {
+    if (this.validateParameters) {
+        staffID = normalizeInteger(staffID);
+    }
+    const result = await this.request('Staff', { StaffID: staffID });
+    return Object.setPrototypeOf(result, STAFF_PROTO);
 };
 
 var TIMEZONE_OFFSET_PATTERN = /^\s*([+-]?)(\d\d):(\d\d)\s*$/;
@@ -1058,6 +1063,15 @@ const AGENCY_PROTO = Object.defineProperties({
 }, {
     EntityID: { get() { return this.AgencyID } },
     RefName: { get() { return this.Agency } },
+});
+
+const STAFF_PROTO = Object.defineProperties({
+    EntityType: ObjectType.Staff,
+    RefType: ObjectType.Staff,
+    IDProperty: 'StaffID'
+}, {
+    EntityID: { get() { return this.StaffID } },
+    RefName: { get() { return this.Name } },
 });
 
 function extractContact(object) {
