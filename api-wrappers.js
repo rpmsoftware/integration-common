@@ -266,8 +266,7 @@ API.prototype.editFormAction = function (formID, data) {
         assert(data.Due);
         assert(+data.Assignee.UserID || +data.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
     }
-    data = Object.assign({}, data);
-    formID && Object.assign(data, { Form: { FormID: formID } });
+    formID && (data = Object.assign({ Form: { FormID: formID } }, data));
     return this.request('ActionEdit', this.validateParameters ? { Action: data } : data);
 };
 
@@ -281,10 +280,7 @@ API.prototype._getProcesses = function () {
             response.Procs.forEach(api._extendProcess.bind(api));
             delete api[PROC_PROMISE_PROPERTY];
             return response;
-        }, error => {
-            delete api[PROC_PROMISE_PROPERTY];
-            throw error;
-        });
+        }).finally(() => delete api[PROC_PROMISE_PROPERTY]);
     }
     return api[PROC_PROMISE_PROPERTY];
 };

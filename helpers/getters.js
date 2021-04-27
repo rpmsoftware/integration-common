@@ -1,6 +1,8 @@
 const assert = require('assert');
 const { validateString, toArray, getEager, isEmpty, demandDeepValue } = require('../util');
 const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
+const { toSimpleField } = require('../api-wrappers');
+
 const {
     getField,
     getFieldByUid,
@@ -42,12 +44,12 @@ const COMMON_GETTERS = {
 
     getID: function (config, form) {
         form = form.Form || form;
-        return getFieldByUid.call(form, config.srcUid, true).ID;
+        return toSimpleField(getFieldByUid.call(form, config.srcUid, true)).ID;
     },
 
     getValueAndID: function (config, form) {
         form = form.Form || form;
-        const { Value, ID } = getFieldByUid.call(form, config.srcUid, true);
+        const { Value, ID } = toSimpleField(getFieldByUid.call(form, config.srcUid, true));
         return { Value, ID };
     },
 
@@ -92,8 +94,10 @@ const COMMON_GETTERS = {
     getIfField: {
         get: function (config, form) {
             form = form.Form || form;
-            const ifValue = form.getFieldByUid(config.ifUid, true).Value;
-            return config.ifValues.find(v => v === ifValue) ? form.getFieldByUid(config.srcUid, true).Value : undefined;
+            const ifValue = toSimpleField(form.getFieldByUid(config.ifUid, true)).Value;
+            return config.ifValues.find(v => v === ifValue) ?
+                toSimpleField(form.getFieldByUid(config.srcUid, true)).Value :
+                undefined;
         },
         init: function (conf, rpmField, rpmFields) {
             conf.srcUid = rpmField.Uid;
@@ -110,7 +114,7 @@ const COMMON_GETTERS = {
         get: async function (config, form) {
             form = form.Form || form;
             for (let f of config.fieldPath) {
-                form = form.getFieldByUid(f.uid, true).ID;
+                form = toSimpleField(form.getFieldByUid(f.uid, true)).ID;
                 if (!form) {
                     return null;
                 }
@@ -186,7 +190,7 @@ subTypes = FieldSubType;
 const REGEX_PERCENTS = /^(\d+(\.\d+)?)%$/;
 
 add('Percent', function (conf, form) {
-    const srcField = getFieldByUid.call(form.Form || form, conf.srcUid, true);
+    const srcField = toSimpleField(getFieldByUid.call(form.Form || form, conf.srcUid, true));
     const value = srcField.Value;
     if (!value) {
         return null;
@@ -310,7 +314,7 @@ subTypes = RefSubType;
 
 add('RestrictedReference', 'getNumber', async function (config, form) {
     form = form.Form || form;
-    let dst = getFieldByUid.call(form, config.srcUid, true).ID;
+    let dst = toSimpleField(getFieldByUid.call(form, config.srcUid, true)).ID;
     if (!dst) {
         return null;
     }
@@ -320,7 +324,7 @@ add('RestrictedReference', 'getNumber', async function (config, form) {
 
 add('RestrictedReference', 'getID', function (config, form) {
     form = form.Form || form;
-    return getFieldByUid.call(form, config.srcUid, true).ID;
+    return toSimpleField(getFieldByUid.call(form, config.srcUid, true)).ID;
 });
 
 const FORM_PROPERTY_GETTERS = {
@@ -335,7 +339,7 @@ for (let prop in FORM_PROPERTY_GETTERS) {
 
 add('RestrictedReference', 'getReferencedObject', async function (getterConfig, form) {
     form = form.Form || form;
-    let targetForm = getFieldByUid.call(form, getterConfig.srcUid, true).ID;
+    let targetForm = toSimpleField(getFieldByUid.call(form, getterConfig.srcUid, true)).ID;
     if (!targetForm) {
         return;
     }
@@ -374,11 +378,11 @@ add('RestrictedReference', 'getReferencedObject', async function (getterConfig, 
 
 add('CustomerLocation', 'getReferencedObject', async function (config, form) {
     form = form.Form || form;
-    const locationID = getFieldByUid.call(form, config.srcUid, true).ID;
+    const locationID = toSimpleField(getFieldByUid.call(form, config.srcUid, true)).ID;
     if (!locationID) {
         return;
     }
-    const customerID = getFieldByUid.call(form, config.parentField.uid, true).ID;
+    const customerID = toSimpleField(getFieldByUid.call(form, config.parentField.uid, true)).ID;
     const customer = await this.api.demandCustomer(customerID);
     const location = customer.Locations.demand(l => l.LocationID === locationID);
     let result;
@@ -423,7 +427,7 @@ const DEFAULT_GETTER = {
     },
     get: function (config, form) {
         form = form.Form || form;
-        let value = getFieldByUid.call(form, config.srcUid, true).Value;
+        let value = toSimpleField(getFieldByUid.call(form, config.srcUid, true)).Value;
         if (config.pattern) {
             if (!(config.pattern instanceof RegExp)) {
                 config.pattern = new RegExp(config.pattern);
@@ -493,4 +497,4 @@ function get(conf, form) {
     return findGetter(conf).call(this, conf, form);
 }
 
-Object.assign(exports, { get, init, addCommon });
+module.exports = { get, init, addCommon };

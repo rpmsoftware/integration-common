@@ -588,6 +588,9 @@ exports.StaticViewColumnUids = {
 };
 
 exports.WebhookEvents = {
+    _TableRowAdd: 'tablerow.add',
+    _TableRowEdit: 'tablerow.edit',
+    _TableRowTrash: 'tablerow.trash',
     FormStart: 'form.start',
     FormEdit: 'form.edit',
     FormTrash: 'form.trash',
