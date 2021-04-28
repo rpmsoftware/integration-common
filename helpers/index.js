@@ -23,10 +23,9 @@ exports.getUserInfo = async function (refType, id) {
         return;
     }
     const criteria = ({ RefType, ID }) => RefType === refType && ID === id;
-    if (!this[PROP_USER_CACHE]) {
-        Object.defineProperty(this, PROP_USER_CACHE, { value: getUsers.call(this), configurable: true });
-    }
-    const result = (await this[PROP_USER_CACHE]).find(criteria);
+    const firstTime = !this[PROP_USER_CACHE];
+    firstTime && Object.defineProperty(this, PROP_USER_CACHE, { value: getUsers.call(this), configurable: true });
+    const result = (await this[PROP_USER_CACHE])[firstTime ? 'demand' : 'find'](criteria);
     if (result) {
         return result;
     }

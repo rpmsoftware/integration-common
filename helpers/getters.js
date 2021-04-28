@@ -55,40 +55,34 @@ const COMMON_GETTERS = {
 
     getFormNumber: {
         get: function (config, form) {
-            return (form.Form || form).Number;
+            return getEager(form.Form || form, 'Number');
         },
-        init: function (conf) {
-            return conf;
-        }
+        init: () => ({})
     },
 
     getFormOwner: {
         get: async function (config, form) {
-            form = form.Form || form;
-            const staff = (await this.api.getStaffList()).StaffList.demand(s => s.Name === form.Owner);
-            return await this.api.getStaff(staff.ID);
+            const { api } = this;
+            const owner = getEager(form.Form || form, 'Owner');
+            const staff = (await api.getStaffList()).StaffList.demand(s => s.Name === owner);
+            return await api.getStaff(staff.ID);
         },
-        init: function (conf) {
-            return conf;
-        }
+        init: () => ({})
     },
 
     getFormStarted: {
         get: async function (config, form) {
-            return (form.Form || form).Modified;
+            form = form.Form || form;
+            return form.Started || getEager(form, 'Modified');
         },
-        init: function (conf) {
-            return conf;
-        }
+        init: () => ({})
     },
 
     getFormModified: {
         get: async function (config, form) {
-            return (form.Form || form).Modified;
+            return getEager(form.Form || form, 'Modified');
         },
-        init: function (conf) {
-            return conf;
-        }
+        init: () => ({})
     },
 
     getIfField: {
