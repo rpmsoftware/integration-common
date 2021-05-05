@@ -38,6 +38,8 @@ const ENTITY_GETTERS = {};
 ENTITY_GETTERS[ObjectType.Form] = 'demandForm';
 ENTITY_GETTERS[ObjectType.AgentCompany] = 'demandAgency';
 ENTITY_GETTERS[ObjectType.Staff] = 'getStaff';
+ENTITY_GETTERS[ObjectType.Customer] = 'demandCustomer';
+ENTITY_GETTERS[ObjectType.Supplier] = 'getSupplier';
 
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
@@ -954,7 +956,7 @@ API.prototype._normalizeCustomer = function (customer) {
     ['Locations', 'Accounts'].forEach(prop =>
         customer[prop].forEach(ch => setParent(ch, customer))
     );
-    return this.tweakDates(customer);
+    return Object.setPrototypeOf(this.tweakDates(customer), CUSTOMER_PROTO);
 };
 
 API.prototype.createCustomer = function (data) {
@@ -1051,6 +1053,15 @@ API.prototype.getAgencies = function () {
         return response;
     });
 };
+
+const CUSTOMER_PROTO = Object.defineProperties({
+    EntityType: ObjectType.Customer,
+    RefType: ObjectType.Customer,
+    IDProperty: 'CustomerID'
+}, {
+    EntityID: { get() { return this.CustomerID } },
+    RefName: { get() { return this.Customer || this.Name } },
+});
 
 const AGENCY_PROTO = Object.defineProperties({
     EntityType: ObjectType.AgentCompany,

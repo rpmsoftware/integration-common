@@ -4,8 +4,53 @@ const assert = require('assert');
 const conditions = require('../conditions');
 const { getFieldEssentials } = require('../api-wrappers');
 const setters = require('../helpers/setters');
-const { validateString, toArray, toBoolean } = require('../util');
+const { init: initView, getForms: getViewForms } = require('../helpers/views');
+const { validateString, toArray, toBoolean, getEager, normalizeInteger, isEmpty, getDeepValue } = require('../util');
+
 const debug = require('debug')('rpm:generic2Forms');
+
+const FORM_FINDERS = {
+    view: {
+        init: async function (conf) {
+            const { match } = conf;
+            assert(typeof match === 'object');
+            assert(!isEmpty(match));
+            conf = await initView.call(this.api, conf);
+            conf.match = match;
+            return conf;
+        },
+        getForms: async function (conf, obj) {
+            const result = await getViewForms.call(this.api, conf);
+            const { match } = conf;
+            assert(!isEmpty(match));
+            return result.filter(form => {
+                for (const formProp in match) {
+                    const objProp = match[formProp];
+                    if (getDeepValue(obj, objProp) !== getEager(form, formProp)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        },
+    },
+    number: {
+        init: async function ({ formNumber }) {
+            formNumber = await setters.initValue.call(this,
+                typeof formNumber === 'string' ? { srcField: validateString(formNumber) } : formNumber
+            );
+            return { formNumber, create: true };
+        },
+        getForms: async function ({ formNumber }, obj) {
+            const result = await setters.set.call(this, formNumber, obj);
+            assert.strictEqual(typeof result, 'object');
+            if (result.Errors) {
+                throw result.Errors;
+            }
+            return { Number: result.Value };
+        },
+    }
+};
 
 module.exports = {
 
@@ -18,14 +63,23 @@ module.exports = {
         formNumber,
         dstStatus,
         errorsToActions,
-        fireWebEvent
+        fireWebEvent,
+        getDstForms
     }) {
         const { api } = this;
         errorsToActions = toBoolean(errorsToActions) || undefined;
         fireWebEvent = toBoolean(fireWebEvent) || undefined;
-        formNumber = await setters.initValue.call(this,
-            typeof formNumber === 'string' ? { srcField: validateString(formNumber) } : formNumber
-        );
+
+        {
+            if (formNumber && !getDstForms) {
+                getDstForms = { getter: 'formNumber', formNumber };
+            }
+            assert.strictEqual(typeof getDstForms, 'object');
+            const { getter } = getDstForms;
+            getDstForms = await getEager(FORM_FINDERS, getter).init.call(this, getDstForms);
+            getDstForms.getter = getter;
+        }
+
         dstProcess = (await api.getProcesses()).getActiveProcess(dstProcess, true);
         const dstFields = await dstProcess.getFields();
         dstStatus = dstStatus ? dstFields.getStatus(dstStatus, true).ID : undefined;
@@ -44,7 +98,7 @@ module.exports = {
             }
         }
         return {
-            formNumber,
+            getDstForms,
             dstProcess,
             condition,
             fieldMap: resultFieldMap,
@@ -58,7 +112,7 @@ module.exports = {
         dstProcess,
         condition,
         fieldMap,
-        formNumber: formNumberConf,
+        getDstForms,
         dstStatus,
         fireWebEvent,
         errorsToActions
@@ -70,48 +124,48 @@ module.exports = {
             if (condition && !conditions.process(condition, obj)) {
                 continue;
             }
-            let formNumber = await setters.set.call(this, formNumberConf, obj);
-            assert.strictEqual(typeof formNumber, 'object');
-            if (formNumber.Errors) {
-                throw formNumber.Errors;
-            }
-            formNumber = formNumberConf.valueIsId ? formNumber.ID : formNumber.Value;
-            assert(formNumber);
-            if (duplicates[formNumber]) {
-                debug('Form number already processed: ', formNumber);
-                continue;
-            }
-            duplicates[formNumber] = true;
-            promises.push(api.parallelRunner(async () => {
-                let form = await api.getForm(dstProcess, formNumber);
-                const formPatch = [];
-                let formErrors = [];
-                for (const conf of fieldMap) {
-                    const fieldPatch = await setters.set.call(this, conf, obj, form);
-                    if (!fieldPatch) {
-                        continue;
+            for (const { Number, FormID } of toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj))) {
+                const numberOrID = Number || FormID;
+                if (duplicates[numberOrID]) {
+                    debug('Form number already processed: ', numberOrID);
+                    continue;
+                }
+                duplicates[numberOrID] = true;
+                promises.push(api.parallelRunner(async () => {
+                    let form = await (
+                        Number ? api.getForm(dstProcess, Number) : api.getForm(normalizeInteger(FormID))
+                    );
+                    if (!form && !getDstForms.create) {
+                        return;
                     }
-                    const fieldErrors = fieldPatch.Errors;
-                    fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
-                }
-                if (formPatch.length < 1 && !dstStatus && formErrors.length < 1) {
-                    return;
-                }
-                form = await (form ?
-                    api.editForm(form.Form.FormID, formPatch, { StatusID: dstStatus }, fireWebEvent) :
-                    api.createForm(dstProcess, formPatch, { Number: formNumber, StatusID: dstStatus }, fireWebEvent)
-                );
-                if (formErrors.length < 1) {
-                    return;
-
-                }
-                formErrors = formErrors.join('\n');
-                if (errorsToActions) {
-                    await api.errorToFormAction(formErrors, form);
-                } else {
-                    throw formErrors;
-                }
-            }));
+                    const formPatch = [];
+                    let formErrors = [];
+                    for (const conf of fieldMap) {
+                        const fieldPatch = await setters.set.call(this, conf, obj, form);
+                        if (!fieldPatch) {
+                            continue;
+                        }
+                        const { Errors: fieldErrors } = fieldPatch;
+                        fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
+                    }
+                    if (formPatch.length < 1 && !dstStatus && formErrors.length < 1) {
+                        return;
+                    }
+                    form = await (form ?
+                        api.editForm(form.Form.FormID, formPatch, { StatusID: dstStatus }, fireWebEvent) :
+                        api.createForm(dstProcess, formPatch, { Number, StatusID: dstStatus }, fireWebEvent)
+                    );
+                    if (!form || formErrors.length < 1) {
+                        return;
+                    }
+                    formErrors = formErrors.join('\n');
+                    if (errorsToActions) {
+                        await api.errorToFormAction(formErrors, form);
+                    } else {
+                        throw formErrors;
+                    }
+                }));
+            }
         }
         return Promise.all(promises);
     }

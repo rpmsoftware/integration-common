@@ -619,4 +619,11 @@ exports.WebhookEvents = {
     FileEdit: 'file.edit',
     FileTrash: 'file.trash',
     FileRestore: 'file.restore',
+    CustomerAdd: 'customer.add',
+    CustomerEdit: 'customer.edit',
+    CustomerTrash: 'customer.trash',
+    CustomerRestore: 'customer.restore',
+    SupplierAdd: 'supplier.add',
+    SupplierEdit: 'supplier.edit',
+    SupplierTrash: 'supplier.trash'
 };
