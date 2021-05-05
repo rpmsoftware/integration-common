@@ -72,7 +72,7 @@ module.exports = {
 
         {
             if (formNumber && !getDstForms) {
-                getDstForms = { getter: 'formNumber', formNumber };
+                getDstForms = { getter: 'number', formNumber };
             }
             assert.strictEqual(typeof getDstForms, 'object');
             const { getter } = getDstForms;
