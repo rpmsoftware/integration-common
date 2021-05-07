@@ -84,7 +84,7 @@ module.exports = {
         const dstFields = await dstProcess.getFields();
         dstStatus = dstStatus ? dstFields.getStatus(dstStatus, true).ID : undefined;
         dstProcess = dstProcess.ProcessID;
-        condition = condition ? conditions.init.call(dstFields, condition) : undefined;
+        condition = condition ? conditions.init(condition) : undefined;
         const resultFieldMap = [];
         if (fieldMap) {
             for (let dstField in fieldMap) {

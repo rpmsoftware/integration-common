@@ -148,7 +148,7 @@ function initOperand(config) {
     let resultConfig;
     if (field) {
         resultConfig = {
-            field: trimField(getField.call(this, field, true)),
+            field: (this && Array.isArray(this.Fields)) ? trimField(getField.call(this, field, true)) : { Uid: validateString(field) },
             property: property ? validateString(property) : DEFAULT_FIELD_PROPERTY
         };
     } else if (property) {
