@@ -130,15 +130,17 @@ Statistics.prototype.hasChanges = function () {
 
 exports.ChangeStatistics = Statistics;
 
-exports.isEmpty = function (object) {
+const isEmpty = object => {
     if (Array.isArray(object)) {
         return object.length < 1;
     }
-    for (var key in object) {
+    for (const key in object) {
         return false;
     }
     return true;
 };
+
+exports.isEmpty = isEmpty;
 
 exports.getValues = Object.values;
 
@@ -147,14 +149,27 @@ function demandDeepValue(object, keys) {
         if (typeof object !== 'object') {
             throw new TypeError('No property: ' + key);
         }
-        object = object[key];
+        if (typeof key === 'object') {
+            assert(Array.isArray(object));
+            assert(!isEmpty(key));
+            object = object.demand(e => {
+                for (let k in key) {
+                    if (e[k] !== key[k]) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        } else {
+            object = object[key];
+        }
 
     }
     if (Array.isArray(keys)) {
         keys.forEach(goDeeper);
     } else {
         delete arguments['0'];
-        for (var key in arguments) {
+        for (const key in arguments) {
             goDeeper(arguments[key]);
         }
     }
