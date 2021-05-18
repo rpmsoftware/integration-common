@@ -338,7 +338,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
 
     getFields: function () {
         var proc = this;
-        return proc.getApi().getFields(proc.ProcessID).then(response => {
+        return proc.api.getFields(proc.ProcessID).then(response => {
             Object.defineProperty(response, 'process', { value: proc, configurable: true });
             return response;
         });
@@ -346,7 +346,7 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
 
     getForms: function (viewId) {
         var proc = this;
-        return proc.getApi().getForms(proc.ProcessID, viewId).then(result => {
+        return proc.api.getForms(proc.ProcessID, viewId).then(result => {
             Object.defineProperty(result, 'process', { value: proc, configurable: true });
             return result;
         });
@@ -354,15 +354,15 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
 
 
     createForm: function (fields, properties, fireWebEvent) {
-        return this.getApi().createForm(this.ProcessID, fields, properties, fireWebEvent);
+        return this.api.createForm(this.ProcessID, fields, properties, fireWebEvent);
     },
 
     editForm: function (formNumber, fields, properties, fireWebEvent) {
-        return this.getApi().editForm(this.ProcessID, formNumber, fields, properties, fireWebEvent);
+        return this.api.editForm(this.ProcessID, formNumber, fields, properties, fireWebEvent);
     },
 
     getFormList: function (viewID, refType) {
-        return this.getApi().getFormList(this.ProcessID, viewID, refType);
+        return this.api.getFormList(this.ProcessID, viewID, refType);
     },
 
     getAllForms: function (includeArchived) {
@@ -370,14 +370,14 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
         return process.getFormList(includeArchived).then(forms => {
             var data = [];
             var p = Promise.resolve();
-            forms.forEach(form => p = p.then(() => process.getApi().getForm(form.ID)).then(form => data.push(form)));
+            forms.forEach(form => p = p.then(() => process.api.getForm(form.ID)).then(form => data.push(form)));
             return p.then(() => data);
         });
     },
 
     getViews: function () {
         var proc = this;
-        return proc.getApi().getProcessViews(proc.ProcessID).then(views => {
+        return proc.api.getProcessViews(proc.ProcessID).then(views => {
             views.Views.forEach(view => {
                 Object.defineProperty(view, 'process', { value: proc, configurable: true });
                 Object.setPrototypeOf(view, VIEW_PROTO);
@@ -400,15 +400,15 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     },
 
     getSecurity: function () {
-        return this.getApi().getProcessSecurity(this.ProcessID);
+        return this.api.getProcessSecurity(this.ProcessID);
     },
 
     getActionTypes: function () {
-        return this.getApi().getActionTypes(this.ProcessID);
+        return this.api.getActionTypes(this.ProcessID);
     },
 
     getActions() {
-        return this.getApi().getProcessActions(this.ProcessID);
+        return this.api.getProcessActions(this.ProcessID);
     }
 };
 
