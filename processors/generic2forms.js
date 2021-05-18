@@ -64,7 +64,8 @@ module.exports = {
         dstStatus,
         errorsToActions,
         fireWebEvent,
-        getDstForms
+        getDstForms,
+        propertyMap
     }) {
         const { api } = this;
         errorsToActions = toBoolean(errorsToActions) || undefined;
@@ -82,7 +83,6 @@ module.exports = {
 
         dstProcess = (await api.getProcesses()).getActiveProcess(dstProcess, true);
         const dstFields = await dstProcess.getFields();
-        dstStatus = dstStatus ? dstFields.getStatus(dstStatus, true).ID : undefined;
         dstProcess = dstProcess.ProcessID;
         condition = condition ? conditions.init(condition) : undefined;
         const resultFieldMap = [];
@@ -97,12 +97,32 @@ module.exports = {
                 resultFieldMap.push(await setters.initField.call(this, setConf, dstField));
             }
         }
+        const resultPropertyMap = {};
+        if (propertyMap) {
+            for (let dstProperty in propertyMap) {
+                let setConf = propertyMap[dstProperty];
+                if (typeof setConf === 'string' || Array.isArray(setConf)) {
+                    setConf = { srcField: setConf };
+                }
+                assert.strictEqual(typeof setConf, 'object');
+                setConf = await setters.initValue.call(this, setConf);
+                setConf.dstProperty = dstProperty;
+                resultPropertyMap[dstProperty] = setConf;
+            }
+        }
+        if (dstStatus) {
+            delete resultPropertyMap.Status;
+            resultPropertyMap.StatusID = {
+                setter: 'constant',
+                value: dstFields.getStatus(dstStatus, true).ID
+            };
+        }
         return {
             getDstForms,
             dstProcess,
             condition,
             fieldMap: resultFieldMap,
-            dstStatus,
+            propertyMap: resultPropertyMap,
             errorsToActions,
             fireWebEvent
         };
@@ -112,8 +132,8 @@ module.exports = {
         dstProcess,
         condition,
         fieldMap,
+        propertyMap,
         getDstForms,
-        dstStatus,
         fireWebEvent,
         errorsToActions
     }, data) {
@@ -148,14 +168,21 @@ module.exports = {
                         const { Errors: fieldErrors } = fieldPatch;
                         fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
                     }
-                    if (formPatch.length < 1 && !dstStatus && formErrors.length < 1) {
+                    const formProperties = {};
+                    for (const dstProperty in propertyMap) {
+                        const v = await setters.set.call(this, propertyMap[dstProperty], obj, form);
+                        formProperties[dstProperty] = (v && typeof v === 'object') ? v.Value : v;
+                    }
+                    if (formPatch.length < 1 && isEmpty(formProperties)) {
                         return;
                     }
-                    form = await (form ?
-                        api.editForm(form.Form.FormID, formPatch, { StatusID: dstStatus }, fireWebEvent) :
-                        api.createForm(dstProcess, formPatch, { Number, StatusID: dstStatus }, fireWebEvent)
-                    );
-                    if (!form || formErrors.length < 1) {
+                    if (form) {
+                        form = await api.editForm(form.Form.FormID, formPatch, formProperties, fireWebEvent);
+                    } else {
+                        formProperties.Number = Number;
+                        form = await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent)
+                    }
+                    if (formErrors.length < 1) {
                         return;
                     }
                     formErrors = formErrors.join('\n');

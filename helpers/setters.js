@@ -172,8 +172,25 @@ const COMMON_SETTERS = {
             resultProperty = resultProperty ? validateString(resultProperty) : undefined;
             return { resultProperty, keyProperty, keyValue };
         }
-
+    },
+    staff: {
+        convert: async function (conf, data) {
+            const api = this.api || this;
+            const { srcField, demand } = conf;
+            const name = getDeepValue(data, srcField);
+            if (!name) {
+                return null;
+            }
+            let result = (await api.getStaffList()).StaffList.find(({ Name }) => Name === name)
+                || demand && throwFieldError(conf, `Staff member "${name}" does not exist`);
+            return result ? { ID: result.ID, Value: result.Name } : null;
+        },
+        init: async function ({ demand }) {
+            demand = toBoolean(demand) || undefined;
+            return { demand };
+        }
     }
+
 };
 
 for (let name in COMMON_SETTERS) {
@@ -478,106 +495,114 @@ add('List', function (config, data) {
 fieldType = ObjectType.FormReference;
 subTypes = ObjectType;
 
-add('Customer', 'demand', async function (config, data) {
-    const api = this.api || this;
-    let name = data[config.srcField];
-    if (!name) return null;
-    const cust = await api.getCustomer(name);
-    if (!cust) throwFieldError(config, `Customer "${name}" does not exist`);
-    return { ID: cust.CustomerID, Value: cust.Name };
-});
-add('Customer', 'get', async function ({ srcField }, data) {
-    const api = this.api || this;
-    let cust = getDeepValue(data, srcField);
-    if (!cust) return null;
-    cust = await api.getCustomer(cust);
-    return cust ? { ID: cust.CustomerID, Value: cust.Name } : { ID: 0, Value: null };
-});
-add('Customer', 'getOrCreate', async function ({ srcField }, data) {
-    const api = this.api || this;
-    let cust = getDeepValue(data, srcField);
-    if (!cust) return null;
-    cust = await api.getCustomer(cust) || await api.createCustomer(cust);
-    return { ID: cust.CustomerID, Value: cust.Name };
-});
-
-add('AgentCompany', 'demand', async function (config, data) {
-    const api = this.api || this;
-    let name = data[config.srcField];
-    // if (agency === undefined) return;
-    if (!name) return null;
-    const agency = await api.getAgency(name);
-    if (!agency) throwFieldError(config, `Agency "${name}" does not exist`)
-    return { ID: agency.AgencyID, Value: agency.Agency };
-});
-add('AgentCompany', 'get', async function ({ srcField }, data) {
-    const api = this.api || this;
-    let agency = getDeepValue(data, srcField);
-    // if (agency === undefined) return;
-    if (!agency) return null;
-    agency = await api.getAgency(agency);
-    return agency ? { ID: agency.AgencyID, Value: agency.Agency } : { ID: 0, Value: null };
-});
-add('AgentCompany', 'getOrCreate', async function ({ srcField }, data) {
-    const api = this.api || this;
-    const agency = getDeepValue(data, srcField);
-    // if (agency === undefined) return;
-    if (!agency) return null;
-    let result = await api.getAgency(agency);
-    if (!result) {
-        result = await api.createAgency(agency);
-    }
-    return { ID: agency.AgencyID, Value: agency.Agency };
-});
-
-add('AgentRep', 'demand', async function (config, data) {
-    const api = this.api || this;
-    let name = data[config.srcField];
-    // if (agency === undefined) return;
-    if (!name) return null;
-    const agency = await api.getAgency(name);
-    if (!agency) throwFieldError(config, `Agency "${name}" does not exist`)
-    const rep = agency.Reps.find(r => r.Type === 'Manager');
-    if (!rep) {
-        throwFieldError(config, `No manager for "${agency.Agency}" agency`)
-    }
-    return { ID: rep.RepID, Value: rep.Rep };
-});
-
-add('CustomerAccount', 'getOrCreate',
+add('Customer',
     async function (config, data) {
         const api = this.api || this;
-        let accountName = data[config.account];
-        // if (accountName === undefined) return;
-        if (!accountName) return null;
+        const { srcField, demand, create } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
+        const result = await api.getCustomer(name) ||
+            create && await api.createCustomer(name) ||
+            demand && throwFieldError(config, `Customer "${name}" does not exist`);
+        return result ? { ID: result.CustomerID, Value: result.Name } : null;
+    },
+    async function ({ demand, create }) {
+        demand = toBoolean(demand) || undefined;
+        create = toBoolean(create) || undefined;
+        return { demand, create };
+    }
+);
 
+add('AgentCompany',
+    async function (config, data) {
+        const api = this.api || this;
+        const { srcField, demand, create } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
+        const result = await api.getAgency(name) ||
+            create && await api.createAgency(name) ||
+            demand && throwFieldError(config, `Agency "${name}" does not exist`);
+        return result ? { ID: result.AgencyID, Value: result.Agency } : null;
+    },
+    async function ({ demand, create }) {
+        demand = toBoolean(demand) || undefined;
+        create = toBoolean(create) || undefined;
+        return { demand, create };
+    }
+);
+
+add('AgentCompany', 'fromRep',
+    async function (config, data) {
+        const api = this.api || this;
+        const { srcField, demand } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
+        const result = (await api.getAgentUsers()).AgentUsers.find(({ Name }) => Name === name) ||
+            demand && throwFieldError(config, `Rep "${name}" does not exist`)
+        return result ? { ID: result.AgencyID, Value: result.Agency } : null;
+    },
+    async function ({ demand }) {
+        demand = toBoolean(demand) || undefined;
+        return { demand };
+    }
+);
+
+add('AgentRep',
+    async function (config, data) {
+        const api = this.api || this;
+        const { srcField, demand } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
+        const result = (await api.getAgentUsers()).AgentUsers.find(({ Name }) => Name === name) ||
+            demand && throwFieldError(config, `Rep "${name}" does not exist`)
+        return result ? { ID: result.RepID, Value: result.Name } : null;
+    },
+    async function ({ demand }) {
+        demand = toBoolean(demand) || undefined;
+        return { demand };
+    }
+);
+
+add('CustomerAccount',
+    async function (config, data) {
+        const api = this.api || this;
+        let { demand, create, srcField } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
         const extract = prop => {
             const property = config[prop];
-            const value = data[property];
+            const value = getDeepValue(data, property);
             if (!value) {
                 throwFieldError(config, `"${property}" is required for Account`);
             }
             return value;
         }
-
         const customer = extract('customer');
         const supplier = extract('supplier');
-
-        let account = await api.getAccount(accountName, supplier);
-        if (!account) {
-            account = await api.createAccount(accountName, customer, supplier);
-        } else if (account.Customer !== customer) {
-            throwFieldError(config, `Expected account "${accountName}"`);
-        }
-        return { ID: account.AccountID, Value: account.Account };
-    }, function ({ account, customer, supplier }) {
-        validateString(account);
+        const result = await api.getAccount(name, supplier) ||
+            create && await api.createAccount(name, customer, supplier) ||
+            demand && throwFieldError(config, `Account "${name}" does not exist`);
+        result && (result.Customer === customer || throwFieldError(config, `Expected account customer "${customer}"`));
+        return result ? { ID: result.AccountID, Value: result.Account } : null;
+    },
+    function ({ customer, supplier, create, demand }) {
         validateString(customer);
         validateString(supplier);
-        return { account, customer, supplier };
+        demand = toBoolean(demand) || undefined;
+        create = toBoolean(create) || undefined;
+        return { demand, create, customer, supplier };
     }
 );
-
 
 add('RestrictedReference', async function ({ srcField, isTableField }, data) {
     data = getDeepValue(data, srcField) || (isTableField ? 0 : null);
@@ -660,7 +685,7 @@ async function initField(conf, rpmField) {
     } else if (Array.isArray(srcField)) {
         assert(srcField.length > 0);
     }
-    toArray(srcField).forEach(validateString);
+    toArray(srcField).forEach(p => typeof p === 'object' || validateString(p));
     conf.srcField = srcField;
     conf.type = key;
     conf.dstUid = validateString(rpmField.Uid);
@@ -680,7 +705,7 @@ async function initValue(conf) {
     assert.strictEqual(typeof result, 'object');
     if (srcField !== undefined) {
         Array.isArray(srcField) && assert(srcField.length > 0);
-        toArray(srcField).forEach(validateString);
+        toArray(srcField).forEach(p => typeof p === 'object' || validateString(p));
         result.srcField = srcField;
     }
     result.normalize = normalize === undefined || toBoolean(normalize);

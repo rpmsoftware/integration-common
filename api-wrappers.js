@@ -91,20 +91,6 @@ API.prototype.getUrl = function (endPoint) {
     return this.url + endPoint;
 };
 
-const API_BASED_PROTO = {
-    getApi: function () {
-        return this.api;
-    }
-};
-
-const RESPONSE_PROTO = Object.create(API_BASED_PROTO);
-RESPONSE_PROTO.getRequestTime = function () {
-    return this.requestTime;
-};
-RESPONSE_PROTO.getResponseTime = function () {
-    return this.responseTime;
-};
-
 API.prototype.assignTo = function (object) {
     !object.api && Object.defineProperty(object, 'api', { value: this });
     return object;
@@ -132,7 +118,6 @@ API.prototype.request = function (endPoint, data, log) {
             Object.defineProperty(data, 'requestTime', { value: requestTime });
             Object.defineProperty(data, 'responseTime', { value: responseTime });
             api.assignTo(data);
-            Object.setPrototypeOf(data, RESPONSE_PROTO);
         }
         if (isError) {
             throw data;
@@ -427,8 +412,6 @@ const PROCESS_PROTO = exports.PROCESS_PROTO = {
     }
 };
 
-Object.setPrototypeOf(PROCESS_PROTO, API_BASED_PROTO);
-
 API.prototype._extendProcess = function (proc) {
     this.assignTo(proc);
     Object.setPrototypeOf(proc, PROCESS_PROTO);
@@ -525,7 +508,6 @@ const PROCESS_FIELDS_PROTO = {
     getStatus,
     getFieldByUid
 };
-Object.setPrototypeOf(PROCESS_FIELDS_PROTO, RESPONSE_PROTO);
 
 API.prototype.getFields = async function (processID) {
     processID = normalizeInteger(processID);
@@ -1204,7 +1186,7 @@ API.prototype.getAccountGroups = function () {
     return this.request('AccountGroups');
 };
 
-API.prototype.editStaff = function (staff, changes) {
+API.prototype.editStaff = async function (staff, changes) {
     if (changes === undefined) {
         assert.strictEqual(typeof staff, 'object');
         changes = staff;
@@ -1214,7 +1196,7 @@ API.prototype.editStaff = function (staff, changes) {
         assert.strictEqual(typeof changes, 'object');
         changes.StaffID = staff;
     }
-    return this.request('StaffEdit', { Staff: changes.Staff || changes });
+    return Object.setPrototypeOf(await this.request('StaffEdit', { Staff: changes.Staff || changes }), STAFF_PROTO);
 };
 
 API.prototype.editUserEnabled = function (user, enabled) {
@@ -1225,15 +1207,15 @@ API.prototype.editUserEnabled = function (user, enabled) {
     });
 };
 
-API.prototype.createStaff = function (contact, role, enabled) {
+API.prototype.createStaff = async function (contact, role, enabled) {
     contact = contact || {};
-    return this.request('StaffAdd', {
+    return Object.setPrototypeOf(await this.request('StaffAdd', {
         Staff: role === undefined && enabled === undefined ? (contact.Staff || contact) : {
             RoleID: role && (role.ID || normalizeInteger(role)),
             Contact: contact,
             Enabled: !!enabled
         }
-    });
+    }), STAFF_PROTO);
 };
 
 API.prototype.getSupplier = function (id) {
