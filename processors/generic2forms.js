@@ -1,37 +1,28 @@
 const NAME = 'genericToForms';
 
 const assert = require('assert');
-const conditions = require('../conditions');
+const { init: initCondition, process: processCondition } = require('../conditions');
 const { getFieldEssentials } = require('../api-wrappers');
 const setters = require('../helpers/setters');
 const { init: initView, getForms: getViewForms } = require('../helpers/views');
-const { validateString, toArray, toBoolean, getEager, normalizeInteger, isEmpty, getDeepValue } = require('../util');
+const { validateString, toArray, toBoolean, getEager, normalizeInteger, isEmpty } = require('../util');
 
 const debug = require('debug')('rpm:generic2Forms');
 
 const FORM_FINDERS = {
     view: {
         init: async function (conf) {
-            const { match } = conf;
-            assert(typeof match === 'object');
-            assert(!isEmpty(match));
+            const { match, condition } = conf;
+            assert(!match, '"match" is obsolete. Use "condition({sourceObject,destinationForm})" instead');
             conf = await initView.call(this.api, conf);
-            conf.match = match;
+            conf.condition = initCondition(condition);
             return conf;
         },
-        getForms: async function (conf, obj) {
-            const result = await getViewForms.call(this.api, conf);
-            const { match } = conf;
-            assert(!isEmpty(match));
-            return result.filter(form => {
-                for (const formProp in match) {
-                    const objProp = match[formProp];
-                    if (getDeepValue(obj, objProp) !== getEager(form, formProp)) {
-                        return false;
-                    }
-                }
-                return true;
-            });
+        getForms: async function (conf, sourceObject) {
+            let result = await getViewForms.call(this.api, conf);
+            const { condition } = conf;
+            result = result.filter(destinationForm => processCondition(condition, { sourceObject, destinationForm }));
+            return result;
         },
     },
     number: {
@@ -84,7 +75,7 @@ module.exports = {
         dstProcess = (await api.getProcesses()).getActiveProcess(dstProcess, true);
         const dstFields = await dstProcess.getFields();
         dstProcess = dstProcess.ProcessID;
-        condition = condition ? conditions.init(condition) : undefined;
+        condition = condition ? initCondition(condition) : undefined;
         const resultFieldMap = [];
         if (fieldMap) {
             for (let dstField in fieldMap) {
@@ -141,7 +132,7 @@ module.exports = {
         const duplicates = {};
         const promises = [];
         for (const obj of toArray(data)) {
-            if (condition && !conditions.process(condition, obj)) {
+            if (condition && !processCondition(condition, obj)) {
                 continue;
             }
             for (const { Number, FormID } of toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj))) {

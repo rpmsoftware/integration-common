@@ -1,6 +1,7 @@
 const assert = require('assert');
 const { validateString, getEager, normalizeInteger, toBoolean } = require('../util');
 const { StaticViewColumnUids } = require('../api-enums');
+const { getField, getDefinitionRow } = require('integration-common/api-wrappers');
 
 const CONVERTERS = {
     number: value => {
@@ -11,11 +12,14 @@ const CONVERTERS = {
     boolean: value => toBoolean(value)
 }
 
-exports.init = async function ({ process, view, fieldMap }) {
-    const api = this;
+exports.init = async function ({ process, view, viewTable, fieldMap }) {
+    const api = this.api || this;
     typeof process === 'number' || (process = (await api.getProcesses()).getActiveProcess(process, true).ProcessID);
     let [fields, views] = await Promise.all([api.getFields(process), view ? api.getProcessViews(process) : undefined]);
     view = view ? views.Views.demand(({ Name }) => Name === view).ID : undefined;
+    if (view && viewTable) {
+        fields = { Fields: getDefinitionRow(getField.call(fields, viewTable, true)).Fields.concat(fields.Fields) };
+    }
     fieldMap = Object.assign({}, fieldMap);
     for (const dstProperty in fieldMap) {
         let cfg = fieldMap[dstProperty];
@@ -27,7 +31,7 @@ exports.init = async function ({ process, view, fieldMap }) {
         }
         let { index, name, uid, field, pattern, type } = cfg;
         const columnConf =
-            field !== undefined && { uid: fields.getField(field, true).Uid } ||
+            field !== undefined && { uid: getField.call(fields, field, true).Uid } ||
             uid !== undefined && { uid: getEager(StaticViewColumnUids, uid) } ||
             index !== undefined && { index: normalizeInteger(index) } ||
             { name: validateString(name) };
@@ -40,7 +44,7 @@ exports.init = async function ({ process, view, fieldMap }) {
 };
 
 exports.getForms = async function ({ process, view, fieldMap }) {
-    const api = this;
+    const api = this.api || this;
     const { Columns, ColumnUids, Forms } = await api.getForms(process, view);
     const indices = {};
     if (Forms.length > 0) {

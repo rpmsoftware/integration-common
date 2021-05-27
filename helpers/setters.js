@@ -45,6 +45,16 @@ function validateIndex(array, indexOrValue) {
     return indexOrValue;
 }
 
+const getObjectValue = ({ srcField, regexp }, data) => {
+    data = getDeepValue(data, srcField);
+    if (data && regexp) {
+        assert.strictEqual(typeof data, 'string');
+        data = new RegExp(regexp).exec(data);
+        data = data && data[1];
+    }
+    return data || undefined;
+};
+
 const COMMON_SETTERS = {
     constant: {
         convert: function ({ value }) {
@@ -82,7 +92,7 @@ const COMMON_SETTERS = {
     formNumberToID: async function ({ srcField, processID }, data) {
         assert(processID > 0);
         const srcValue = getDeepValue(data, srcField);
-        return srcValue ? (await this.api.demandForm(processID, srcValue)).Form.FormID : 0;
+        return srcValue ? { ID: (await this.api.demandForm(processID, srcValue)).Form.FormID } : EMPTY;
     },
 
     mustache: {
@@ -279,7 +289,7 @@ add('FieldTableDefinedRow',
 
 add('FieldTable', 'delimetered',
     async function (config, data, form) {
-        data = data[config.srcField];
+        data = getDeepValue(data, config.srcField) || data;
         const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
         function getRowID() {
             return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
@@ -341,7 +351,7 @@ add('FieldTable', 'delimetered',
 
 add('FieldTable',
     async function (config, data, form) {
-        data = data[config.srcField] || data;
+        data = getDeepValue(data, config.srcField) || data;
         assert.strictEqual(typeof data, 'object', 'Object is expected');
         const existingRows = form ? getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
@@ -451,7 +461,7 @@ function toMoment(config, date) {
 }
 
 add('Date', function (config, data) {
-    data = data[config.srcField];
+    data = getDeepValue(data, config.srcField) || data;
     if (config.normalize) {
         data = toMoment(config, data);
         data = data ? data.format(ISO_DATE_FORMAT) : null;
@@ -460,7 +470,7 @@ add('Date', function (config, data) {
 });
 
 add('DateTime', function (config, data) {
-    data = data[config.srcField];
+    data = getDeepValue(data, config.srcField) || data;
     if (config.normalize) {
         data = toMoment(config, data);
         data = data ? data.format(ISO_DATE_TIME_FORMAT) : null;
@@ -479,7 +489,7 @@ add('YesNo', function ({ srcField, normalize }, data) {
 const EMPTY = { Value: null, ID: 0 };
 
 add('List', function (config, data) {
-    const value = data[config.srcField];
+    const value = getDeepValue(data, config.srcField) || data;
     if (!value) {
         return EMPTY;
     }
@@ -604,8 +614,12 @@ add('CustomerAccount',
     }
 );
 
-add('RestrictedReference', async function ({ srcField, isTableField }, data) {
-    data = getDeepValue(data, srcField) || (isTableField ? 0 : null);
+add('RestrictedReference', async function (conf, data) {
+    const { isTableField } = conf;
+    data = getObjectValue(conf, data);
+    if (!data) {
+        return EMPTY;
+    }
     if (typeof data === 'number') {
         if (isTableField) {
             return { ID: data };
@@ -616,13 +630,13 @@ add('RestrictedReference', async function ({ srcField, isTableField }, data) {
     return data;
 });
 
-add('RestrictedReference', 'title2reference', async function ({ srcField, isTableField, processID }, data) {
-    data = getDeepValue(data, srcField);
+add('RestrictedReference', 'title2reference', async function (conf, data) {
+    data = getObjectValue(conf, data);
     if (data) {
         assert.strictEqual(typeof data, 'string');
-        data = (await this.api.getFormList(processID, true)).Forms.find(({ T }) => T === data);
+        data = (await this.api.getFormList(conf.processID, true)).Forms.find(({ T }) => T === data);
     }
-    return data ? (isTableField ? data.ID : data.N) : (isTableField ? 0 : null);
+    return data ? { ID: data.ID, Value: data.N } : EMPTY;
 });
 
 async function defaultBasicReference({ srcField, isTableField }, data) {
@@ -667,7 +681,7 @@ const CONDITIONS = {
 async function initField(conf, rpmField) {
     const key = getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
-    let { setter, condition, srcField, normalize } = conf;
+    let { setter, condition, srcField, normalize, regexp } = conf;
     if (setter) {
         gen = gen[setter] || COMMON_SETTERS[setter];
         if (!gen) {
@@ -687,6 +701,7 @@ async function initField(conf, rpmField) {
     }
     toArray(srcField).forEach(p => typeof p === 'object' || validateString(p));
     conf.srcField = srcField;
+    conf.regexp = regexp ? validateString(regexp) : undefined;
     conf.type = key;
     conf.dstUid = validateString(rpmField.Uid);
     conf.dstField = validateString(rpmField.Name);
@@ -699,7 +714,7 @@ async function initField(conf, rpmField) {
 }
 
 async function initValue(conf) {
-    let { setter, srcField, normalize } = conf;
+    let { setter, srcField, normalize, regexp } = conf;
     const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || defaultConverter);
     const result = initGen ? await initGen.call(this, conf) : {};
     assert.strictEqual(typeof result, 'object');
@@ -710,6 +725,7 @@ async function initValue(conf) {
     }
     result.normalize = normalize === undefined || toBoolean(normalize);
     result.setter = setter || undefined;
+    conf.regexp = regexp ? validateString(regexp) : undefined;
     return result;
 }
 

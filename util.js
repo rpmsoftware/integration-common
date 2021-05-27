@@ -263,7 +263,9 @@ function throwError(message, name, data) {
 
 exports.throwError = throwError;
 
-var arrayPrototypeExtensions = {
+const DEFAULT_CHILDREN_PROPERTY = '_children';
+
+const arrayPrototypeExtensions = {
     demandIndexOf: function (element) {
         var result = this.indexOf(element);
         if (result < 0) {
@@ -306,7 +308,7 @@ var arrayPrototypeExtensions = {
     demand: function () {
         const result = this.find.apply(this, arguments);
         if (result === undefined) {
-            throw new Error('Array element not found');
+            throw new TypeError('Array element not found');
         }
         return result;
     },
@@ -347,12 +349,14 @@ var arrayPrototypeExtensions = {
 
     aggregate: function (aggrProp, reducer, groupProps) {
         if (!Array.isArray(groupProps)) {
-            groupProps = Array.prototype.slice.call(arguments);
+            groupProps = Object.values(arguments);
             groupProps.shift();
             groupProps.shift();
         }
-        assert(groupProps.every(p => typeof p === 'string'));
-        assert(!groupProps.find(p => p === aggrProp));
+        groupProps.forEach(p => {
+            assert.strictEqual(typeof p, 'string')
+            assert.notStrictEqual(p, aggrProp);
+        });
         let result = {};
         this.forEach(e => {
             let groupValues = {};
@@ -370,37 +374,47 @@ var arrayPrototypeExtensions = {
         return result;
     },
 
-    buildHierarchy: function (groupProps, reducer) {
-        assert(Array.isArray(groupProps));
-        let idxLast = groupProps.length;
-        assert(idxLast > 0);
-        assert(groupProps.every(e => typeof e === 'string'));
-        let result = {};
-        --idxLast;
-        this.forEach(e => {
-            let current = result;
-            groupProps.forEach((p, ii) => {
-                let key = String(getEager(e, p));
-                let next = current[key];
-                if (!next) {
-                    next = current[key] = ii < idxLast ? {} : [];
-                }
-                current = next;
-            });
-            current.push(e);
-        });
-
-        function reduce(obj) {
-            if (Array.isArray(obj)) {
-                return reducer(obj);
-            }
-            for (let p in obj) {
-                obj[p] = reduce(obj[p]);
-            }
-            return obj;
+    group: function (aggrProp, groupProps) {
+        validateString(aggrProp);
+        if (!Array.isArray(groupProps)) {
+            groupProps = Object.values(arguments);
+            groupProps.shift();
         }
+        groupProps.forEach(p => {
+            assert.strictEqual(typeof p, 'string')
+            assert.notStrictEqual(p, aggrProp);
+        });
+        let result = {};
+        this.forEach(e => {
+            let groupValues = {};
+            groupProps.forEach(p => groupValues[p] = e[p]);
+            let key = `[${Object.values(groupValues).join('][')}]`
+            let grp = result[key];
+            if (!grp) {
+                grp = result[key] = groupValues;
+                grp[aggrProp] = [];
+            }
+            grp[aggrProp].push(e);
+        });
+        return Object.values(result);
+    },
 
-        return reducer ? reduce(result) : result;
+    buildHierarchy: function ({ groupProperties, childrenProperty }) {
+        childrenProperty = childrenProperty ? validateString(childrenProperty) : DEFAULT_CHILDREN_PROPERTY;
+        assert(groupProperties);
+        groupProperties = toArray(groupProperties);
+        const groupLevel = (array, level) => {
+            level = level || 0;
+            if (level >= groupProperties.length) {
+                return array;
+            }
+            array = array.group(childrenProperty, groupProperties[level]);
+            array.forEach(e => {
+                e[childrenProperty] = groupLevel(e[childrenProperty], level + 1);
+            });
+            return array;
+        };
+        return groupLevel(this);
     },
 
     toSet: function () {
@@ -714,22 +728,20 @@ exports.promisify = function (callable) {
     };
 };
 
-exports.validateString = function (value) {
+const validateString = exports.validateString = value => {
     if (typeof value !== 'string' || value.length < 1) {
         throw new Error(`Non-empty string is expected ("${value}")`);
     }
     return value;
 };
 
-exports.toMoment = function (value) {
-    return value instanceof moment ? value : moment(value);
-};
+exports.toMoment = value => moment.isDayjs(value) ? value : moment(value);
 
 const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];
 
 exports.toBase64 = data => (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64');
 
-exports.createPropertySorter = (property) => (a, b) => {
+exports.createPropertySorter = property => (a, b) => {
     const nameA = a[property];
     const nameB = b[property];
     return nameA === nameB ? 0 : (nameA < nameB ? -1 : 1);

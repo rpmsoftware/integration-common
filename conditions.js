@@ -3,7 +3,7 @@ const { getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepV
 const { getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT } = require('./api-wrappers');
 const operators = require('operators');
 const moment = require('dayjs');
-const debug = require('debug')('rpm:contitions');
+const debug = require('debug')('rpm:conditions');
 
 function initMulti({ operands }) {
     assert(Array.isArray(operands));
