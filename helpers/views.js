@@ -1,7 +1,8 @@
 const assert = require('assert');
 const { validateString, getEager, normalizeInteger, toBoolean } = require('../util');
 const { StaticViewColumnUids } = require('../api-enums');
-const { getField, getDefinitionRow } = require('integration-common/api-wrappers');
+const { getField, getDefinitionRow } = require('../api-wrappers');
+const { init: initCondition, process: processCondition } = require('../conditions');
 
 const CONVERTERS = {
     number: value => {
@@ -12,7 +13,7 @@ const CONVERTERS = {
     boolean: value => toBoolean(value)
 }
 
-exports.init = async function ({ process, view, viewTable, fieldMap }) {
+exports.init = async function ({ process, view, viewTable, fieldMap, filterCondition }) {
     const api = this.api || this;
     typeof process === 'number' || (process = (await api.getProcesses()).getActiveProcess(process, true).ProcessID);
     let [fields, views] = await Promise.all([api.getFields(process), view ? api.getProcessViews(process) : undefined]);
@@ -40,10 +41,11 @@ exports.init = async function ({ process, view, viewTable, fieldMap }) {
         columnConf.type = type || undefined;
         fieldMap[dstProperty] = columnConf;
     }
-    return { process, view, fieldMap };
+    filterCondition = filterCondition ? initCondition(filterCondition) : undefined;
+    return { process, view, fieldMap, filterCondition };
 };
 
-exports.getForms = async function ({ process, view, fieldMap }) {
+exports.getForms = async function ({ process, view, fieldMap, filterCondition }) {
     const api = this.api || this;
     const { Columns, ColumnUids, Forms } = await api.getForms(process, view);
     const indices = {};
@@ -70,7 +72,7 @@ exports.getForms = async function ({ process, view, fieldMap }) {
             duplicates[idx] = true;
         }
     }
-    return Forms.map(({ FormID, Values }) => {
+    let result = Forms.map(({ FormID, Values }) => {
         const result = {};
         for (let dstProperty in indices) {
             const { index, pattern, convert } = indices[dstProperty];
@@ -86,4 +88,6 @@ exports.getForms = async function ({ process, view, fieldMap }) {
         result.FormID = FormID;
         return result;
     });
+    filterCondition && (result = result.filter(f => processCondition(filterCondition, f)));
+    return result;
 };

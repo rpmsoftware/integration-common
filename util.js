@@ -396,7 +396,7 @@ const arrayPrototypeExtensions = {
             }
             grp[aggrProp].push(e);
         });
-        return Object.values(result);
+        return Object.keys(result).sort().map(k => result[k]);
     },
 
     buildHierarchy: function ({ groupProperties, childrenProperty }) {
@@ -405,13 +405,10 @@ const arrayPrototypeExtensions = {
         groupProperties = toArray(groupProperties);
         const groupLevel = (array, level) => {
             level = level || 0;
-            if (level >= groupProperties.length) {
-                return array;
+            if (level < groupProperties.length) {
+                array = array.group(childrenProperty, groupProperties[level]);
+                array.forEach(e => e[childrenProperty] = groupLevel(e[childrenProperty], level + 1));
             }
-            array = array.group(childrenProperty, groupProperties[level]);
-            array.forEach(e => {
-                e[childrenProperty] = groupLevel(e[childrenProperty], level + 1);
-            });
             return array;
         };
         return groupLevel(this);

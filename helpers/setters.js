@@ -246,7 +246,7 @@ function add(subtype, name, convert, init) {
 
 add('FieldTableDefinedRow',
     async function ({ srcField, dstField, tableRows, tableFields }, data, form) {
-        data = getDeepValue(data, srcField) || data;
+        data = getDeepValue(data, srcField) || {};
         const existingRows = form && getField.call(form.Form || form, dstField, true).Rows.filter(r => !r.IsDefinition);
 
         function getRowID(templateID) {
@@ -289,7 +289,7 @@ add('FieldTableDefinedRow',
 
 add('FieldTable', 'delimetered',
     async function (config, data, form) {
-        data = getDeepValue(data, config.srcField) || data;
+        data = getDeepValue(data, config.srcField);
         const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
         function getRowID() {
             return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
@@ -351,7 +351,7 @@ add('FieldTable', 'delimetered',
 
 add('FieldTable',
     async function (config, data, form) {
-        data = getDeepValue(data, config.srcField) || data;
+        data = getDeepValue(data, config.srcField) || [];
         assert.strictEqual(typeof data, 'object', 'Object is expected');
         const existingRows = form ? getField.call(form.Form || form, config.dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
@@ -447,7 +447,6 @@ async function initTableFields({ tableFields: srcTableFields, key, createKeys },
     createKeys = key && !!tableFields.find(tf => tf.dstUid === key);
     return { tableFields, key, createKeys };
 }
-
 
 function toMoment(config, date) {
     if (!date) {
