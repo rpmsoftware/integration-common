@@ -46,11 +46,14 @@ function setParent(obj, parent) {
 }
 
 function API(url, key, postRequest) {
+    let maxParallelCalls;
     if (typeof url === 'object') {
         postRequest = url.postRequest;
         key = url.key;
+        maxParallelCalls = url.maxParallelCalls;
         url = url.url;
     }
+    this.maxParallelCalls = maxParallelCalls > 0 ? maxParallelCalls : MAX_PARALLEL_CALLS;
     url = url.toLowerCase().ensureRight('/');
     this.url = url.ensureRight('api2.svc/').toString();
     this.key = key;
@@ -73,9 +76,11 @@ function API(url, key, postRequest) {
     this.validateParameters = true;
 }
 
-defineStandardProperty(API.prototype, 'parallelRunner', () => {
+defineStandardProperty(API.prototype, 'parallelRunner', function () {
     if (!this._parallelRunner) {
-        this._parallelRunner = createParallelRunner(MAX_PARALLEL_CALLS);
+        const { maxParallelCalls } = this;
+        assert(+maxParallelCalls > 0);
+        Object.defineProperty(this, '_parallelRunner', { value: createParallelRunner(maxParallelCalls) });
     }
     return this._parallelRunner;
 });
