@@ -22,7 +22,7 @@ module.exports = function (api) {
         const form = result.Form;
         let getter = 'demandForm';
         this.put(getter, form.FormID, result);
-        this.put(getter, form.AlternateID, result);
+        form.AlternateID && this.put(getter, form.AlternateID, result);
         this.put(getter, [result.ProcessID, form.Number], result);
         this.put(getter, [result.Process, form.Number], result);
         getter = 'getForms';
