@@ -21,10 +21,10 @@ module.exports = function (api) {
     cache.clearFormRelated = function (result) {
         const form = result.Form;
         let getter = 'demandForm';
-        this.clear(getter, form.FormID);
-        this.clear(getter, form.AlternateID);
-        this.clear(getter, [result.ProcessID, form.Number]);
-        this.clear(getter, [result.Process, form.Number]);
+        this.put(getter, form.FormID, result);
+        this.put(getter, form.AlternateID, result);
+        this.put(getter, [result.ProcessID, form.Number], result);
+        this.put(getter, [result.Process, form.Number], result);
         getter = 'getForms';
         this.clear(getter, result.ProcessID);
         this.clear(getter, result.Process);
@@ -88,8 +88,9 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.clear('demandAccount', [result.Account, result.Supplier]);
-            cache.clear('demandAccount', [result.AccountID]);
+            cache.put('demandAccount', [result.Account, result.SupplierID], result);
+            cache.put('demandAccount', [result.Account, result.Supplier], result);
+            cache.put('demandAccount', [result.AccountID], result);
             cache.clear('getAccounts');
             cache.clear('searchCustomers');
             cache.clear('getCustomerAccounts', result.Customer);
@@ -100,7 +101,7 @@ module.exports = function (api) {
         };
     });
 
-    ['createForm', 'editForm', 'addFormParticipant', 'addNoteByFormID', 'addNoteByFormNumber'].forEach(prop => {
+    ['editForm', 'addFormParticipant', 'addNoteByFormID', 'addNoteByFormNumber'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
@@ -176,8 +177,8 @@ module.exports = function (api) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             let getter = 'demandAgency';
-            cache.clear(getter, result.AgencyID);
-            cache.clear(getter, result.Agency);
+            cache.put(getter, result.AgencyID, result);
+            cache.put(getter, result.Agency, result);
             cache.clear('getAgencies');
             return result;
         };
@@ -205,8 +206,8 @@ module.exports = function (api) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             const getter = 'demandCustomer';
-            cache.clear(getter, result.CustomerID);
-            cache.clear(getter, result.Name);
+            cache.put(getter, result.CustomerID, result);
+            cache.put(getter, result.Name, result);
             cache.clear('getCustomers');
             return result;
         };
@@ -216,7 +217,7 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.clear('getStaff', result.StaffID);
+            cache.put('getStaff', result.StaffID, result);
             cache.clear('getStaffList');
             return result;
         };
