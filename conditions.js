@@ -130,6 +130,21 @@ const OPERATORS = {
             return !!this.statuses.find(s => s[prop] === formStatus);
         }
     },
+    oneOfValues: {
+        init: function (conf) {
+            const result = init1.call(this, conf);
+            let { values } = conf;
+            assert(values, '"values" is a required parameter');
+            values = toArray(values);
+            assert(values.length > 0, '"values" array is empty');
+            result.values = values;
+            return result;
+        },
+        process: function (data) {
+            const { operand, values } = this;
+            return values.indexOf(getOperandValue(operand, data)) >= 0;
+        }
+    },
 };
 
 const trimField = ({ Name, Uid }) => ({ Name, Uid });
@@ -144,7 +159,7 @@ function initOperand(config) {
         config = { field: config };
     }
     assert.strictEqual(typeof config, 'object');
-    const { field, property, value } = config;
+    let { field, property, value } = config;
     let resultConfig;
     if (field) {
         resultConfig = {
@@ -152,7 +167,10 @@ function initOperand(config) {
             property: property ? validateString(property) : DEFAULT_FIELD_PROPERTY
         };
     } else if (property) {
-        resultConfig = { property: toArray(property).map(validateString) };
+        property = toArray(property);
+        assert(property.length > 0);
+        property.forEach(p => typeof p === 'object' || validateString(p));
+        resultConfig = { property };
     } else {
         assert(value !== undefined, '"property", "field" or "value" is required');
         resultConfig = { value };

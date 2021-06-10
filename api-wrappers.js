@@ -34,13 +34,6 @@ const MAX_PARALLEL_CALLS = 20;
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
-const ENTITY_GETTERS = {};
-ENTITY_GETTERS[ObjectType.Form] = 'demandForm';
-ENTITY_GETTERS[ObjectType.AgentCompany] = 'demandAgency';
-ENTITY_GETTERS[ObjectType.Staff] = 'getStaff';
-ENTITY_GETTERS[ObjectType.Customer] = 'demandCustomer';
-ENTITY_GETTERS[ObjectType.Supplier] = 'getSupplier';
-
 function setParent(obj, parent) {
     return Object.defineProperty(obj, 'parent', { value: parent });
 }
@@ -295,6 +288,45 @@ API.prototype.getUserProcesses = async function () {
     );
 };
 
+const ENTITY_GETTERS = {};
+ENTITY_GETTERS[ObjectType.Form] = {
+    demand: function (id) {
+        return this.demandForm(id);
+    }
+};
+ENTITY_GETTERS[ObjectType.AgentCompany] = {
+    demand: function (id) {
+        return this.demandAgency(id.AgencyID || id);
+    },
+    getEntities: async function () {
+        return (await this.getAgencies()).Agencies;
+    }
+};
+ENTITY_GETTERS[ObjectType.Staff] = {
+    demand: function (id) {
+        return this.getStaff(id.ID || id);
+    },
+    getEntities: async function () {
+        return (await this.getStaffList()).StaffList;
+    }
+};
+ENTITY_GETTERS[ObjectType.Customer] = {
+    demand: function (id) {
+        return this.demandCustomer(id.CustomerID || id);
+    },
+    getEntities: async function () {
+        return (await this.getCustomers()).Customers;
+    }
+};
+ENTITY_GETTERS[ObjectType.Supplier] = {
+    demand: function (id) {
+        return this.getSupplier(id.SupplierID || id);
+    },
+    getEntities: async function () {
+        return (await this.getSuppliers()).Suppliers;
+    }
+};
+
 function getProcess(obj) {
     return (obj || this).process;
 }
@@ -512,6 +544,13 @@ const PROCESS_FIELDS_PROTO = {
     getField,
     getStatus,
     getFieldByUid
+};
+
+API.prototype.getBasicFields = async function (type) {
+    const entities = await this.getEntities(type);
+    assert(entities.length > 0, 'There are no entities');
+    const { Fields } = await this.demandEntity(type, entities[0]);
+    return Fields.map(({ Field: Name, Uid }) => ({ Name, Uid }));
 };
 
 API.prototype.getFields = async function (processID) {
@@ -1369,8 +1408,14 @@ API.prototype.getCommAgencies = function (run) {
     return this.request('CommAgencies', { Run: run });
 };
 
+API.prototype.getEntities = function (type) {
+    return getEager(ENTITY_GETTERS, type).getEntities.call(this);
+};
+
 API.prototype.demandEntity = function (type, id) {
-    return this[getEager(ENTITY_GETTERS, type)](id);
+    const t = typeof id;
+    t === 'number' || assert.strictEqual(t, 'object');
+    return getEager(ENTITY_GETTERS, type).demand.call(this, id);
 };
 
 exports.RpmApi = API;

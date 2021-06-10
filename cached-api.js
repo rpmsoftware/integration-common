@@ -54,6 +54,7 @@ module.exports = function (api) {
         'getViews',
         'getProcessViews',
         'getFields',
+        'getBasicFields',
         'getInfo',
         'getProcessActions',
         'getAgentUsers',

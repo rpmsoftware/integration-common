@@ -64,13 +64,12 @@ module.exports = {
         fireWebEvent = toBoolean(fireWebEvent) || undefined;
 
         {
-            if (formNumber && !getDstForms) {
-                getDstForms = { getter: 'number', formNumber };
-            }
+            formNumber && !getDstForms && (getDstForms = { getter: 'number', formNumber });
             assert.strictEqual(typeof getDstForms, 'object');
-            const { getter } = getDstForms;
+            let { getter, create } = getDstForms;
             getDstForms = await getEager(FORM_FINDERS, getter).init.call(this, getDstForms);
             getDstForms.getter = getter;
+            getDstForms.create === undefined && (getDstForms.create = toBoolean(create) || undefined);
         }
 
         dstProcess = (await api.getProcesses()).getActiveProcess(dstProcess, true);
@@ -132,11 +131,44 @@ module.exports = {
         const { api } = this;
         const duplicates = {};
         const promises = [];
+        const later = [];
         for (const obj of toArray(data)) {
+
             if (condition && !processCondition(condition, obj)) {
                 continue;
             }
-            for (let { Number, FormID } of toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj))) {
+
+            const formPatch = [];
+            let formErrors = [];
+            for (const conf of fieldMap) {
+                const fieldPatch = await setters.set.call(this, conf, obj);
+                if (!fieldPatch) {
+                    continue;
+                }
+                const { Errors: fieldErrors } = fieldPatch;
+                fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
+            }
+            const formProperties = {};
+            for (const dstProperty in propertyMap) {
+                const v = await setters.set.call(this, propertyMap[dstProperty], obj);
+                formProperties[dstProperty] = (v && typeof v === 'object') ? v.Value : v;
+            }
+
+            const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj));
+            forms.length < 1 && getDstForms.create && later.push(async () => {
+                const form = await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent);
+                if (formErrors.length < 1) {
+                    return;
+                }
+                formErrors = formErrors.join('\n');
+                if (errorsToActions) {
+                    await api.errorToFormAction(formErrors, form);
+                } else {
+                    throw formErrors;
+                }
+            });
+
+            for (let { Number, FormID } of forms) {
                 FormID = normalizeInteger(FormID);
                 const numberOrID = FormID ? `ID_${FormID}` : `N_${Number}`;
                 if (duplicates[numberOrID]) {
@@ -144,21 +176,6 @@ module.exports = {
                     continue;
                 }
                 duplicates[numberOrID] = true;
-                const formPatch = [];
-                let formErrors = [];
-                for (const conf of fieldMap) {
-                    const fieldPatch = await setters.set.call(this, conf, obj);
-                    if (!fieldPatch) {
-                        continue;
-                    }
-                    const { Errors: fieldErrors } = fieldPatch;
-                    fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
-                }
-                const formProperties = {};
-                for (const dstProperty in propertyMap) {
-                    const v = await setters.set.call(this, propertyMap[dstProperty], obj);
-                    formProperties[dstProperty] = (v && typeof v === 'object') ? v.Value : v;
-                }
                 if (formPatch.length < 1 && isEmpty(formProperties)) {
                     continue;
                 }
@@ -191,6 +208,7 @@ module.exports = {
                 }));
             }
         }
+        later.forEach(run => promises.push(api.parallelRunner(run)));
         return Promise.all(promises);
     }
 
