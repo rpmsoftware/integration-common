@@ -132,6 +132,24 @@ module.exports = {
         const duplicates = {};
         const promises = [];
         const later = [];
+
+
+        const tweakArchived = async (form, { Archived }) => {
+            if (Archived !== undefined) {
+                Archived = toBoolean(Archived);
+                const { FormID, Archived: FormArchived } = form.Form;
+                if (toBoolean(FormArchived) !== Archived) {
+                    const { Success } = await api.setFormArchived(FormID, Archived);
+                    assert(Success);
+                    form = await api.demandForm(FormID);
+                    assert.strictEqual(toBoolean(form.Form.Archived), Archived);
+                }
+            }
+            return form;
+        };
+
+
+
         for (const obj of toArray(data)) {
 
             if (condition && !processCondition(condition, obj)) {
@@ -150,13 +168,18 @@ module.exports = {
             }
             const formProperties = {};
             for (const dstProperty in propertyMap) {
-                const v = await setters.set.call(this, propertyMap[dstProperty], obj);
-                formProperties[dstProperty] = (v && typeof v === 'object') ? v.Value : v;
+                let v = await setters.set.call(this, propertyMap[dstProperty], obj);
+                v && typeof v === 'object' && (v = v.Value);
+                formProperties[dstProperty] = v === null ? undefined : v;
             }
+
 
             const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj));
             forms.length < 1 && getDstForms.create && later.push(async () => {
-                const form = await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent);
+                const form = await tweakArchived(
+                    await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent),
+                    formProperties
+                );
                 if (formErrors.length < 1) {
                     return;
                 }
@@ -196,6 +219,7 @@ module.exports = {
                             }
                         }
                     }
+                    form = await tweakArchived(form, formProperties);
                     if (!form || formErrors.length < 1) {
                         return;
                     }

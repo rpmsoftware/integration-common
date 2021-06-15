@@ -18,13 +18,20 @@ module.exports = function (api) {
 
     const cache = new Cache();
 
-    cache.clearFormRelated = function (result) {
+    cache.clearFormRelated = function (result, clearDemand) {
         const form = result.Form;
         let getter = 'demandForm';
-        this.put(getter, form.FormID, result);
-        form.AlternateID && this.put(getter, form.AlternateID, result);
-        this.put(getter, [result.ProcessID, form.Number], result);
-        this.put(getter, [result.Process, form.Number], result);
+        if (clearDemand) {
+            this.clear(getter, form.FormID);
+            form.AlternateID && this.clear(getter, form.AlternateID);
+            this.clear(getter, [result.ProcessID, form.Number]);
+            this.clear(getter, [result.Process, form.Number]);
+        } else {
+            this.put(getter, form.FormID, result);
+            form.AlternateID && this.put(getter, form.AlternateID, result);
+            this.put(getter, [result.ProcessID, form.Number], result);
+            this.put(getter, [result.Process, form.Number], result);
+        }
         getter = 'getForms';
         this.clear(getter, result.ProcessID);
         this.clear(getter, result.Process);
@@ -62,6 +69,7 @@ module.exports = function (api) {
         'getStaffList',
         'getAgencies',
         'getSuppliers',
+        'getSupplier',
         'getCustomers',
         'getAccounts',
         'getCustomerAccounts',
@@ -148,7 +156,7 @@ module.exports = function (api) {
         let getter = 'demandForm';
         const cached = !isNaN(id) && cache.clear(getter, id)[0];
         if (cached) {
-            cache.clearFormRelated(cached);
+            cache.clearFormRelated(cached, true);
         } else {
             cache.clear('getForms');
             cache.clear('getFormList');
