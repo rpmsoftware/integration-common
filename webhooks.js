@@ -1,134 +1,131 @@
 'use strict';
-(() => {
+const { startPostServer } = require('./express');
+const { ObjectType, WebhookEvents } = require('./api-enums');
+const hash = require('object-hash');
+const assert = require('assert');
+const { createHmac } = require('crypto');
 
-    const debug = require('debug')('rpm:webhooks');
-    const util = require('util');
-    const lib = require('./express');
-    const { ObjectType } = require('./api-enums');
-    const assert = require('assert');
+const headerPatterns = {
+    'x-rpm-instanceid': /^\d+$/,
+    'x-rpm-subscriber': /^\d+$/,
+    'user-agent': /^RPM-Webhook$/,
+    'content-type': /^application\/json/
+};
 
-    const headerPatterns = {
-        'x-rpm-instanceid': /^\d+$/,
-        'x-rpm-subscriber': /^\d+$/,
-        'user-agent': /^RPM-Webhook$/,
-        'content-type': /^application\/json/
-    };
+const validateHeaders = headers => {
+    for (const key in headerPatterns) {
+        const value = headers[key];
+        if (!headerPatterns[key].test(value)) {
+            throw new Error(`Invalid header ${key}=${value}`);
+        }
+    }
+};
 
-    function validateHeaders(headers) {
-        debug('validateHeaders()');
-        for (const key in headerPatterns) {
-            const value = headers[key];
-            if (!headerPatterns[key].test(value)) {
-                throw util.format('Invalid header %s=%s', key, value);
+const EVENT_ID_PROPERTIES = ['Subscriber', 'InstanceID', 'EventName', 'ObjectType', 'ParentType', 'ParentID', 'ObjectID'];
+const EVENTS_GAP_MS = 500;
+
+const createRpmWebHookCallback = exports.createRpmWebHookCallback = (secret, callback) => {
+
+    assert.strictEqual(typeof callback, 'function');
+    const eventHashes = {};
+
+    return (req, res) => {
+        let body;
+        try {
+            validateHeaders(req.headers);
+            validateSignature(req.headers['x-rpm-signature'], req.body, secret);
+            body = req.body;
+            const type = typeof body;
+            if (type !== 'object') {
+                assert.strictEqual(type, 'string');
+                body = JSON.parse(body);
             }
+            validateWebHooksRequest(body);
+        } catch (err) {
+            res.status(400).send(err);
+            console.error('Body:', req.body);
+            throw err;
         }
-    }
-
-    function createRpmWebHookCallback(secret, callback) {
-        return (req, res) => {
-            let body;
-            try {
-                validateHeaders(req.headers);
-                validateSignature(req.headers['x-rpm-signature'], req.body, secret);
-                body = req.body;
-                const type = typeof body;
-                if (type !== 'object') {
-                    assert.strictEqual(type, 'string');
-                    body = JSON.parse(body);
-                }
-                validateWebHooksRequest(body);
-                body.time = new Date();
-            } catch (err) {
-                res.status(400).send(err);
-                console.error('Body:', req.body);
-                throw err;
-            }
-            res.send();
-            body.InstanceID = req.headers['x-rpm-instanceid'];
-            body.Instance = req.headers['x-rpm-instance'];
-            body.Subscriber = req.headers['x-rpm-subscriber'];
-            if (typeof callback === 'function') {
-                callback(body, req);
-            }
-        };
-    }
-
-    exports.createRpmWebHookCallback = createRpmWebHookCallback;
-
-    exports.start = function (config, callback) {
-        return lib.startPostServer(config, createRpmWebHookCallback(config.signSecret, callback));
+        res.send();
+        body.InstanceID = req.headers['x-rpm-instanceid'];
+        body.Instance = req.headers['x-rpm-instance'];
+        body.Subscriber = req.headers['x-rpm-subscriber'];
+        const h = hash(EVENT_ID_PROPERTIES.map(p => body[p]));
+        const lastTime = eventHashes[h];
+        const date = new Date();
+        const time = date.getTime();
+        if (lastTime && time - lastTime < EVENTS_GAP_MS) {
+            return;
+        }
+        eventHashes[h] = time;
+        body.time = date;
+        callback(body, req);
     };
+};
 
+exports.start = (config, callback) => startPostServer(config, createRpmWebHookCallback(config.signSecret, callback));
 
-    function WebHooksRequestData(processId, formId, eventName, statusId) {
-        this.ObjectID = formId;
-        this.ParentID = processId;
-        this.EventName = eventName;
-        this.RequestID = ++WebHooksRequestData.prototype.RequestId;
-        this.ObjectType = ObjectType.Form;
-        this.ParentType = ObjectType.PMTemplate;
-        if (statusId) {
-            this.StatusID = statusId;
-        }
-        validateWebHooksRequest(this);
+function WebHooksRequestData(processId, formId, eventName, statusId) {
+    this.ObjectID = formId;
+    this.ParentID = processId;
+    this.EventName = eventName;
+    this.RequestID = ++WebHooksRequestData.prototype.RequestId;
+    this.ObjectType = ObjectType.Form;
+    this.ParentType = ObjectType.PMTemplate;
+    if (statusId) {
+        this.StatusID = statusId;
     }
+    validateWebHooksRequest(this);
+}
 
-    WebHooksRequestData.prototype.RequestId = 0;
-    exports.WebHooksRequestData = WebHooksRequestData;
+WebHooksRequestData.prototype.RequestId = 0;
+exports.WebHooksRequestData = WebHooksRequestData;
 
-    exports.EVENT_FORM_START = 'form.start';
-    exports.EVENT_FORM_EDIT = 'form.edit';
-    exports.EVENT_FORM_TRASH = 'form.trash';
-    exports.EVENT_FORM_RESTORE = 'form.restore';
-    exports.EVENT_ACTION_START = 'action.add';
-    exports.EVENT_ACTION_EDIT = 'action.edit';
-    exports.EVENT_ACTION_TRASH = 'action.trash';
+exports.EVENT_FORM_START = WebhookEvents.FormStart;
+exports.EVENT_FORM_EDIT = WebhookEvents.FormEdit;
+exports.EVENT_FORM_TRASH = WebhookEvents.FormTrash;
+exports.EVENT_FORM_RESTORE = WebhookEvents.FormRestore;
+exports.EVENT_ACTION_START = WebhookEvents.ActionAdd;
+exports.EVENT_ACTION_EDIT = WebhookEvents.ActionEdit;
+exports.EVENT_ACTION_TRASH = WebhookEvents.ActionTrash;
 
-    const isWebHooksRequest = obj =>
-        typeof obj === 'object' &&
-        (!obj.ObjectID || typeof obj.ObjectID === 'number') &&
-        (!obj.ParentID || typeof obj.ParentID === 'number') &&
-        typeof obj.ObjectType === 'number' &&
-        (!obj.ParentType || typeof obj.ParentType === 'number') &&
-        (!obj.StatusID || typeof obj.StatusID === 'number') &&
-        typeof obj.EventName === 'string';
+const isWebHooksRequest = exports.isWebHooksRequest = obj =>
+    typeof obj === 'object' &&
+    (!obj.ObjectID || typeof obj.ObjectID === 'number') &&
+    (!obj.ParentID || typeof obj.ParentID === 'number') &&
+    typeof obj.ObjectType === 'number' &&
+    (!obj.ParentType || typeof obj.ParentType === 'number') &&
+    (!obj.StatusID || typeof obj.StatusID === 'number') &&
+    typeof obj.EventName === 'string';
 
-
-    exports.isWebHooksRequest = isWebHooksRequest;
-
-    function validateWebHooksRequest(obj) {
-        if (!isWebHooksRequest(obj)) {
-            throw new Error(JSON.stringify(obj) + ' is a not WebHooksRequest');
-        }
+const validateWebHooksRequest = obj => {
+    if (!isWebHooksRequest(obj)) {
+        throw new Error(JSON.stringify(obj) + ' is a not WebHooksRequest');
     }
+};
 
-    exports.WebHooksRequestHeader = function WebHooksRequestHeader(rpmInstanceID, rpmSubscriber, request, secret) {
-        this['x-rpm-instanceid'] = rpmInstanceID;
-        this['x-rpm-subscriber'] = rpmSubscriber;
-        this['user-agent'] = 'RPM-Webhook';
-        this['content-type'] = 'application/json';
-        validateHeaders(this);
-        validateWebHooksRequest(request);
-        this['x-rpm-signature'] = getSignature(request, secret);
-    };
+exports.WebHooksRequestHeader = function WebHooksRequestHeader(rpmInstanceID, rpmSubscriber, request, secret) {
+    this['x-rpm-instanceid'] = rpmInstanceID;
+    this['x-rpm-subscriber'] = rpmSubscriber;
+    this['user-agent'] = 'RPM-Webhook';
+    this['content-type'] = 'application/json';
+    validateHeaders(this);
+    validateWebHooksRequest(request);
+    this['x-rpm-signature'] = getSignature(request, secret);
+};
 
-    const crypto = require('crypto');
-
-    function getSignature(data, secret) {
-        if (secret === undefined) {
-            throw new Error(util.format('Signature secret is missing'));
-        }
-        const hmac = crypto.createHmac('sha256', secret);
-        hmac.update(typeof data === 'object' ? JSON.stringify(data) : '' + data);
-        return hmac.digest('hex');
+const getSignature = (data, secret) => {
+    if (secret === undefined) {
+        throw new Error('Signature secret is missing');
     }
+    const hmac = createHmac('sha256', secret);
+    hmac.update(typeof data === 'object' ? JSON.stringify(data) : '' + data);
+    return hmac.digest('hex');
+};
 
-    function validateSignature(signRecieved, data, secret) {
-        debug('validateSignature()');
-        const signCalculated = getSignature(data, secret);
-        if (signCalculated !== signRecieved) {
-            throw new Error(util.format('Wrong signature. Calculated: %s, recieved: %s', signCalculated, signRecieved));
-        }
+const validateSignature = (signRecieved, data, secret) => {
+    const signCalculated = getSignature(data, secret);
+    if (signCalculated !== signRecieved) {
+        throw new Error(`Wrong signature. Calculated: ${signCalculated}, recieved: ${signRecieved}`);
     }
-
-})();
+};
