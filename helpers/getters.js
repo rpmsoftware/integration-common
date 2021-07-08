@@ -16,9 +16,8 @@ const {
 } = require('../api-enums');
 const { init: initCondition, process: processCondition } = require('../conditions');
 
-const dummy = () => { };
-
 const COMMON_GETTERS = {
+
     property: {
         get: async function ({ property, condition }, form) {
             form = form.Form || form;
@@ -38,8 +37,8 @@ const COMMON_GETTERS = {
     },
 
     none: {
-        get: dummy,
-        init: dummy
+        get: () => null,
+        init: () => { }
     },
 
     getID: function (config, form) {
@@ -414,10 +413,9 @@ add('CustomerLocation', 'getReferencedObject', async function (config, form) {
 });
 
 const DEFAULT_GETTER = {
-    init: function (conf) {
-        return {
-            pattern: conf.pattern || undefined
-        };
+    init: function ({ pattern }) {
+        pattern = pattern ? validateString(pattern) : undefined;
+        return { pattern };
     },
     get: function (config, form) {
         form = form.Form || form;

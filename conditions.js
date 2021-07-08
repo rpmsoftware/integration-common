@@ -145,6 +145,16 @@ const OPERATORS = {
             return values.indexOf(getOperandValue(operand, data)) >= 0;
         }
     },
+    equalNumbers: {
+        init: init2,
+        process: function (form) {
+            const { operand1, operand2 } = this;
+            form = form.Form || form;
+            const value1 = +getOperandValue(operand1, form);
+            const value2 = +getOperandValue(operand2, form);
+            return !isNaN(value1) && value1 === value2;
+        }
+    }
 };
 
 const trimField = ({ Name, Uid }) => ({ Name, Uid });

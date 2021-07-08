@@ -22,6 +22,7 @@ const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
 const { FieldSubType, ObjectType } = require('../api-enums');
 const { render } = require('mustache');
+const tweakDate = require('../processors/tweak-date');
 
 function normalizeIndex(value) {
     if (typeof value === 'string') {
@@ -56,6 +57,18 @@ const getObjectValue = ({ srcField, regexp }, data) => {
 };
 
 const COMMON_SETTERS = {
+
+    now: {
+
+        convert: function (conf) {
+            return tweakDate.process(conf, moment().millisecond(0)).format(ISO_DATE_TIME_FORMAT);
+        },
+
+        init: function (conf) {
+            return tweakDate.init.call(this, conf);
+        }
+    },
+
     constant: {
         convert: function ({ value }) {
             return value;
