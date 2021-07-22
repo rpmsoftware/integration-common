@@ -326,6 +326,14 @@ ENTITY_GETTERS[ObjectType.Supplier] = {
         return (await this.getSuppliers()).Suppliers;
     }
 };
+ENTITY_GETTERS[ObjectType.Rep] = {
+    demand: function (id) {
+        return this.getRep(id.RepID || id);
+    },
+    getEntities: function () {
+        return this.getReps();
+    }
+};
 
 function getProcess(obj) {
     return (obj || this).process;
@@ -1340,7 +1348,7 @@ API.prototype.addNoteByFormNumber = function (processNameOrID, formNumber, note,
     } else {
         body.Process = validateString(processNameOrID);
     }
-    return this.request('ProcFormNoteAdd', body);
+    return this.request('ProcFormNoteAdd', body).then(form => this._extendForm(form));
 };
 
 API.prototype.getTableFillsList = function () {

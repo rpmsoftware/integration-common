@@ -2,6 +2,7 @@ const assert = require('assert');
 const { validateString, toArray, getEager, isEmpty, demandDeepValue } = require('../util');
 const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const { toSimpleField } = require('../api-wrappers');
+const CONVERTERS = require('./converters');
 
 const {
     getField,
@@ -36,9 +37,17 @@ const COMMON_GETTERS = {
         }
     },
 
+    constant: {
+        get: ({ value }) => value,
+        init: ({ value }) => {
+            assert.notStrictEqual(value, undefined);
+            return { value };
+        }
+    },
+
     none: {
         get: () => null,
-        init: () => { }
+        init: () => ({})
     },
 
     getID: function (config, form) {
@@ -140,9 +149,9 @@ for (let name in COMMON_GETTERS) {
     const get = COMMON_GETTERS[name];
     const type = typeof get;
     if (type === 'object') {
-        assert.equal(typeof get.get, 'function');
+        assert.strictEqual(typeof get.get, 'function');
     } else {
-        assert.equal(type, 'function');
+        assert.strictEqual(type, 'function');
         COMMON_GETTERS[name] = { get };
     }
 }
@@ -170,9 +179,9 @@ function add(subtype, name, get, init) {
         accs = SPECIFIC_GETTERS[fullType] = {};
     }
     if (init) {
-        assert.equal(typeof init, 'function');
+        assert.strictEqual(typeof init, 'function');
     }
-    assert.equal(typeof get, 'function');
+    assert.strictEqual(typeof get, 'function');
     init = init || undefined;
     return accs[name] = { get, init };
 }
@@ -213,7 +222,7 @@ add('FieldTableDefinedRow', async function (conf, form) {
                     const val = fld.Values[0];
                     delete fld.Values;
                     if (val) {
-                        assert.equal(typeof val, 'object');
+                        assert.strictEqual(typeof val, 'object');
                         Object.assign(fld, val);
                     } else {
                         fld.Value = null;
@@ -279,7 +288,7 @@ add('FieldTable', async function (conf, form) {
                 const val = fld.Values[0];
                 delete fld.Values;
                 if (val) {
-                    assert.equal(typeof val, 'object');
+                    assert.strictEqual(typeof val, 'object');
                     Object.assign(fld, val);
                 } else {
                     fld.Value = null;
@@ -393,7 +402,7 @@ add('CustomerLocation', 'getReferencedObject', async function (config, form) {
     const parentField = rpmFields.demand(f => f.Uid === rpmField.ParentUid);
     let fieldMap;
     if (config && config.fields) {
-        assert.equal(typeof config.fields, 'object');
+        assert.strictEqual(typeof config.fields, 'object');
         if (Array.isArray(config.fields)) {
             fieldMap = {};
             for (let src of config.fields) {
@@ -413,24 +422,25 @@ add('CustomerLocation', 'getReferencedObject', async function (config, form) {
 });
 
 const DEFAULT_GETTER = {
-    init: function ({ pattern }) {
+    init: function ({ pattern, type }) {
         pattern = pattern ? validateString(pattern) : undefined;
-        return { pattern };
+        type ? getEager(CONVERTERS, validateString(type)) : (type = undefined);
+        return { pattern, type };
     },
     get: function (config, form) {
         form = form.Form || form;
-        let value = toSimpleField(getFieldByUid.call(form, config.srcUid, true)).Value;
+        let { Value } = toSimpleField(getFieldByUid.call(form, config.srcUid, true));
         if (config.pattern) {
             if (!(config.pattern instanceof RegExp)) {
                 config.pattern = new RegExp(config.pattern);
             }
-            const parts = config.pattern.exec(value);
+            const parts = config.pattern.exec(Value);
             if (!parts) {
-                throw new Error(`Could not parse value "${value}"`);
+                throw new Error(`Could not parse value "${Value}"`);
             }
-            value = parts[parts.length > 1 ? 1 : 0];
+            Value = parts[parts.length > 1 ? 1 : 0];
         }
-        return value;
+        return (Value && config.type) ? getEager(CONVERTERS, config.type)(Value) : Value;
     }
 };
 

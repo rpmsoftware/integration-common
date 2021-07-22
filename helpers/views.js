@@ -1,17 +1,10 @@
 const assert = require('assert');
-const { validateString, getEager, normalizeInteger, toBoolean } = require('../util');
+const { validateString, getEager, normalizeInteger } = require('../util');
 const { StaticViewColumnUids } = require('../api-enums');
 const { getField, getDefinitionRow } = require('../api-wrappers');
 const { init: initCondition, process: processCondition } = require('../conditions');
 
-const CONVERTERS = {
-    number: value => {
-        const result = +value;
-        assert(!isNaN(result), value);
-        return result;
-    },
-    boolean: value => toBoolean(value)
-}
+const CONVERTERS = require('./converters');
 
 exports.init = async function ({ process, view, viewTable, fieldMap, filterCondition }) {
     const api = this.api || this;
