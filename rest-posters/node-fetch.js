@@ -3,12 +3,20 @@ const assert = require('assert');
 
 const fetch2json = async response => {
   assert(response instanceof fetch.Response);
-  response = await response.text();
+  const { ok } = response;
+  const result = await response.text();
+  if (ok) {
+    try {
+      return JSON.parse(result);
+    } catch (e) {
+      console.error(result);
+      throw e;
+    }
+  }
   try {
-    return JSON.parse(response);
+    throw JSON.parse(result);
   } catch (e) {
-    console.error(response);
-    throw e;
+    throw result;
   }
 };
 
