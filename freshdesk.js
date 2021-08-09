@@ -1,9 +1,7 @@
-/* global Buffer */
-
 const assert = require('assert');
-const { validateString, isEmpty, toBoolean, normalizeInteger } = require('./util');
-const { Client } = require('node-rest-client');
-const moment = require("moment");
+const { validateString, toBoolean, normalizeInteger, toBase64, toMoment, fetch2json } = require('./util');
+const fetch = require('node-fetch');
+const moment = require('dayjs');
 const debug = require('debug')('rpm:freshdesk');
 
 const DEFAULT_HEADERS = {
@@ -24,7 +22,9 @@ class API {
         validateString(url);
         validateString(key);
         this.url = url.toLowerCase().ensureRight('/').ensureRight('api/').ensureRight('v2/').toString();
-        Object.defineProperty(this, 'client', { value: new Client({ user: key, password: 'X' }) });
+        this.headers = Object.assign({
+            Authorization: 'Basic ' + toBase64(`${key}:X`)
+        }, DEFAULT_HEADERS);
     }
 
     getUrl(endpoint) {
@@ -32,19 +32,19 @@ class API {
     }
 
     getPaged(endpoint, parameters) {
-        return this.get(endpoint, Object.assign({}, GET_DEFAULTS, parameters || undefined));
+        return this.get(endpoint, Object.assign({}, GET_DEFAULTS, parameters));
     }
 
-    get(endpoint, parameters) {
-        if (typeof parameters === 'object') {
-            for (const name in parameters) {
-                if (parameters[name] === undefined) {
-                    delete parameters[name];
-                }
+    get(endpoint, options) {
+        const body = new URLSearchParams();
+        if (options) {
+            for (const k in options) {
+                const v = options[k];
+                v === undefined || body.set(k, v);
             }
+            endpoint = endpoint + '?' + body.toString();
         }
-        return this.requestEndpoint('get', endpoint, parameters && !isEmpty(parameters) ?
-            { parameters } : undefined);
+        return this.requestEndpoint('get', endpoint);
     }
 
     async requestEndpoint(method, endpoint, options) {
@@ -58,43 +58,42 @@ class API {
         return result;
     }
 
-    request(method, url, options) {
+    async request(method, url, options) {
         debug(`${method.toUpperCase()} ${url} ${this.logRequestData && options ? '\n' + JSON.stringify(options) : ''}`);
-        options = options || {};
-        options.headers = DEFAULT_HEADERS;
-        return new Promise((resolve, reject) => {
-            this.client[method.toLowerCase()](url, options, (data, response) => {
-                switch (response.statusCode) {
-                    case 200:
-                    case 201:
-                        let nextLink = response.headers.link;
-                        nextLink = nextLink && REGEX_NEXT_PAGE_LINK.exec(nextLink)[1];
-                        nextLink && Object.defineProperty(data, 'nextLink', { value: nextLink });
-                        return resolve(data);
-                    case 204:
-                        return resolve();
-                    default:
-                        if (Buffer.isBuffer(data)) {
-                            data = data.toString();
-                        }
-                        if (typeof data === 'object') {
-                            data.statusCode = response.statusCode;
-                        }
-                        reject(data || response.statusCode);
-                }
 
-            })
+        const response = await fetch(url, {
+            method,
+            headers: this.headers,
+            body: options
         });
+
+        const { status: statusCode, headers } = response;
+
+        let nextLink, data;
+        switch (statusCode) {
+            case 200:
+            case 201:
+                nextLink = headers.get('link');
+                nextLink = nextLink && REGEX_NEXT_PAGE_LINK.exec(nextLink)[1];
+                data = await fetch2json(response);
+                nextLink && Object.defineProperty(data, 'nextLink', { value: nextLink });
+                return data;
+            case 204:
+                return;
+            default:
+                throw await fetch2json(response);
+        }
+
     }
 
     getTimeEntries(before, after, billable) {
-        if (typeof before === 'object' && !moment.isMoment(before)) {
+        if (typeof before === 'object' && !moment.isDayjs(before)) {
             billable = before.billable;
             after = before.after;
             before = before.before;
         }
-        before = before ? (moment.isMoment(before) ? before : moment(before)).toISOString() : undefined;
-        after = after ? (moment.isMoment(after) ? after : moment(after)).toISOString() : undefined;
+        before = before ? toMoment(before).toISOString() : undefined;
+        after = after ? toMoment(after).toISOString() : undefined;
         if (billable !== undefined) {
             billable = toBoolean(billable);
         }
@@ -121,13 +120,17 @@ class API {
         return this.getPaged('companies');
     }
 
+    getGroups() {
+        return this.getPaged('groups');
+    }
+
     getTicket(id) {
         return this.get('tickets/' + normalizeInteger(id));
     }
 
     getTickets(since) {
         return this.getPaged('tickets', {
-            updated_since: since ? (moment.isMoment(since) ? since : moment(since)).toISOString() : undefined
+            updated_since: since ? toMoment(since).toISOString() : undefined
         });
     }
 

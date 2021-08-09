@@ -257,6 +257,17 @@ function add(subtype, name, convert, init) {
     return gens[name] = { convert, init };
 }
 
+add('Duration',
+    function ({ srcField, unit }, data) {
+        const v = getDeepValue(data, srcField) || null;
+        return (v && unit) ? `${v} ${unit}` : v;
+    },
+    function ({ unit }) {
+        unit = unit ? validateString(unit) : undefined;
+        return { unit };
+    }
+);
+
 add('FieldTableDefinedRow',
     async function ({ srcField, dstField, tableRows, tableFields }, data, form) {
         data = getDeepValue(data, srcField) || {};

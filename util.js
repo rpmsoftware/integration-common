@@ -759,3 +759,21 @@ exports.defineLazyProperty = (obj, name, init) => {
         }
     });
 };
+
+exports.fetch2json = async response => {
+    const { ok } = response;
+    const result = await response.text();
+    if (ok) {
+        try {
+            return JSON.parse(result);
+        } catch (e) {
+            console.error(result);
+            throw e;
+        }
+    }
+    try {
+        throw JSON.parse(result);
+    } catch (e) {
+        throw result;
+    }
+};

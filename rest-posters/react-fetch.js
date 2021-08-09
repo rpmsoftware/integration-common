@@ -1,11 +1,13 @@
-function core(url, data, headers) {
+const { fetch2json } = require('../util');
+
+const core = (url, data, headers) => {
   return fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(data)
-  }).then((response) => response.json());
-}
+  }).then(fetch2json);
+};
 
-module.exports = function () {
+module.exports = () => {
   return core;
 };

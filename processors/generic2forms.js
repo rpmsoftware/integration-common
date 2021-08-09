@@ -6,7 +6,7 @@ const { getFieldEssentials } = require('../api-wrappers');
 const { MSG_FORM_NOT_FOUND } = require('../api-errors');
 const setters = require('../helpers/setters');
 const { init: initView, getForms: getViewForms } = require('../helpers/views');
-const { validateString, toArray, toBoolean, getEager, normalizeInteger, isEmpty } = require('../util');
+const { toArray, toBoolean, getEager, normalizeInteger, isEmpty } = require('../util');
 
 const debug = require('debug')('rpm:generic2Forms');
 
@@ -28,9 +28,9 @@ const FORM_FINDERS = {
     number: {
         init: async function ({ formNumber, create }) {
             formNumber = await setters.initValue.call(this,
-                typeof formNumber === 'string' ? { srcField: validateString(formNumber) } : formNumber
+                (typeof formNumber === 'string' || Array.isArray(formNumber)) ? { srcField: formNumber } : formNumber
             );
-            create = create === undefined || toBoolean(create) || undefined;
+            create = toBoolean(create) || undefined;
             return { formNumber, create };
         },
         getForms: async function ({ formNumber }, obj) {
@@ -57,12 +57,13 @@ module.exports = {
         errorsToActions,
         fireWebEvent,
         getDstForms,
-        propertyMap
+        propertyMap,
+        blindPatch
     }) {
         const { api } = this;
         errorsToActions = toBoolean(errorsToActions) || undefined;
         fireWebEvent = toBoolean(fireWebEvent) || undefined;
-
+        blindPatch = blindPatch === undefined || toBoolean(blindPatch) || undefined;
         {
             formNumber && !getDstForms && (getDstForms = { getter: 'number', formNumber });
             assert.strictEqual(typeof getDstForms, 'object');
@@ -115,7 +116,8 @@ module.exports = {
             fieldMap: resultFieldMap,
             propertyMap: resultPropertyMap,
             errorsToActions,
-            fireWebEvent
+            fireWebEvent,
+            blindPatch
         };
     },
 
@@ -126,7 +128,8 @@ module.exports = {
         propertyMap,
         getDstForms,
         fireWebEvent,
-        errorsToActions
+        errorsToActions,
+        blindPatch
     }, data) {
         const { api } = this;
         const duplicates = {};
@@ -156,16 +159,18 @@ module.exports = {
                 continue;
             }
 
-            const formPatch = [];
-            let formErrors = [];
+            const blindFormPatch = [];
+            let blindFormErrors = [];
             for (const conf of fieldMap) {
                 const fieldPatch = await setters.set.call(this, conf, obj);
                 if (!fieldPatch) {
                     continue;
                 }
                 const { Errors: fieldErrors } = fieldPatch;
-                fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
+                fieldErrors ? (blindFormErrors = blindFormErrors.concat(fieldErrors)) : blindFormPatch.push(fieldPatch);
             }
+
+
             const formProperties = {};
             for (const dstProperty in propertyMap) {
                 let v = await setters.set.call(this, propertyMap[dstProperty], obj);
@@ -177,33 +182,50 @@ module.exports = {
             const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj));
             forms.length < 1 && getDstForms.create && later.push(async () => {
                 const form = await tweakArchived(
-                    await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent),
+                    await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent),
                     formProperties
                 );
-                if (formErrors.length < 1) {
+                if (blindFormErrors.length < 1) {
                     return;
                 }
-                formErrors = formErrors.join('\n');
+                blindFormErrors = blindFormErrors.join('\n');
                 if (errorsToActions) {
-                    await api.errorToFormAction(formErrors, form);
+                    await api.errorToFormAction(blindFormErrors, form);
                 } else {
-                    throw formErrors;
+                    throw blindFormErrors;
                 }
             });
 
             for (let { Number, FormID } of forms) {
-                FormID = normalizeInteger(FormID);
+                FormID = FormID && normalizeInteger(FormID);
                 const numberOrID = FormID ? `ID_${FormID}` : `N_${Number}`;
                 if (duplicates[numberOrID]) {
                     debug('Form number already processed: ', numberOrID);
                     continue;
                 }
                 duplicates[numberOrID] = true;
-                if (formPatch.length < 1 && isEmpty(formProperties)) {
-                    continue;
-                }
                 promises.push(api.parallelRunner(async () => {
-                    let form;
+                    let formPatch, formErrors, form;
+                    if (blindPatch) {
+                        formPatch = blindFormPatch;
+                        formErrors = blindFormErrors;
+                    } else {
+                        form = await (FormID ? api.getForm(FormID) : api.getForm(dstProcess, Number+''));
+                        formPatch = [];
+                        formErrors = [];
+                        for (const conf of fieldMap) {
+                            const fieldPatch = await setters.set.call(this, conf, obj, form);
+                            if (!fieldPatch) {
+                                continue;
+                            }
+                            const { Errors: fieldErrors } = fieldPatch;
+                            fieldErrors ? (formErrors = formErrors.concat(fieldErrors)) : formPatch.push(fieldPatch);
+                        }
+                        FormID = form && form.Form.FormID;
+                    }
+                    if (formPatch.length < 1 && isEmpty(formProperties)) {
+                        return;
+                    }
                     if (FormID) {
                         form = await api.editForm(FormID, formPatch, formProperties, fireWebEvent);
                     } else {
