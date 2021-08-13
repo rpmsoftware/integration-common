@@ -17,6 +17,13 @@ const {
 } = require('../api-enums');
 const { init: initCondition, process: processCondition } = require('../conditions');
 
+const initProperty = property => {
+    property = toArray(property);
+    assert(property.length > 0);
+    property.forEach(p => typeof p === 'object' || validateString(p));
+    return property;
+};
+
 const COMMON_GETTERS = {
 
     property: {
@@ -69,13 +76,23 @@ const COMMON_GETTERS = {
     },
 
     getFormOwner: {
-        get: async function (config, form) {
+        get: async function ({ property }, form) {
             const { api } = this;
-            const owner = getEager(form.Form || form, 'Owner');
-            const staff = (await api.getStaffList()).StaffList.demand(s => s.Name === owner);
-            return await api.getStaff(staff.ID);
+            form = form.Form || form;
+            let { owner } = form;
+            if (!owner) {
+                owner = getEager(form, 'Owner');
+                owner = (await api.getStaffList()).StaffList.demand(({ Name }) => Name === owner);
+                owner = await api.getStaff(owner.ID);
+                Object.defineProperty(form, 'owner', { value: owner });
+            }
+            return property ? demandDeepValue(owner, property) : owner;
+
         },
-        init: () => ({})
+        init: async function ({ property }) {
+            property = property ? initProperty(property) : undefined;
+            return { property };
+        }
     },
 
     getFormStarted: {
