@@ -259,8 +259,9 @@ function add(subtype, name, convert, init) {
 
 add('Duration',
     function ({ srcField, unit }, data) {
-        const v = getDeepValue(data, srcField) || null;
-        return (v && unit) ? `${v} ${unit}` : v;
+        let v = getDeepValue(data, srcField);
+        isEmptyValue(v) && (v = null);
+        return (v !== null && unit) ? `${v} ${unit}` : v;
     },
     function ({ unit }) {
         unit = unit ? validateString(unit) : undefined;
@@ -680,7 +681,8 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
 
 const defaultConverter = {
     convert: function ({ srcField }, data) {
-        return getDeepValue(data, srcField) || null;
+        const result = getDeepValue(data, srcField);
+        return isEmptyValue(result) ? null : result;
     }
 };
 
