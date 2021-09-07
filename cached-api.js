@@ -152,9 +152,8 @@ module.exports = function (api) {
     };
 
     const cleanAfterFormID = id => {
-        id = +id;
         let getter = 'demandForm';
-        const cached = !isNaN(id) && cache.clear(getter, id)[0];
+        const cached = cache.clear(getter, id)[0];
         if (cached) {
             cache.clearFormRelated(cached, true);
         } else {
