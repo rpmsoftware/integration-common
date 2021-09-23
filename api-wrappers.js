@@ -558,7 +558,7 @@ API.prototype.getBasicFields = async function (type) {
     const entities = await this.getEntities(type);
     assert(entities.length > 0, 'There are no entities');
     const { Fields } = await this.demandEntity(type, entities[0]);
-    return Fields.map(({ Field: Name, Uid }) => ({ Name, Uid }));
+    return { Fields: Fields.map(({ Field: Name, Uid }) => ({ Name, Uid })) };
 };
 
 API.prototype.getFields = async function (processID) {
