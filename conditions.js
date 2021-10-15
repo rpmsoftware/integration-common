@@ -157,8 +157,6 @@ const OPERATORS = {
     }
 };
 
-const trimField = ({ Name, Uid }) => ({ Name, Uid });
-
 const DEFAULT_FIELD_PROPERTY = 'Value';
 
 function initOperand(config) {
@@ -173,8 +171,8 @@ function initOperand(config) {
     let resultConfig;
     if (field) {
         resultConfig = {
-            field: (this && Array.isArray(this.Fields)) ? trimField(getField.call(this, field, true)) : { Uid: validateString(field) },
-            property: property ? validateString(property) : DEFAULT_FIELD_PROPERTY
+            field: (this && Array.isArray(this.Fields)) ? getField.call(this, field, true).Uid : validateString(field),
+            property: property ? validateString(property) : undefined
         };
     } else if (property) {
         property = toArray(property);
@@ -209,8 +207,7 @@ function getOperandValue({ field, property, value }, form) {
     if (value !== undefined) {
         result = value;
     } else if (field) {
-        assert(property);
-        result = toSimpleField(getFieldByUid.call(form, field.Uid || field, true))[property];
+        result = toSimpleField(getFieldByUid.call(form, field, true))[property || DEFAULT_FIELD_PROPERTY];
     } else {
         assert(property);
         result = getDeepValue(form, property);
@@ -263,21 +260,27 @@ function init(conf) {
             operands: conf
         }
     }
-    const { operator, not, message } = conf;
+    const { operator, not, description } = conf;
     const { init } = getEager(OPERATORS, operator);
     const result = init ? init.call(this, conf) : {};
     result.operator = operator;
-    result.message = message || undefined;
+    result.description = description || undefined;
     result.not = toBoolean(not) || undefined
     return result;
 }
 
 function process(conf, form) {
-    const { not, message, operator } = conf;
-    let result = getEager(OPERATORS, operator).process.call(conf, form);
-    not && (result = !result);
-    !result && debug('Condition is not met:', message || operator);
-    return result;
+    const { not, operator } = conf;
+    const result = getEager(OPERATORS, operator).process.call(conf, form);
+    return not ? result : !result;
 }
 
-module.exports = { init, process };
+module.exports = {
+    init,
+    process: function (conf) {
+        const { description, operator } = conf;
+        const result = process.apply(this, arguments);
+        result || debug('Condition is not met:', description || operator);
+        return result;
+    }
+};
