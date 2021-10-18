@@ -272,7 +272,7 @@ function init(conf) {
 function process(conf, form) {
     const { not, operator } = conf;
     const result = getEager(OPERATORS, operator).process.call(conf, form);
-    return not ? result : !result;
+    return not ? !result : result;
 }
 
 module.exports = {
