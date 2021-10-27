@@ -752,9 +752,9 @@ const FORM_PROTO = exports.FORM_PROTO = Object.defineProperties({
     RefType: ObjectType.RestrictedReference,
     IDProperty: 'FormID'
 }, {
-    EntityID: { get() { return this.Form.FormID } },
-    RefName: { get() { return this.Form.Number } },
-    Archived: { get() { return this.Form.Archived } },
+    EntityID: { get() { return this.Form.FormID; } },
+    RefName: { get() { return this.Form.Number; } },
+    Archived: { get() { return this.Form.Archived; } },
 });
 
 const FORM_CORE_PROTO = {
@@ -762,14 +762,15 @@ const FORM_CORE_PROTO = {
     getFieldByUid
 };
 Object.defineProperty(FORM_CORE_PROTO, 'url', {
-    get: function () {
-        return this.api.getFormUrl(this.FormID);
-    }
+    get: function () { return this.api.getFormUrl(this.FormID); }
 });
 
 function extendForm(form) {
+    const { Form } = form;
+    Object.defineProperty(Form, 'ProcessID', { value: form.ProcessID });
+    Object.defineProperty(Form, 'Process', { value: form.Process });
     Object.setPrototypeOf(form, FORM_PROTO);
-    Object.setPrototypeOf(form.Form, FORM_CORE_PROTO);
+    Object.setPrototypeOf(Form, FORM_CORE_PROTO);
     return form;
 }
 
