@@ -1,18 +1,25 @@
-/* global Buffer */
-/* global process */
+/* global Buffer, process */
 
 const debug = require('debug')('rpm:util');
-const fs = require('fs');
+const { readFileSync, writeFile } = require('fs');
 const moment = require('dayjs');
 const assert = require('assert');
+const { unzipSync } = require('zlib');
 
 String.prototype.ensureRight = function (right) {
     return this.endsWith(right) ? this : this + right;
 };
 
 exports.readConfig = function (envName, fileName) {
-    const config = process.env[envName] || fs.readFileSync(fileName || 'config.json', 'utf8');
-    return JSON.parse(config);
+    const config = process.env[envName] || readFileSync(fileName || 'config.json', 'utf8');
+    let result;
+    try {
+        result = JSON.parse(config);
+    } catch (e) {
+        debug('Failed to parse JSON. Trying to unzip base64 stream');
+        result = JSON.parse(unzipSync(Buffer.from(config, 'base64')).toString());
+    }
+    return result;
 };
 
 function Range(min, max) {
@@ -495,7 +502,7 @@ exports.createObjectSerializer = function (object, fileName) {
     function doSave() {
         triggered = false;
         debug('Saving state');
-        fs.writeFile(fileName, JSON.stringify(object), err => {
+        writeFile(fileName, JSON.stringify(object), err => {
             running = false;
             if (err) {
                 console.error(err);
