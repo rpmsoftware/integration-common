@@ -10,12 +10,15 @@ String.prototype.ensureRight = function (right) {
     return this.endsWith(right) ? this : this + right;
 };
 
-exports.readConfig = function (envName, fileName) {
+exports.readConfig = function (envName, fileName, tryUnzip) {
     const config = process.env[envName] || readFileSync(fileName || 'config.json', 'utf8');
     let result;
     try {
         result = JSON.parse(config);
     } catch (e) {
+        if (!toBoolean(tryUnzip)) {
+            throw e;
+        }
         debug('Failed to parse JSON. Trying to unzip base64 stream');
         result = JSON.parse(unzipSync(Buffer.from(config, 'base64')).toString());
     }
@@ -58,7 +61,7 @@ function clearArray(array) {
 
 exports.clearArray = clearArray;
 
-exports.toBoolean = function (value, demand) {
+const toBoolean = exports.toBoolean = (value, demand) => {
     if (typeof value !== 'string') {
         return Boolean(value);
     }
