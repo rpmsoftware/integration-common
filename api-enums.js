@@ -525,7 +525,11 @@ const ProcessPermission = exports.ProcessPermission = {
 
 exports.ProcessPermissionsHidden = ['NA', 'HideAll'].map(p => getEager(ProcessPermission, p));
 
-exports.RepTypes = ['Rep', 'Manager'];
+exports.RepTypes = {
+    Rep: 1,
+    Manager: 2,
+    Both: 3
+};
 
 exports.FieldFormat = {
     String: 1,    // Account, Role, Supplier, [list field]
