@@ -485,21 +485,15 @@ function toMoment(config, date) {
 }
 
 add('Date', function (config, data) {
-    data = getDeepValue(data, config.srcField) || data;
-    if (config.normalize) {
-        data = toMoment(config, data);
-        data = data ? data.format(ISO_DATE_FORMAT) : null;
-    }
-    return { Value: data };
+    data = getDeepValue(data, config.srcField);
+    data && config.normalize && (data = toMoment(config, data).format(ISO_DATE_FORMAT));
+    return { Value: data || null };
 });
 
 add('DateTime', function (config, data) {
-    data = getDeepValue(data, config.srcField) || data;
-    if (config.normalize) {
-        data = toMoment(config, data);
-        data = data ? data.format(ISO_DATE_TIME_FORMAT) : null;
-    }
-    return { Value: data };
+    data = getDeepValue(data, config.srcField);
+    data && config.normalize && (data = toMoment(config, data).format(ISO_DATE_TIME_FORMAT));
+    return { Value: data || null };
 });
 
 add('YesNo', function ({ srcField, normalize }, data) {
@@ -513,7 +507,7 @@ add('YesNo', function ({ srcField, normalize }, data) {
 const EMPTY = { Value: null, ID: 0 };
 
 add('List', function (config, data) {
-    const value = getDeepValue(data, config.srcField) || data;
+    const value = getDeepValue(data, config.srcField);
     if (!value) {
         return EMPTY;
     }
@@ -522,8 +516,8 @@ add('List', function (config, data) {
         Object.assign({ Errors: getErrorMessage(config, 'Unknown value: ' + value) }, EMPTY) :
         { Value: value }
     );
-}, async function (config, rpmField) {
-    return { options: getEager(rpmField, 'Options') };
+}, async function ({ demand }, rpmField) {
+    return { options: getEager(rpmField, 'Options'), demand: toBoolean(demand) || undefined };
 });
 
 fieldType = ObjectType.FormReference;
