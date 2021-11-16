@@ -1,6 +1,10 @@
 const assert = require('assert');
-const { getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue } = require('./util');
-const { getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT } = require('./api-wrappers');
+const {
+    getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue, toMoment
+} = require('./util');
+const {
+    getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT
+} = require('./api-wrappers');
 const operators = require('operators');
 const moment = require('dayjs');
 const debug = require('debug')('rpm:conditions');
@@ -154,6 +158,16 @@ const OPERATORS = {
             const value2 = +getOperandValue(operand2, form);
             return !isNaN(value1) && value1 === value2;
         }
+    },
+    equalDates: {
+        init: init2,
+        process: function (form) {
+            const { operand1, operand2 } = this;
+            form = form.Form || form;
+            let value1 = toMoment(getOperandValue(operand1, form) || null);
+            let value2 = toMoment(getOperandValue(operand2, form) || null);
+            return value1.isSame(value2);
+        }
     }
 };
 
@@ -277,10 +291,9 @@ function process(conf, form) {
 
 module.exports = {
     init,
-    process: function (conf) {
-        const { description, operator } = conf;
+    process: function ({ description }) {
         const result = process.apply(this, arguments);
-        result || debug('Condition is not met:', description || operator);
+        result || description && debug(`Condition "${description}" is not met`);
         return result;
     }
 };

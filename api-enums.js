@@ -592,7 +592,8 @@ exports.StaticViewColumnUids = {
     RowID: '710_690',
     Status: '710_33',
     StatusDate: '710_440',
-    SupplierID: '710_766'
+    SupplierID: '710_766',
+    Staff: '710_380'
 };
 
 exports.WebhookEvents = {

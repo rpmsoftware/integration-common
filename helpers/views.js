@@ -52,11 +52,11 @@ exports.getForms = async function ({ process, view, fieldMap, filterCondition })
             convert = convert ? getEager(CONVERTERS, convert) : undefined;
             !pattern || pattern instanceof RegExp || (pattern = cfg.pattern = new RegExp(pattern));
             let idx;
-            if (uid) {
-                idx = ColumnUids.demandIndexOf(uid);
-            } else if (index !== undefined) {
+            if (index !== undefined) {
                 assert(index >= 0 && index < length);
                 idx = index;
+            } else if (uid) {
+                idx = ColumnUids.demandIndexOf(uid);
             } else {
                 idx = Columns.demandIndexOf(name);
             }

@@ -58,7 +58,8 @@ module.exports = {
         fireWebEvent,
         getDstForms,
         propertyMap,
-        blindPatch
+        blindPatch,
+        updateCondition
     }) {
         const { api } = this;
         errorsToActions = toBoolean(errorsToActions) || undefined;
@@ -77,6 +78,7 @@ module.exports = {
         const dstFields = await dstProcess.getFields();
         dstProcess = dstProcess.ProcessID;
         condition = condition ? initCondition(condition) : undefined;
+        updateCondition = updateCondition ? initCondition.call(dstFields, updateCondition) : undefined;
         const resultFieldMap = [];
         if (fieldMap) {
             for (let dstField in fieldMap) {
@@ -113,6 +115,7 @@ module.exports = {
             getDstForms,
             dstProcess,
             condition,
+            updateCondition,
             fieldMap: resultFieldMap,
             propertyMap: resultPropertyMap,
             errorsToActions,
@@ -129,7 +132,8 @@ module.exports = {
         getDstForms,
         fireWebEvent,
         errorsToActions,
-        blindPatch
+        blindPatch,
+        updateCondition
     }, data) {
         const { api } = this;
         const duplicates = {};
@@ -153,16 +157,16 @@ module.exports = {
 
 
 
-        for (const obj of toArray(data)) {
+        for (const sourceObject of toArray(data)) {
 
-            if (condition && !processCondition(condition, obj)) {
+            if (condition && !processCondition(condition, sourceObject)) {
                 continue;
             }
 
             const blindFormPatch = [];
             let blindFormErrors = [];
             for (const conf of fieldMap) {
-                const fieldPatch = await setters.set.call(this, conf, obj);
+                const fieldPatch = await setters.set.call(this, conf, sourceObject);
                 if (!fieldPatch) {
                     continue;
                 }
@@ -173,13 +177,13 @@ module.exports = {
 
             const formProperties = {};
             for (const dstProperty in propertyMap) {
-                let v = await setters.set.call(this, propertyMap[dstProperty], obj);
+                let v = await setters.set.call(this, propertyMap[dstProperty], sourceObject);
                 v && typeof v === 'object' && (v = v.Value);
                 formProperties[dstProperty] = v === null ? undefined : v;
             }
 
 
-            const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, obj));
+            const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, sourceObject));
             forms.length < 1 && getDstForms.create && later.push(async () => {
                 const form = await tweakArchived(
                     await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent),
@@ -196,11 +200,15 @@ module.exports = {
                 }
             });
 
-            for (let { Number, FormID } of forms) {
+            for (let destinationForm of forms) {
+                let { Number, FormID } = destinationForm;
                 FormID = FormID && normalizeInteger(FormID);
                 const numberOrID = FormID ? `ID_${FormID}` : `N_${Number}`;
                 if (duplicates[numberOrID]) {
                     debug('Form number already processed: ', numberOrID);
+                    continue;
+                }
+                if (updateCondition && !processCondition(updateCondition, { sourceObject, destinationForm })) {
                     continue;
                 }
                 duplicates[numberOrID] = true;
@@ -210,11 +218,11 @@ module.exports = {
                         formPatch = blindFormPatch;
                         formErrors = blindFormErrors;
                     } else {
-                        form = await (FormID ? api.getForm(FormID) : api.getForm(dstProcess, Number+''));
+                        form = await (FormID ? api.getForm(FormID) : api.getForm(dstProcess, Number + ''));
                         formPatch = [];
                         formErrors = [];
                         for (const conf of fieldMap) {
-                            const fieldPatch = await setters.set.call(this, conf, obj, form);
+                            const fieldPatch = await setters.set.call(this, conf, sourceObject, form);
                             if (!fieldPatch) {
                                 continue;
                             }
