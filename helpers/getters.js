@@ -133,7 +133,7 @@ const COMMON_GETTERS = {
         get: async function (config, form) {
             form = form.Form || form;
             for (let f of config.fieldPath) {
-                form = toSimpleField(form.getFieldByUid(f.uid, true)).ID;
+                form = toSimpleField(getFieldByUid.call(form, f.uid, true)).ID;
                 if (!form) {
                     return null;
                 }
