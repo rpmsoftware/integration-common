@@ -130,33 +130,30 @@ const COMMON_GETTERS = {
     },
 
     getDeep: {
-        get: async function (config, form) {
+        get: async function ({ fieldPath, targetField }, form) {
             form = form.Form || form;
-            for (let f of config.fieldPath) {
+            for (let f of fieldPath) {
                 form = toSimpleField(getFieldByUid.call(form, f.uid, true)).ID;
                 if (!form) {
-                    return null;
+                    return;
                 }
                 form = await this.api.demandForm(form);
                 form = form.Form;
             }
-            return get.call(this, config.targetField, form);
+            return get.call(this, targetField, form);
         },
-        init: async function (conf, rpmField, rpmFields) {
-            const targetField = conf.fieldPath.pop();
+        init: async function ({ fieldPath: fieldPathIn, srcField }, rpmField, rpmFields) {
+            let targetField = fieldPathIn.pop();
             const fieldPath = [];
-            for (let f of conf.fieldPath) {
+            for (let f of fieldPathIn) {
                 f = getField.call(rpmFields, validateString(f), true);
                 validateProcessReference(f);
                 fieldPath.push({ name: f.Name, uid: f.Uid });
                 rpmFields = await this.api.getFields(f.ProcessID);
             }
-            conf.targetField = await init.call(this, targetField, rpmFields);
-            conf.fieldPath = fieldPath;
-            if (!conf.srcField) {
-                conf.srcField = fieldPath[0].name;
-            }
-            return conf;
+            targetField = await init.call(this, targetField, rpmFields);
+            srcField || (srcField = fieldPath[0].name);
+            return { fieldPath, targetField, srcField };
         }
     }
 };
