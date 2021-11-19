@@ -507,17 +507,25 @@ add('YesNo', function ({ srcField, normalize }, data) {
 const EMPTY = { Value: null, ID: 0 };
 
 add('List', function (config, data) {
-    const value = getDeepValue(data, config.srcField);
-    if (!value) {
+    const { srcField, demand, options, defaultValue } = config;
+    let value = getDeepValue(data, srcField);
+    isEmptyValue(value) && (value = defaultValue);
+    if (isEmptyValue(value)) {
         return EMPTY;
     }
-    let option = config.options.find(o => o.Text === value);
-    return option ? { Value: option.Text, ID: option.ID } : (config.demand ?
+    let option = options.find(o => o.Text === value);
+    return option ? { Value: option.Text, ID: option.ID } : (demand ?
         Object.assign({ Errors: getErrorMessage(config, 'Unknown value: ' + value) }, EMPTY) :
         { Value: value }
     );
-}, async function ({ demand }, rpmField) {
-    return { options: getEager(rpmField, 'Options'), demand: toBoolean(demand) || undefined };
+}, async function ({ demand, defaultValue }, rpmField) {
+    return {
+        options: getEager(rpmField, 'Options')
+            .filter(({ IsHidden, IsLabel }) => !IsHidden && !IsLabel)
+            .map(({ Text, ID }) => ({ Text, ID })),
+        demand: toBoolean(demand) || undefined,
+        defaultValue
+    };
 });
 
 fieldType = ObjectType.FormReference;
@@ -673,10 +681,13 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
     'Supplier'
 ].forEach(subType => add(subType, defaultBasicReference));
 
-const defaultConverter = {
-    convert: function ({ srcField }, data) {
+const DEFAULT_SETTER = {
+    init: function ({ defaultValue }) {
+        return { defaultValue };
+    },
+    convert: function ({ srcField, defaultValue }, data) {
         const result = getDeepValue(data, srcField);
-        return isEmptyValue(result) ? null : result;
+        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
     }
 };
 
@@ -707,7 +718,7 @@ async function initField(conf, rpmField) {
             throw new Error('Unknown RPM value generator: ' + JSON.stringify(conf));
         }
     } else {
-        gen = gen[DEFAULT_ACCESSOR_NAME] || defaultConverter;
+        gen = gen[DEFAULT_ACCESSOR_NAME] || DEFAULT_SETTER;
     }
     conf = gen.init ? await gen.init.call(this, conf, rpmField) : {};
     assert.strictEqual(typeof conf, 'object');
@@ -734,7 +745,7 @@ async function initField(conf, rpmField) {
 
 async function initValue(conf) {
     let { setter, srcField, normalize, regexp } = conf;
-    const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || defaultConverter);
+    const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || DEFAULT_SETTER);
     const result = initGen ? await initGen.call(this, conf) : {};
     assert.strictEqual(typeof result, 'object');
     if (srcField !== undefined) {
@@ -751,7 +762,7 @@ async function initValue(conf) {
 function getSetter({ type, setter }) {
     let converter = SPECIFIC_SETTERS[type] || COMMON_SETTERS;
     setter || (setter = DEFAULT_ACCESSOR_NAME);
-    return (converter && converter[setter] || COMMON_SETTERS[setter] || defaultConverter).convert;
+    return (converter && converter[setter] || COMMON_SETTERS[setter] || DEFAULT_SETTER).convert;
 }
 
 async function setField(conf, data, form) {
