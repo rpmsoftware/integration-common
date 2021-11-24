@@ -1,7 +1,7 @@
 const Cache = require('./cache');
 const { RpmApi } = require('./api-wrappers');
 const { ObjectType } = require('./api-enums');
-const rpmUtil = require('./util');
+const { toBoolean, normalizeInteger } = require('./util');
 
 async function getProcess(nameOrID, demand) {
     return (await this._getProcesses()).getProcess(nameOrID, demand);
@@ -12,6 +12,10 @@ async function getActiveProcess(nameOrID, demand) {
 }
 
 module.exports = function (api) {
+
+    let { clearOnUpdate } = api;
+    clearOnUpdate = toBoolean(clearOnUpdate);
+
     if (!(api instanceof RpmApi)) {
         api = new RpmApi(api);
     }
@@ -45,7 +49,7 @@ module.exports = function (api) {
     api._getFileCached = api.getFile;
 
     api.getFile = async function (fileID, returnUrl) {
-        return api._getFileCached(fileID, rpmUtil.toBoolean(returnUrl));
+        return api._getFileCached(fileID, toBoolean(returnUrl));
     }
 
 
@@ -96,9 +100,15 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.put('demandAccount', [result.Account, result.SupplierID], result);
-            cache.put('demandAccount', [result.Account, result.Supplier], result);
-            cache.put('demandAccount', [result.AccountID], result);
+            if (clearOnUpdate) {
+                cache.clear('demandAccount', [result.Account, result.SupplierID]);
+                cache.clear('demandAccount', [result.Account, result.Supplier]);
+                cache.clear('demandAccount', [result.AccountID]);
+            } else {
+                cache.put('demandAccount', [result.Account, result.SupplierID], result);
+                cache.put('demandAccount', [result.Account, result.Supplier], result);
+                cache.put('demandAccount', [result.AccountID], result);
+            }
             cache.clear('getAccounts');
             cache.clear('searchCustomers');
             cache.clear('getCustomerAccounts', result.Customer);
@@ -113,7 +123,7 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.clearFormRelated(result);
+            cache.clearFormRelated(result, clearOnUpdate);
             return result;
         };
     });
@@ -121,7 +131,7 @@ module.exports = function (api) {
     const createForm = api.createForm;
     api.createForm = async function () {
         const result = await createForm.apply(this, arguments);
-        cache.clearFormRelated(result);
+        cache.clearFormRelated(result, clearOnUpdate);
         cache.clear('_getProcesses');
         return result;
     };
@@ -184,8 +194,13 @@ module.exports = function (api) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             let getter = 'demandAgency';
-            cache.put(getter, result.AgencyID, result);
-            cache.put(getter, result.Agency, result);
+            if (clearOnUpdate) {
+                cache.clear(getter, result.AgencyID);
+                cache.clear(getter, result.Agency);
+            } else {
+                cache.put(getter, result.AgencyID, result);
+                cache.put(getter, result.Agency, result);
+            }
             cache.clear('getAgencies');
             return result;
         };
@@ -201,7 +216,7 @@ module.exports = function (api) {
         api[prop] = async function (customerID) {
             const result = await original.apply(this, arguments);
             let getter = 'demandCustomer';
-            customerID = rpmUtil.normalizeInteger(customerID.CustomerID || customerID);
+            customerID = normalizeInteger(customerID.CustomerID || customerID);
             const deleted = cache.clear(getter, customerID)[0];
             deleted && cache.clear(getter, deleted.Name);
             return result;
@@ -213,8 +228,13 @@ module.exports = function (api) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             const getter = 'demandCustomer';
-            cache.put(getter, result.CustomerID, result);
-            cache.put(getter, result.Name, result);
+            if (clearOnUpdate) {
+                cache.clear(getter, result.CustomerID);
+                cache.clear(getter, result.Name);
+            } else {
+                cache.put(getter, result.CustomerID, result);
+                cache.put(getter, result.Name, result);
+            }
             cache.clear('getCustomers');
             return result;
         };
@@ -224,7 +244,11 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cache.put('getStaff', result.StaffID, result);
+            if (clearOnUpdate) {
+                cache.clear('getStaff', result.StaffID);
+            } else {
+                cache.put('getStaff', result.StaffID, result);
+            }
             cache.clear('getStaffList');
             return result;
         };
