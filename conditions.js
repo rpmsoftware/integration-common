@@ -168,6 +168,18 @@ const OPERATORS = {
             let value2 = toMoment(getOperandValue(operand2, form) || null);
             return value1.isSame(value2);
         }
+    },
+    dateAfter: {
+        init: init2,
+        process: function (form) {
+            const { operand1, operand2 } = this;
+            form = form.Form || form;
+            let value1 = getOperandValue(operand1, form);
+            let value2 = getOperandValue(operand2, form);
+            value1 = toMoment(value1 || null);
+            value2 = toMoment(value2 || null);
+            return value1.isAfter(value2);
+        }
     }
 };
 
@@ -263,7 +275,7 @@ function process2numbers(form) {
 
 function init(conf) {
     if (conf.enabled !== undefined && !toBoolean(conf.enabled)) {
-        debug('Condition is disabled: ', conf);
+        debug('Condition is disabled: %j', conf);
         return;
     }
     if (typeof conf === 'string') {

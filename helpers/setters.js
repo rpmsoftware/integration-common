@@ -23,6 +23,8 @@ const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common')
 const { FieldSubType, ObjectType } = require('../api-enums');
 const { render } = require('mustache');
 const tweakDate = require('../processors/tweak-date');
+const { init: initCondition, process: processCondition } = require('../conditions');
+const { init: initView, getForms: getViewForms } = require('./views');
 
 function normalizeIndex(value) {
     if (typeof value === 'string') {
@@ -180,6 +182,37 @@ const COMMON_SETTERS = {
             return { process, view, keyColumns, valueColumn };
         }
     },
+
+    selectFromView: {
+        convert: async function (config, source) {
+            const { value, demand, matchCondition, defaultValue } = config;
+            let result;
+            for (const candidate of await getViewForms.call(this, config)) {
+                if (processCondition.call(this, matchCondition, { source, candidate })) {
+                    result = candidate;
+                    break;
+                }
+            }
+            if (demand && !result) {
+                throw 'Data not found';
+            }
+            result = result && result[value];
+            return isEmptyValue(result) ? defaultValue : result;
+        },
+        init: async function (config) {
+            let { matchCondition, demand, value, defaultValue } = config;
+            const resultConfig = await initView.call(this, config);
+            assert(resultConfig.fieldMap[validateString(value)]);
+            resultConfig.matchCondition = initCondition(matchCondition);
+            resultConfig.demand = toBoolean(demand) || undefined;
+            resultConfig.defaultValue = defaultValue;
+            resultConfig.value = value;
+            assert(resultConfig.matchCondition);
+            return resultConfig;
+        }
+    },
+
+
     arrayFind: {
         convert: async function ({ srcField, keyProperty, keyValue, resultProperty }, data) {
             const srcArray = getDeepValue(data, srcField);
