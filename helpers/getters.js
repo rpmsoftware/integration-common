@@ -513,4 +513,20 @@ function get(conf, form) {
     return findGetter(conf).call(this, conf, form);
 }
 
-module.exports = { get, init, addCommon };
+async function initMultiple(config, fields) {
+    const resultConfig = {};
+    for (const dstProp in config) {
+        resultConfig[dstProp] = await init.call(this, config[dstProp], fields);
+    }
+    return resultConfig;
+}
+
+async function getMultiple(config, form) {
+    const result = {};
+    for (const prop in config) {
+        result[prop] = await get.call(this, config[prop], form);
+    }
+    return result;
+}
+
+module.exports = { get, init, addCommon, initMultiple, getMultiple };
