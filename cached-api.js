@@ -263,6 +263,7 @@ module.exports = function (api) {
         cache.clear('getAgentUsers');
         cache.clear('getUser');
         cache.clear('getRep');
+        cache.clear('getCustomer');
         return result;
     };
 
