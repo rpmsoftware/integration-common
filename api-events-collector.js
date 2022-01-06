@@ -46,18 +46,15 @@ class EventsCollector {
         };
 
         api.trashForm = async function (id) {
+            const ParentID = formProcesses[id] || (await this.demandForm(id)).ProcessID;
             const result = await trashForm.call(this, id);
-            if (result.Success) {
-                const ObjectID = id;
-                const ParentID = formProcesses[ObjectID] || (await this.demandForm(id)).ProcessID;
-                self.push({
-                    EventName: WE.FormTrash,
-                    ObjectType: OT.Form,
-                    ParentType: OT.PMTemplate,
-                    ObjectID,
-                    ParentID
-                });
-            }
+            result.Success && self.push({
+                EventName: WE.FormTrash,
+                ObjectType: OT.Form,
+                ParentType: OT.PMTemplate,
+                ObjectID: id,
+                ParentID
+            });
             return result;
         };
 
