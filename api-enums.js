@@ -631,5 +631,5 @@ exports.WebhookEvents = {
     CustomerRestore: 'customer.restore',
     SupplierAdd: 'supplier.add',
     SupplierEdit: 'supplier.edit',
-    SupplierTrash: 'supplier.trash'
+    SupplierDelete: 'supplier.delete'
 };
