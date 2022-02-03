@@ -180,7 +180,21 @@ const OPERATORS = {
             value2 = toMoment(value2 || null);
             return value1.isAfter(value2);
         }
+    },
+    exists: {
+        init: function ({ array, condition }) {
+            validateString(array);
+            condition = init.call(this, condition);
+            return { array, condition };
+        },
+        process: function (form) {
+            let { array, condition } = this;
+            let a = getEager(form, array);
+            assert(Array.isArray(a), `Array is expected: ${array}`);
+            return a.findIndex(e => process(condition, Object.assign({}, e, form))) >= 0;
+        }
     }
+
 };
 
 const DEFAULT_FIELD_PROPERTY = 'Value';
@@ -296,16 +310,14 @@ function init(conf) {
 }
 
 function process(conf, form) {
-    const { not, operator } = conf;
-    const result = getEager(OPERATORS, operator).process.call(conf, form);
-    return not ? !result : result;
+    const { not, operator, description } = conf;
+    let result = getEager(OPERATORS, operator).process.call(conf, form);
+    not && (result = !result);
+    result || description && debug(`Condition "${description}" is not met`);
+    return result;
 }
 
 module.exports = {
     init,
-    process: function ({ description }) {
-        const result = process.apply(this, arguments);
-        result || description && debug(`Condition "${description}" is not met`);
-        return result;
-    }
+    process
 };

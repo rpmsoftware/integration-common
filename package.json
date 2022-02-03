@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.50.5",
+    "version": "4.51.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -20,6 +20,8 @@
         "cache.js",
         "cached-api.js",
         "conditions.js",
+        "cron-patterns",
+        "date-time-periods",
         "express.js",
         "field-accessors.js",
         "field-patcher.js",
