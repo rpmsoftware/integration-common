@@ -69,14 +69,15 @@ exports.getForms = async function ({ process, view, fieldMap, filterCondition })
         const result = {};
         for (let dstProperty in indices) {
             const { index, pattern, convert } = indices[dstProperty];
-            let value = Values[index];
+            let value = Values[index].trim();
             if (value && pattern) {
                 value = pattern.exec(value);
                 value = value && value[1];
-            } else if (value && convert) {
+            } else if (convert) {
                 value = convert(value);
             }
-            result[dstProperty] = value || undefined;
+            value || convert || (value = undefined);
+            result[dstProperty] = value;
         }
         result.FormID = FormID;
         return result;
