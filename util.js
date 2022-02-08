@@ -385,7 +385,7 @@ const arrayPrototypeExtensions = {
     },
 
     group: function (aggrProp, groupProps) {
-        validateString(aggrProp);
+        typeof aggrProp === 'symbol' || validateString(aggrProp);
         if (!Array.isArray(groupProps)) {
             groupProps = Object.values(arguments);
             groupProps.shift();
