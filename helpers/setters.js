@@ -58,7 +58,18 @@ const getObjectValue = ({ srcField, regexp }, data) => {
     return data || undefined;
 };
 
+const DEFAULT_SETTER = {
+    init: function ({ defaultValue }) {
+        return { defaultValue };
+    },
+    convert: function ({ srcField, defaultValue }, data) {
+        const result = getDeepValue(data, srcField);
+        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
+    }
+};
+
 const COMMON_SETTERS = {
+    generic: DEFAULT_SETTER,
 
     now: {
 
@@ -714,15 +725,6 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
     'Supplier'
 ].forEach(subType => add(subType, defaultBasicReference));
 
-const DEFAULT_SETTER = {
-    init: function ({ defaultValue }) {
-        return { defaultValue };
-    },
-    convert: function ({ srcField, defaultValue }, data) {
-        const result = getDeepValue(data, srcField);
-        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
-    }
-};
 
 const CONDITIONS = {
     gt: function (src, dstField) {
