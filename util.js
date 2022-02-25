@@ -397,7 +397,10 @@ const arrayPrototypeExtensions = {
         let result = {};
         this.forEach(e => {
             let groupValues = {};
-            groupProps.forEach(p => groupValues[p] = e[p]);
+            groupProps.forEach(p => {
+                groupValues[p] = e[p]
+                delete e[p];
+            });
             let key = `[${Object.values(groupValues).join('][')}]`
             let grp = result[key];
             if (!grp) {

@@ -593,7 +593,10 @@ exports.StaticViewColumnUids = {
     Status: '710_33',
     StatusDate: '710_440',
     SupplierID: '710_766',
-    Staff: '710_380'
+    Staff: '710_380',
+    FormOwner: '710_40',
+    Notes: '710_338',
+    NotesForStaff: '710_339'
 };
 
 exports.WebhookEvents = {
