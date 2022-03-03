@@ -34,7 +34,6 @@ exports.send = async function (conf, data) {
         assert.strictEqual(typeof _sendEmail, 'function');
         Object.defineProperty(ctx, '_sendEmail', { value: _sendEmail });
     }
-    console.log(data)
 
     subject = subject && render(subject, data);
     body = body && render(body, data);
@@ -61,35 +60,31 @@ exports.send = async function (conf, data) {
 
 async function getEmails(conf, form) {
     let { address: addressConf, name: nameConf } = conf;
-    const result = [];
+    const result = {};
     for (let f of toArray(form)) {
-        const address = await getValue.call(this, addressConf, f);
-        address && result.push({
-            address,
-            name: nameConf ? await getValue.call(this, nameConf, f) : undefined
-        });
+        const addresses = await getValue.call(this, conf, f);
+        if (!addresses) {
+            continue;
+        }
+        for (let address of toArray(addresses)) {
+            if (!address) {
+                continue;
+            }
+            const name = nameConf ? await getValue.call(this, nameConf, address) : undefined;
+            address = addressConf ? await getValue.call(this, addressConf, address) : validateString(address);
+            address && (result[address] = { name, address });
+        }
     }
-    return result;
+    return Object.values(result);
 }
 
 async function initEmailConfig(conf) {
     let { address, name } = conf;
-    let result;
-    if (address) {
-        try {
-            result = await initGetter.call(this, conf);
-        } catch {
-            result = {};
-        }
-    } else {
-        address = conf;
-        result = {};
-    }
+    let result = await initGetter.call(this, conf);
     assert(!result.name);
     assert(!result.address);
-    result.name = name ? await initGetter.call(this, name) : undefined;
-    result.address = await initGetter.call(this, address);
-    assert(result.address);
+    result.address = address ? await initGetter.call(this, address) : undefined;
+    result.name = (address && name) ? await initGetter.call(this, name) : undefined;
     return result;
 }
 
