@@ -62,10 +62,7 @@ async function getEmails(conf, form) {
     let { address: addressConf, name: nameConf } = conf;
     const result = {};
     for (let f of toArray(form)) {
-        const addresses = await getValue.call(this, conf, f);
-        if (!addresses) {
-            continue;
-        }
+        const addresses = await getValue.call(this, conf, f) || f;
         for (let address of toArray(addresses)) {
             if (!address) {
                 continue;
