@@ -13,8 +13,9 @@ exports.send = async function (conf, data) {
         subject,
         body,
         html,
+        attachments: attachmentsConf,
         dryRun,
-        sendEmpty
+        sendEmpty,
     } = conf;
     if (!sendEmpty && isEmpty(data)) {
         debug('There is nothing to send');
@@ -37,6 +38,11 @@ exports.send = async function (conf, data) {
 
     subject = subject && render(subject, data);
     body = body && render(body, data);
+    const attachments = attachmentsConf && attachmentsConf.map(({ content, filename, type }) => ({
+        content: render(content, data),
+        filename: render(filename, data),
+        type
+    }));
     subject || assert(body);
     const fromEmail = (await getEmails.call(this, fromEmailConf, data))[0];
     assert(fromEmail);
@@ -53,7 +59,7 @@ exports.send = async function (conf, data) {
     }
     dryRun ?
         debug('_sendEmail(%j, %j, %j, %s, %s, %s)', fromEmail, toEmails, ccEmails, subject, body, html) :
-        await _sendEmail(fromEmail, toEmails, ccEmails, subject, body, html);
+        await _sendEmail(fromEmail, toEmails, ccEmails, subject, body, html, attachments);
     debug('Email is sent');
 
 };
@@ -85,11 +91,19 @@ async function initEmailConfig(conf) {
     return result;
 }
 
-exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subject, body, html, dryRun, sendEmpty }) {
+exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
     const { globals } = this;
     fromEmail = await initEmailConfig.call(this, fromEmail);
     subject = subject ? validateString(subject.trim()) : undefined;
     body = body ? validateString(body.trim()) : undefined;
+
+    attachments = attachments ? toArray(attachments).map(({ content, filename, type }) => {
+        validateString(content);
+        validateString(filename);
+        type = type ? validateString(type) : undefined;
+        return { content, filename, type };
+    }) : [];
+    attachments.length < 1 && (attachments = undefined);
 
     const initEmails = async emails => {
         const result = [];
@@ -112,5 +126,5 @@ exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subje
     html = toBoolean(html) || undefined;
     dryRun = toBoolean(dryRun) || undefined;
     sendEmpty = toBoolean(sendEmpty) || undefined;
-    return { transport, fromEmail, toEmails, ccEmails, subject, body, html, dryRun, sendEmpty };
+    return { transport, fromEmail, toEmails, ccEmails, subject, body, attachments, html, dryRun, sendEmpty };
 };
