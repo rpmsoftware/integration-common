@@ -597,7 +597,9 @@ exports.StaticViewColumnUids = {
     FormOwner: '710_40',
     Notes: '710_338',
     NotesForStaff: '710_339',
-    Process: '710_413'
+    Process: '710_413',
+    Rep: '710_156',
+    CustomerID: '710_638'
 };
 
 exports.WebhookEvents = {

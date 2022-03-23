@@ -20,7 +20,7 @@ const assert = require('assert');
 const createHash = require('string-hash');
 const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
-const { FieldSubType, ObjectType } = require('../api-enums');
+const { FieldSubType, ObjectType, RepTypes } = require('../api-enums');
 const { render } = require('mustache');
 const tweakDate = require('../processors/tweak-date');
 const { init: initCondition, process: processCondition } = require('../conditions');
@@ -642,12 +642,26 @@ add('AgentRep',
             return null;
         }
         const result = (await api.getAgentUsers()).AgentUsers.find(({ Name }) => Name === name) ||
-            demand && throwFieldError(config, `Rep "${name}" does not exist`)
+            demand && throwFieldError(config, `Rep "${name}" does not exist`);
         return result ? { ID: result.RepID, Value: result.Name } : null;
     },
     async function ({ demand }) {
         demand = toBoolean(demand) || undefined;
         return { demand };
+    }
+);
+
+add('AgentRep', 'agencyManager',
+    async function (config, data) {
+        const api = this.api || this;
+        const { srcField } = config;
+        const name = getDeepValue(data, srcField);
+        if (!name) {
+            return null;
+        }
+        const { AgentUsers } = await api.getAgentUsers();
+        const result = AgentUsers.find(({ Agency, Type }) => Type === RepTypes.Both && Agency === name);
+        return result ? { ID: result.RepID, Value: result.Name } : null;
     }
 );
 
