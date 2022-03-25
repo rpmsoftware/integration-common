@@ -639,7 +639,7 @@ API.prototype.demandForm = function (processOrFormId, formNumber) {
     assert(arguments.length <= 2);
     const type = typeof processOrFormId;
     if (arguments.length > 1) {
-        assert(typeof formNumber === 'string');
+        assert.strictEqual(typeof formNumber, 'string');
         request = { FormNumber: formNumber };
         if (type === 'number') {
             request.ProcessID = processOrFormId;
@@ -1422,9 +1422,15 @@ API.prototype.getEntities = function (type) {
 };
 
 API.prototype.demandEntity = function (type, id) {
-    const t = typeof id;
-    t === 'number' || assert.strictEqual(t, 'object');
     return getEager(ENTITY_GETTERS, type).demand.call(this, id);
+};
+
+API.prototype.getEntity = async function () {
+    try {
+        return await this.demandEntity.apply(this, arguments);
+    } catch {
+        //
+    }
 };
 
 exports.RpmApi = API;
