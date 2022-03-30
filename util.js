@@ -157,7 +157,7 @@ exports.getValues = Object.values;
 function demandDeepValue(object, keys) {
     function goDeeper(key) {
         if (typeof object !== 'object') {
-            throw new TypeError('No property: ' + key);
+            throw new TypeError('No property: ' + JSON.stringify(key));
         }
         if (typeof key === 'object') {
             assert(Array.isArray(object));
@@ -575,7 +575,7 @@ function normalizeInteger(value) {
         intValue = intValue.trim();
         intValue = intValue && +intValue;
     }
-    if (typeof intValue !== 'number' || intValue % 1) {
+    if (isNaN(intValue) || intValue % 1) {
         throw new TypeError('Invalid integer: ' + value);
     }
     return intValue;

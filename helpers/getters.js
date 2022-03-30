@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { validateString, toArray, getEager, isEmpty, demandDeepValue } = require('../util');
+const { validateString, toArray, getEager, isEmpty, demandDeepValue, toBoolean, getDeepValue } = require('../util');
 const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const { toSimpleField } = require('../api-wrappers');
 const CONVERTERS = require('./converters');
@@ -27,19 +27,22 @@ const initProperty = property => {
 const COMMON_GETTERS = {
 
     property: {
-        get: async function ({ property, condition }, form) {
+        get: async function ({ property, condition, demand }, form) {
             form = form.Form || form;
             if (!condition || processCondition(condition, form)) {
-                return demandDeepValue(form, property)
+                return (demand ? demandDeepValue : getDeepValue)(form, property)
             }
         },
-        init: function ({ property, condition }, field, fields) {
+        init: function ({ property, condition, demand }, field, fields) {
             property = toArray(property);
             assert(property.length > 0);
-            property.forEach(validateString);
+            property.forEach(assert);
+            demand = toBoolean(demand) || undefined;
+            condition = condition ? initCondition.call(fields, condition) : undefined;
             return {
                 property,
-                condition: condition ? initCondition.call(fields, condition) : undefined
+                condition,
+                demand
             };
         }
     },
@@ -155,6 +158,26 @@ const COMMON_GETTERS = {
             srcField || (srcField = fieldPath[0].name);
             return { fieldPath, targetField, srcField };
         }
+    },
+
+    getBasicEntity: {
+        init: function ({ type, srcProperty }) {
+            type = getEager(ObjectType, type);
+            srcProperty = toArray(srcProperty);
+            assert(srcProperty.length > 0);
+            srcProperty.forEach(assert);
+            return { type, srcProperty };
+        },
+
+
+        get: function ({ type, srcProperty }, data) {
+            const { api } = this;
+            const v = demandDeepValue(data, srcProperty);
+            if (v) {
+                return api.demandEntity(type, v);
+            }
+        }
+
     }
 };
 

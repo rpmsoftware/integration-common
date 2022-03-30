@@ -760,6 +760,7 @@ const CONDITIONS = {
 async function initField(conf, rpmField) {
     const key = getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
+    typeof conf === 'string' && (conf = { srcField: conf });
     let { setter, condition, srcField, normalize, regexp } = conf;
     if (setter) {
         gen = gen[setter] || COMMON_SETTERS[setter];

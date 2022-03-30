@@ -303,8 +303,13 @@ ENTITY_GETTERS[ObjectType.AgentCompany] = {
     }
 };
 ENTITY_GETTERS[ObjectType.Staff] = {
-    demand: function (id) {
-        return this.getStaff(id.ID || id);
+    demand: async function (id) {
+        if (typeof id === 'string') {
+            id = (await this.getStaffList()).StaffList.demand(({ Name }) => Name === id).ID;
+        } else {
+            id = id.ID || id;
+        }
+        return this.getStaff(id);
     },
     getEntities: async function () {
         return (await this.getStaffList()).StaffList;
