@@ -19,8 +19,9 @@ const FORM_FINDERS = {
             conf.condition = initCondition(condition);
             return conf;
         },
-        getForms: async function (conf, sourceObject) {
-            return (await getViewForms.call(this.api, conf)).filter(
+        create: async function (conf) {
+            const forms = await getViewForms.call(this.api, conf);
+            return sourceObject => forms.filter(
                 destinationForm => processCondition(conf.condition, { sourceObject, destinationForm })
             );
         },
@@ -33,13 +34,15 @@ const FORM_FINDERS = {
             create = toBoolean(create) || undefined;
             return { formNumber, create };
         },
-        getForms: async function ({ formNumber }, obj) {
-            const result = await setters.set.call(this, formNumber, obj);
-            assert.strictEqual(typeof result, 'object');
-            if (result.Errors) {
-                throw result.Errors;
-            }
-            return { Number: result.Value };
+        create: async function ({ formNumber }) {
+            return async obj => {
+                const result = await setters.set.call(this, formNumber, obj);
+                assert.strictEqual(typeof result, 'object');
+                if (result.Errors) {
+                    throw result.Errors;
+                }
+                return { Number: result.Value };
+            };
         },
     }
 };
@@ -140,22 +143,7 @@ module.exports = {
         const promises = [];
         const later = [];
 
-
-        const tweakArchived = async (form, { Archived }) => {
-            if (Archived !== undefined) {
-                Archived = toBoolean(Archived);
-                const { FormID, Archived: FormArchived } = form.Form;
-                if (toBoolean(FormArchived) !== Archived) {
-                    const { Success } = await api.setFormArchived(FormID, Archived);
-                    assert(Success);
-                    form = await api.demandForm(FormID);
-                    assert.strictEqual(toBoolean(form.Form.Archived), Archived);
-                }
-            }
-            return form;
-        };
-
-
+        const getForms = await getEager(FORM_FINDERS, getDstForms.getter).create.call(this, getDstForms);
 
         for (const sourceObject of toArray(data)) {
 
@@ -165,6 +153,7 @@ module.exports = {
 
             const blindFormPatch = [];
             let blindFormErrors = [];
+
             for (const conf of fieldMap) {
                 const fieldPatch = await setters.set.call(this, conf, sourceObject);
                 if (!fieldPatch) {
@@ -183,9 +172,9 @@ module.exports = {
             }
 
 
-            const forms = toArray(await getEager(FORM_FINDERS, getDstForms.getter).getForms.call(this, getDstForms, sourceObject));
+            const forms = toArray(await getForms(sourceObject));
             forms.length < 1 && getDstForms.create && later.push(async () => {
-                const form = await tweakArchived(
+                const form = await tweakArchived.call(this,
                     await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent),
                     formProperties
                 );
@@ -249,7 +238,7 @@ module.exports = {
                             }
                         }
                     }
-                    form = await tweakArchived(form, formProperties);
+                    form = await tweakArchived.call(api, form, formProperties);
                     if (!form || formErrors.length < 1) {
                         return;
                     }
@@ -267,3 +256,20 @@ module.exports = {
     }
 
 };
+
+async function tweakArchived(form, { Archived }) {
+    const api = this;
+    if (Archived !== undefined) {
+        Archived = toBoolean(Archived);
+        const { FormID, Archived: FormArchived } = form.Form || form;
+        if (toBoolean(FormArchived) !== Archived) {
+            const { Success } = await api.setFormArchived(FormID, Archived);
+            assert(Success);
+            form = await api.demandForm(FormID);
+            assert.strictEqual(toBoolean(form.Form.Archived), Archived);
+        }
+    }
+    return form;
+}
+
+
