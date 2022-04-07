@@ -853,4 +853,13 @@ async function set(conf, data, form) {
     return result;
 }
 
-module.exports = { initField, set, initValue };
+async function initMultiple(inFieldMap, fields) {
+    const result = [];
+    const init = fields === undefined ? initValue : initField;
+    for (const dstField in inFieldMap) {
+        result.push(await init.call(this, inFieldMap[dstField], fields.getField(dstField, true)));
+    }
+    return result;
+}
+
+module.exports = { initField, set, initValue, initMultiple };

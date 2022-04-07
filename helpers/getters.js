@@ -278,20 +278,23 @@ add('FieldTableDefinedRow', async function (conf, form) {
     return conf;
 });
 
-
-
-async function initTableFields(config, rpmField) {
+async function initTableFields({
+    tableFields: inTableFields,
+    selectedFieldsOnly,
+    keyRowID,
+    useUids,
+    key
+}, rpmField) {
+    keyRowID = toBoolean(keyRowID) || undefined;
+    useUids = useUids = toBoolean(useUids) || undefined;
     const defRow = getDefinitionRow(rpmField);
-
-    let tableFields = config.tableFields;
-    tableFields = Array.isArray(tableFields) ? tableFields.map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
-
-    config.tableFields = [];
-    const rpmTableFields = defRow.Fields;
+    inTableFields = inTableFields ? toArray(inTableFields).map(c => typeof c === 'object' ? c : { srcField: c + '' }) : [];
+    const tableFields = [];
+    const { Fields: rpmTableFields } = defRow;
     for (let tabField of rpmTableFields) {
-        let tabFieldConf = tableFields.find(fc => fc.srcField === tabField.Name);
+        let tabFieldConf = inTableFields.find(({ srcField }) => srcField === tabField.Name);
         if (!tabFieldConf) {
-            if (config.selectedFieldsOnly) {
+            if (selectedFieldsOnly) {
                 continue;
             }
             tabFieldConf = {};
@@ -299,12 +302,10 @@ async function initTableFields(config, rpmField) {
         tabFieldConf = await initField.call(this, tabFieldConf, tabField, rpmTableFields);
         validateString(tabFieldConf.srcField);
         tabFieldConf.isTableField = true;
-        config.tableFields.push(tabFieldConf);
+        tableFields.push(tabFieldConf);
     }
-    config.keyRowID = !!config.keyRowID;
-    config.useUids = !!config.useUids || undefined;
-    config.key = config.key ? config.tableFields.demand(c => c.srcField === config.key)[config.useUids ? 'srcUid' : 'srcField'] : undefined;
-    return config;
+    key = key ? tableFields.demand(({ srcField }) => srcField === key)[useUids ? 'srcUid' : 'srcField'] : undefined;
+    return { tableFields, keyRowID, useUids, key };
 }
 
 add('FieldTable', async function (conf, form) {
@@ -347,6 +348,45 @@ add('FieldTable', async function (conf, form) {
     return result;
 }, initTableFields);
 
+
+async function tableFieldMapGet({ srcUid, fieldMap }, form) {
+    form = form.Form || form;
+    const srcField = form.getFieldByUid(srcUid, true);
+    const result = [];
+    for (let srcRow of srcField.Rows) {
+        if (srcRow.IsDefinition || srcRow.IsLabelRow) {
+            continue;
+        }
+        const resultRow = {};
+        for (let dstProp in fieldMap) {
+            resultRow[dstProp] = await get.call(this, fieldMap[dstProp], srcRow);
+        }
+        result.push(resultRow);
+    }
+    return result;
+}
+
+async function tableFieldMapInit({ fieldMap: inFieldMap }, rpmField) {
+    const defRow = getDefinitionRow(rpmField);
+    const fieldMap = {};
+    let initialized = false;
+    for (let dstProp in inFieldMap) {
+        let c = inFieldMap[dstProp];
+        const { enabled } = c;
+        if (enabled !== undefined && !toBoolean(enabled)) {
+            continue;
+        }
+        c = await init.call(this, c, defRow);
+        c.tabField = true;
+        fieldMap[dstProp] = c;
+        initialized = true;
+    }
+    assert(initialized, 'fieldMap is empty');
+    return { fieldMap };
+}
+
+add('FieldTable', 'fieldMap', tableFieldMapGet, tableFieldMapInit);
+add('FieldTableDefinedRow', 'fieldMap', tableFieldMapGet, tableFieldMapInit);
 
 fieldType = ObjectType.FormReference;
 subTypes = RefSubType;
@@ -492,7 +532,6 @@ async function init(conf, rpmFields) {
     return initField.call(this, conf, rpmField, rpmFields);
 }
 
-
 async function initField(conf, rpmField, rpmFields) {
     let type;
     if (rpmField) {
@@ -507,8 +546,7 @@ async function initField(conf, rpmField, rpmFields) {
         throw new Error('Unknown getter: ' + JSON.stringify(conf));
     }
     if (getter.init) {
-        const newConf = await getter.init.call(this, conf, rpmField, rpmFields);
-        conf = newConf || conf;
+        conf = await getter.init.call(this, conf, rpmField, rpmFields) || conf;
     } else {
         assert(rpmField, 'Source field required');
     }
