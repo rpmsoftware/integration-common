@@ -3,6 +3,7 @@ const { validateString, toArray, getEager, isEmpty, demandDeepValue, toBoolean, 
 const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
 const { toSimpleField } = require('../api-wrappers');
 const CONVERTERS = require('./converters');
+const objectHash = require('object-hash');
 
 const {
     getField,
@@ -178,7 +179,50 @@ const COMMON_GETTERS = {
             }
         }
 
+    },
+
+    hash: {
+        init: async function ({ fieldMap }, field, fields) {
+            fieldMap = await initMultiple.call(this, fieldMap, fields);
+            assert(!isEmpty(fieldMap));
+            return { fieldMap };
+        },
+
+        get: async function ({ fieldMap }, data) {
+            data = await getMultiple.call(this, fieldMap, data);
+            return objectHash(data);
+        }
+
+    },
+
+    conditionalValue: {
+        get: async function ({ valueMap }, data) {
+            for (const { value, condition } of valueMap) {
+                if (processCondition(condition, data)) {
+                    return value;
+                }
+            }
+        },
+        init: async function ({ valueMap: inValueMap }) {
+            const valueMap = [];
+            for (let k in inValueMap) {
+                const c = inValueMap[k];
+                let { value, condition } = c;
+                condition || (condition = c);
+                value === undefined && (value = k);
+                if (value === undefined) {
+                    continue;
+                }
+                condition = initCondition(condition);
+                valueMap.push({ value, condition });
+            }
+            assert(valueMap.length > 0);
+            return { valueMap };
+        }
+
     }
+
+
 };
 
 
@@ -585,7 +629,8 @@ async function initMultiple(config, fields) {
 async function getMultiple(config, form) {
     const result = {};
     for (const prop in config) {
-        result[prop] = await get.call(this, config[prop], form);
+        const v = await get.call(this, config[prop], form);
+        v === undefined || (result[prop] = v);
     }
     return result;
 }

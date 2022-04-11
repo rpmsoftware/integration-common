@@ -7,7 +7,7 @@ const DEFAULT_CONVERTER = 'getter';
 
 exports.init = async function (conf) {
     const result = [];
-    for (let c of conf || []) {
+    for (let c of conf ? toArray(conf) : []) {
         let { name, enabled } = c;
         if (enabled !== undefined && !toBoolean(enabled)) {
             continue;
