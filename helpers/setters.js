@@ -461,9 +461,6 @@ add('FieldTable',
             rows.push({ RowID: existingRow && existingRow.RowID || 0, Fields: fieldValues });
             ++rownum;
             for (let tabFieldConf of config.tableFields) {
-                if (!srcRow.hasOwnProperty(tabFieldConf.srcField)) {
-                    continue;
-                }
                 const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
@@ -481,6 +478,7 @@ add('FieldTable',
         if (!isArray) {
             rows = rows.concat(existingRows);
         }
+        
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
 );
@@ -760,7 +758,7 @@ const CONDITIONS = {
 async function initField(conf, rpmField) {
     const key = getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
-    typeof conf === 'string' && (conf = { srcField: conf });
+    (typeof conf === 'string' || Array.isArray(conf)) && (conf = { srcField: conf });
     let { setter, condition, srcField, normalize, regexp } = conf;
     if (setter) {
         gen = gen[setter] || COMMON_SETTERS[setter];

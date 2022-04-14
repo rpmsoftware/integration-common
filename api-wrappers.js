@@ -714,21 +714,25 @@ API.prototype.editFormFile = async function (fileID, formID, fileName, folderID,
     });
 };
 
+const ERR_FIElD_NOT_FOUND = exports.ERR_FIElD_NOT_FOUND = 'RpmFieldNotFoundError';
+
+const throwFieldNotFound = fieldName => {
+    const error = new Error(`Unknown field: "${fieldName}"`);
+    error.name = ERR_FIElD_NOT_FOUND;
+    throw error;
+};
+
 function getField(fieldName, eager) {
-    var result = this.Fields.find(field => (field.Field || field.Name) === fieldName);
-    if (!result && eager) {
-        throw new Error('Unknown field: ' + fieldName);
-    }
+    const result = this.Fields.find(({ Field, Name }) => (Field || Name) === fieldName);
+    result || eager && throwFieldNotFound(fieldName);
     return result;
 }
 
 exports.getField = getField;
 
 function getFieldByUid(uid, eager) {
-    var result = this.Fields.find(field => field.Uid === uid);
-    if (!result && eager) {
-        throw new Error('Unknown field. Uid: ' + uid);
-    }
+    const result = this.Fields.find(({ Uid }) => Uid === uid);
+    result || eager && throwFieldNotFound(uid);
     return result;
 }
 exports.getFieldByUid = getFieldByUid;

@@ -1,11 +1,12 @@
 const { init: initGetter, get, initMultiple: initGetters, getMultiple } = require('./getters');
-const { validateString, toArray, getEager, demandDeepValue, toBoolean } = require('../util');
+const { validateString, toArray, getEager, demandDeepValue, toBoolean, getDeepValue } = require('../util');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
 
 const DEFAULT_CONVERTER = 'getter';
+const PROP_PARENT = '_parent';
 
-exports.init = async function (conf) {
+async function init(conf) {
     const result = [];
     for (let c of conf ? toArray(conf) : []) {
         let { name, enabled } = c;
@@ -20,13 +21,15 @@ exports.init = async function (conf) {
     }
     return result;
 }
+exports.init = init;
 
-exports.convert = async function (conf, obj) {
+async function convert(conf, obj) {
     for (let c of conf) {
         obj = await getEager(OBJECT_CONVERTERS, c.name).convert.call(this, c, obj);
     }
     return obj;
 }
+exports.convert = convert;
 
 const OBJECT_CONVERTERS = {
 
@@ -104,6 +107,31 @@ const OBJECT_CONVERTERS = {
         },
         convert: async function ({ condition }, obj) {
             return toArray(obj).filter(e => processCondition(condition, e));
+        }
+    },
+
+    forEach: {
+        init: async function ({ array, convert }) {
+            assert(array);
+            convert = await init.call(this, convert);
+            return { array, convert };
+        },
+        convert: async function ({ array: arrayProperty, convert: convertConf }, obj) {
+            for (const parent of toArray(obj)) {
+                const array = getDeepValue(obj, arrayProperty);
+                if (typeof array !== 'object') {
+                    continue;
+                }
+                for (const key in array) {
+                    const element = array[key];
+                    if (typeof element !== 'object') {
+                        continue;
+                    }
+                    element[PROP_PARENT] || Object.defineProperty(element, PROP_PARENT, { value: parent });
+                    await convert.call(this, convertConf, element);
+                }
+            }
+            return obj;
         }
     }
 

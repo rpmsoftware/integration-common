@@ -1,7 +1,8 @@
 const assert = require('assert');
 const { validateString, toArray, getEager, isEmpty, demandDeepValue, toBoolean, getDeepValue } = require('../util');
-const { DEFAULT_ACCESSOR_NAME, getFullType } = require('./common');
+const { DEFAULT_ACCESSOR_NAME, getFullType, isEmptyValue } = require('./common');
 const { toSimpleField } = require('../api-wrappers');
+const { init: initView, getForms: getViewForms } = require('./views');
 const CONVERTERS = require('./converters');
 const objectHash = require('object-hash');
 
@@ -220,9 +221,51 @@ const COMMON_GETTERS = {
             return { valueMap };
         }
 
-    }
-
-
+    },
+    selectFromView: {
+        get: async function (config, source) {
+            const { value, demand, matchCondition, defaultValue } = config;
+            let result;
+            for (const candidate of await getViewForms.call(this, config)) {
+                if (processCondition.call(this, matchCondition, { source, candidate })) {
+                    
+                    result = candidate;
+                    break;
+                }
+            }
+            if (demand && !result) {
+                throw 'Data not found';
+            }
+            if (!result) {
+                return defaultValue;
+            }
+            if (Array.isArray(value)) {
+                const r = {};
+                value.forEach(v => r[v] = result[v]);
+                result = r;
+            } else {
+                result = result[value];
+                isEmptyValue(result) && (result = defaultValue);
+            }
+            return result;
+        },
+        init: async function (config) {
+            let { matchCondition, demand, value, defaultValue } = config;
+            const resultConfig = await initView.call(this, config);
+            if (Array.isArray(value)) {
+                assert(value.length > 0);
+                value.forEach(value => assert(resultConfig.fieldMap[validateString(value)]));
+            } else {
+                assert(resultConfig.fieldMap[validateString(value)]);
+            }
+            resultConfig.matchCondition = initCondition(matchCondition);
+            resultConfig.demand = toBoolean(demand) || undefined;
+            resultConfig.defaultValue = defaultValue;
+            resultConfig.value = value;
+            assert(resultConfig.matchCondition);
+            return resultConfig;
+        }
+    },
 };
 
 
