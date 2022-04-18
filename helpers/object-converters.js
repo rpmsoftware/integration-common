@@ -110,6 +110,22 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    filterArray: {
+        init: async function ({ condition, dstProperty, array }) {
+            assert(array);
+            validateString(dstProperty);
+            condition = initCondition(condition);
+            return { condition, dstProperty, array };
+        },
+        convert: async function ({ array: arrayProperty, condition, dstProperty }, obj) {
+            for (const parent of toArray(obj)) {
+                const array = getDeepValue(obj, arrayProperty);
+                array && (parent[dstProperty] = toArray(array).filter(e => processCondition(condition, e)));
+            }
+            return obj;
+        }
+    },
+
     forEach: {
         init: async function ({ array, convert }) {
             assert(array);
@@ -136,4 +152,3 @@ const OBJECT_CONVERTERS = {
     }
 
 };
-
