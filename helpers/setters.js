@@ -13,8 +13,7 @@ const {
     getFieldByUid,
     ISO_DATE_FORMAT,
     ISO_DATE_TIME_FORMAT,
-    isTableField,
-    toSimpleField
+    isTableField
 } = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');
@@ -478,7 +477,7 @@ add('FieldTable',
         if (!isArray) {
             rows = rows.concat(existingRows);
         }
-        
+
         return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
 );
@@ -737,24 +736,6 @@ async function defaultBasicReference({ srcField, isTableField }, data) {
     'Supplier'
 ].forEach(subType => add(subType, defaultBasicReference));
 
-
-const CONDITIONS = {
-    gt: function (src, dstField) {
-        src = +src;
-        const dstValue = +(dstField && dstField.Value);
-        return !isNaN(src) && (isNaN(dstValue) || src - dstValue > 0);
-    },
-    ne: function (src, dstField) {
-        return !dstField || src !== dstField.Value;
-    },
-    emptySource: function (src) {
-        return isEmptyValue(src);
-    },
-    emptyDestination: function (src, dstField) {
-        return !dstField || dstField.ID === 0 || isEmptyValue(dstField.Value);
-    },
-};
-
 async function initField(conf, rpmField) {
     const key = getFullType(rpmField);
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
@@ -785,8 +766,7 @@ async function initField(conf, rpmField) {
     conf.dstField = validateString(rpmField.Name);
     conf.processID = rpmField.ProcessID;
     if (condition && !isTableField(rpmField)) {
-        getEager(CONDITIONS, validateString(condition));
-        conf.condition = condition;
+        conf.condition = initCondition(condition);
     }
     return conf;
 }
@@ -816,14 +796,9 @@ function getSetter({ type, setter }) {
 async function setField(conf, data, form) {
     const setter = getSetter(conf);
     let result;
-    let { condition, valueIsId, srcField, dstUid } = conf;
-    if (condition) {
-        condition = getEager(CONDITIONS, condition);
-        const srcValue = getDeepValue(data, srcField);
-        const dstField = form ? toSimpleField(getFieldByUid.call(form.Form || form, dstUid, true)) : undefined;
-        if (!condition(srcValue, dstField)) {
-            return;
-        }
+    let { condition, valueIsId } = conf;
+    if (condition && !processCondition(condition, data)) {
+        return;
     }
     try {
         result = await setter.call(this, conf, data, form);
