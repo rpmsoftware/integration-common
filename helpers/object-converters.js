@@ -1,5 +1,5 @@
 const { init: initGetter, get, initMultiple: initGetters, getMultiple } = require('./getters');
-const { validateString, toArray, getEager, demandDeepValue, toBoolean, getDeepValue } = require('../util');
+const { validateString, toArray, getEager, toBoolean, getDeepValue } = require('../util');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
 
@@ -43,7 +43,11 @@ const OBJECT_CONVERTERS = {
             let result = [];
             const firstProperty = array[0];
             for (let parent of toArray(obj)) {
-                const a = demandDeepValue(parent, array);
+                const a = getDeepValue(parent, array);
+                if (a === undefined) {
+                    result.push(parent);
+                    continue;
+                }
                 assert(Array.isArray(a));
                 for (let child of a) {
                     assert.strictEqual(typeof child, 'object');
