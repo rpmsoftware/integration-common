@@ -560,13 +560,17 @@ add('List', function (config, data) {
         { Value: value }
     );
 }, async function ({ demand, defaultValue }, rpmField) {
-    return {
-        options: getEager(rpmField, 'Options')
+    demand = toBoolean(demand) || undefined;
+    let { Options: options } = rpmField;
+    if (demand) {
+        assert(options);
+        options = options
             .filter(({ IsHidden, IsLabel }) => !IsHidden && !IsLabel)
-            .map(({ Text, ID }) => ({ Text, ID })),
-        demand: toBoolean(demand) || undefined,
-        defaultValue
-    };
+            .map(({ Text, ID }) => ({ Text, ID }));
+    } else {
+        options = [];
+    }
+    return { options, demand, defaultValue };
 });
 
 fieldType = ObjectType.FormReference;

@@ -174,7 +174,7 @@ module.exports = {
 
             const forms = toArray(await getForms(sourceObject));
             forms.length < 1 && getDstForms.create && later.push(async () => {
-                const form = await tweakArchived.call(this,
+                const form = await tweakArchived.call(api,
                     await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent),
                     formProperties
                 );
@@ -271,5 +271,3 @@ async function tweakArchived(form, { Archived }) {
     }
     return form;
 }
-
-
