@@ -2,6 +2,7 @@ const { init: initGetter, get, initMultiple: initGetters, getMultiple } = requir
 const { validateString, toArray, getEager, toBoolean, getDeepValue } = require('../util');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
+const hash = require('object-hash');
 
 const DEFAULT_CONVERTER = 'getter';
 const PROP_PARENT = '_parent';
@@ -153,6 +154,24 @@ const OBJECT_CONVERTERS = {
             }
             return obj;
         }
-    }
+    },
+
+    hash: {
+        init: function ({ dstProperty, properties }) {
+            validateString(dstProperty);
+            properties = toArray(properties);
+            assert(properties.length > 0);
+            properties.forEach(validateString);
+            return { dstProperty, properties };
+        },
+        convert: function ({ dstProperty, properties }, obj) {
+            for (const e of toArray(obj)) {
+                e[dstProperty] = hash(properties.map(p => e[p]));
+            }
+            return obj;
+        }
+    },
+
+
 
 };

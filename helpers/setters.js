@@ -834,7 +834,7 @@ async function initMultiple(inFieldMap, fields) {
     const result = [];
     const init = fields === undefined ? initValue : initField;
     for (const dstField in inFieldMap) {
-        result.push(await init.call(this, inFieldMap[dstField], fields.getField(dstField, true)));
+        result.push(await init.call(this, inFieldMap[dstField], fields && fields.getField(dstField, true)));
     }
     return result;
 }
