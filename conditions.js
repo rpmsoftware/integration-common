@@ -204,7 +204,7 @@ function initOperand(config) {
         return;
     }
     if (typeof config === 'string') {
-        config = { field: config };
+        config = Array.isArray(this.Fields) ? { field: config } : { property: config };
     }
     assert.strictEqual(typeof config, 'object');
     let { field, property, value } = config;
