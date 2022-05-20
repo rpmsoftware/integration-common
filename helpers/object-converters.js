@@ -3,6 +3,7 @@ const { validateString, toArray, getEager, toBoolean, getDeepValue } = require('
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
 const hash = require('object-hash');
+const { ObjectType } = require('integration-common/api-enums');
 
 const DEFAULT_CONVERTER = 'getter';
 const PROP_PARENT = '_parent';
@@ -101,6 +102,23 @@ const OBJECT_CONVERTERS = {
                 }
                 e[dstProperty] = formData;
             }
+            return obj;
+        }
+    },
+
+    attachBasic: {
+        init: async function ({ dstProperty, type, condition }) {
+            validateString(dstProperty);
+            condition = initCondition(condition);
+            type = getEager(ObjectType, type);
+            return { dstProperty, type, condition };
+        },
+        convert: async function ({ dstProperty, type, condition }, obj) {
+            const { api } = this;
+            const basicEntities = await api.getEntities(type);
+            toArray(obj).forEach(model => model[dstProperty] = basicEntities.find(
+                candidate => processCondition(condition, { model, candidate })
+            ));
             return obj;
         }
     },

@@ -227,8 +227,6 @@ function initOperand(config) {
 }
 
 function init1({ operand }) {
-    typeof operand === 'string' && (operand = { field: operand });
-    assert.strictEqual(typeof operand, 'object');
     return {
         operand: initOperand.call(this, operand)
     }
