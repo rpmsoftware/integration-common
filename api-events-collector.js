@@ -9,7 +9,7 @@ class EventsCollector {
         this.events = [];
         const {
             editForm, createForm, trashForm, _archiveForm, _unarchiveForm, createFormSet,
-            addFormParticipant, addNoteByFormID, addNoteByFormNumber
+            addFormParticipant, addNoteByFormID, addNoteByFormNumber, editAccount
         } = api;
 
         const formProcesses = {};
@@ -146,6 +146,17 @@ class EventsCollector {
                 ParentType: OT.PMTemplate,
                 ObjectID,
                 ParentID
+            });
+            return result;
+        };
+
+        api.editAccount = async function () {
+            const result = await editAccount.apply(this, arguments);
+            const { AccountID: ObjectID } = result;
+            self.push({
+                EventName: WE._AccountEdit,
+                ObjectType: OT.CustomerAccount,
+                ObjectID,
             });
             return result;
         };

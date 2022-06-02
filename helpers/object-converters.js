@@ -3,7 +3,8 @@ const { validateString, toArray, getEager, toBoolean, getDeepValue } = require('
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
 const hash = require('object-hash');
-const { ObjectType } = require('integration-common/api-enums');
+const { ObjectType } = require('../api-enums');
+const { isEmptyValue } = require('./common');
 
 const DEFAULT_CONVERTER = 'getter';
 const PROP_PARENT = '_parent';
@@ -123,6 +124,25 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    attachBasicEntity: {
+        init: function ({ dstProperty, type, id }) {
+            validateString(dstProperty);
+            type = getEager(ObjectType, type);
+            id = toArray(id);
+            assert(id.length > 0);
+            id.forEach(assert);
+            return { dstProperty, type, id };
+        },
+        convert: async function ({ dstProperty, type, id }, data) {
+            const { api } = this;
+            for (const e of toArray(data)) {
+                const v = getDeepValue(e, id);
+                isEmptyValue(v) || (e[dstProperty] = await api.getEntity(type, v));
+            }
+            return data;
+        }
+    },
+
     filter: {
         init: async function ({ condition }) {
             condition = initCondition(condition);
@@ -189,7 +209,5 @@ const OBJECT_CONVERTERS = {
             return obj;
         }
     },
-
-
 
 };

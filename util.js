@@ -747,7 +747,7 @@ const validateString = exports.validateString = value => {
 
 exports.toMoment = value => moment.isDayjs(value) ? value : moment(value);
 
-const toArray = exports.toArray = value => Array.isArray(value) ? value : [value];
+const toArray = exports.toArray = value => value === undefined ? [] : (Array.isArray(value) ? value : [value]);
 
 exports.toBase64 = data => (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64');
 

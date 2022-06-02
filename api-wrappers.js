@@ -959,6 +959,12 @@ API.prototype.createAccount = function (name, customer, supplier, location, grou
     return this.request('AccountAdd', { Account: data });
 };
 
+API.prototype.editAccount = function (accountID, data) {
+    this.validateParameters && (accountID = normalizeInteger(accountID));
+    data = Object.assign({}, data || {}, { AccountID: accountID });
+    return this.request('AccountEdit', { Account: data });
+};
+
 function objectToId(nameOrID, property) {
     return typeof nameOrID === 'object' ? nameOrID[property] : nameOrID;
 }

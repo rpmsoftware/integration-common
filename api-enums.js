@@ -607,6 +607,8 @@ exports.WebhookEvents = {
     _TableRowAdd: 'tablerow.add',
     _TableRowEdit: 'tablerow.edit',
     _TableRowTrash: 'tablerow.trash',
+    _AccountAdd: 'account.add',
+    _AccountEdit: 'account.edit',
     FormStart: 'form.start',
     FormEdit: 'form.edit',
     FormTrash: 'form.trash',

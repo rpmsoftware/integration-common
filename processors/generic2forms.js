@@ -72,6 +72,7 @@ module.exports = {
             formNumber && !getDstForms && (getDstForms = { getter: 'number', formNumber });
             assert.strictEqual(typeof getDstForms, 'object');
             let { getter, create } = getDstForms;
+            getDstForms.process = dstProcess;
             getDstForms = await getEager(FORM_FINDERS, getter).init.call(this, getDstForms);
             getDstForms.getter = getter;
             getDstForms.create === undefined && (getDstForms.create = toBoolean(create) || undefined);
