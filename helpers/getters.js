@@ -228,7 +228,7 @@ const COMMON_GETTERS = {
             let result;
             for (const candidate of await getViewForms.call(this, config)) {
                 if (processCondition.call(this, matchCondition, { source, candidate })) {
-                    
+
                     result = candidate;
                     break;
                 }
@@ -435,24 +435,6 @@ add('FieldTable', async function (conf, form) {
     return result;
 }, initTableFields);
 
-
-async function tableFieldMapGet({ srcUid, fieldMap }, form) {
-    form = form.Form || form;
-    const srcField = form.getFieldByUid(srcUid, true);
-    const result = [];
-    for (let srcRow of srcField.Rows) {
-        if (srcRow.IsDefinition || srcRow.IsLabelRow) {
-            continue;
-        }
-        const resultRow = {};
-        for (let dstProp in fieldMap) {
-            resultRow[dstProp] = await get.call(this, fieldMap[dstProp], srcRow);
-        }
-        result.push(resultRow);
-    }
-    return result;
-}
-
 async function tableFieldMapInit({ fieldMap: inFieldMap }, rpmField) {
     const defRow = getDefinitionRow(rpmField);
     const fieldMap = {};
@@ -472,8 +454,43 @@ async function tableFieldMapInit({ fieldMap: inFieldMap }, rpmField) {
     return { fieldMap };
 }
 
-add('FieldTable', 'fieldMap', tableFieldMapGet, tableFieldMapInit);
-add('FieldTableDefinedRow', 'fieldMap', tableFieldMapGet, tableFieldMapInit);
+async function getTableRow(fieldMap, srcRow) {
+    const resultRow = {};
+    for (const dstProp in fieldMap) {
+        resultRow[dstProp] = await get.call(this, fieldMap[dstProp], srcRow);
+    }
+    return resultRow;
+}
+
+add('FieldTable', 'fieldMap', async function ({ srcUid, fieldMap }, form) {
+    form = form.Form || form;
+    const srcField = form.getFieldByUid(srcUid, true);
+    const result = [];
+    for (const srcRow of srcField.Rows) {
+        srcRow.IsDefinition || srcRow.IsLabelRow ||
+            result.push(await getTableRow.call(this, fieldMap, srcRow));
+    }
+    return result;
+}, tableFieldMapInit);
+
+add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys }, form) {
+    form = form.Form || form;
+    const srcField = form.getFieldByUid(srcUid, true);
+    const result = {};
+    for (const srcRow of srcField.Rows) {
+        const key = keys[srcRow.TemplateDefinedRowID];
+        srcRow.IsDefinition || srcRow.IsLabelRow || key && 
+            (result[key] = await getTableRow.call(this, fieldMap, srcRow));
+    }
+    return result;
+}, async function (conf, rpmField) {
+    const r = await tableFieldMapInit.call(this, conf, rpmField);
+    const keys = {};
+    rpmField.Rows.forEach(({ ID, Name, IsDefinition, IsLabelRow }) =>
+        IsDefinition || IsLabelRow || (keys[ID] = Name));
+    r.keys = keys;
+    return r;
+});
 
 fieldType = ObjectType.FormReference;
 subTypes = RefSubType;

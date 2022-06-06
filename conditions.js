@@ -200,9 +200,6 @@ const OPERATORS = {
 const DEFAULT_FIELD_PROPERTY = 'Value';
 
 function initOperand(config) {
-    if (!config) {
-        return;
-    }
     if (typeof config === 'string') {
         config = Array.isArray(this.Fields) ? { field: config } : { property: config };
     }
