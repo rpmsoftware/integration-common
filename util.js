@@ -790,3 +790,11 @@ exports.fetch2json = async response => {
         throw result;
     }
 };
+
+exports.validatePropertyConfig = p => {
+    const result = toArray(p);
+    const { length } = result;
+    assert(length > 0);
+    result.forEach(p => typeof p === 'object' && !Array.isArray(p) || validateString(p));
+    return length > 1 ? result : result[0];
+};

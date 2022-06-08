@@ -1,5 +1,5 @@
 const { init: initGetter, get, initMultiple: initGetters, getMultiple } = require('./getters');
-const { validateString, toArray, getEager, toBoolean, getDeepValue } = require('../util');
+const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty } = require('../util');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const assert = require('assert');
 const hash = require('object-hash');
@@ -51,8 +51,9 @@ const OBJECT_CONVERTERS = {
                     result.push(parent);
                     continue;
                 }
-                assert(Array.isArray(a));
-                for (let child of a) {
+                assert.strictEqual(typeof a, 'object');
+                for (let k in a) {
+                    const child = a[k];
                     assert.strictEqual(typeof child, 'object');
                     Object.assign(child, parent);
                     delete child[firstProperty];
@@ -205,6 +206,22 @@ const OBJECT_CONVERTERS = {
         convert: function ({ dstProperty, properties }, obj) {
             for (const e of toArray(obj)) {
                 e[dstProperty] = hash(properties.map(p => e[p]));
+            }
+            return obj;
+        }
+    },
+
+    valueMap: {
+        init: function ({ property, dstProperty, valueMap }) {
+            validateString(dstProperty);
+            validateString(property);
+            assert.strictEqual(typeof valueMap, 'object');
+            assert(!isEmpty(valueMap));
+            return { property, dstProperty, valueMap };
+        },
+        convert: function ({ property, dstProperty, valueMap }, obj) {
+            for (const e of toArray(obj)) {
+                e[dstProperty] = valueMap[e[property]];
             }
             return obj;
         }
