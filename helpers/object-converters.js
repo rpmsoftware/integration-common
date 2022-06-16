@@ -227,4 +227,27 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    extractChildren: {
+        init: function ({ properties, dstProperty, array }) {
+            validateString(dstProperty);
+            properties = toArray(properties).map(validateString);
+            assert(properties.length > 0);
+            array = toArray(array) || undefined;
+            return { properties, dstProperty, array };
+        },
+        convert: function ({ properties, dstProperty, array }, obj) {
+            for (const e of toArray(obj)) {
+                const child = {};
+                properties.forEach(p => {
+                    if (!child[p]) {
+                        child[p] = e[p];
+                        delete e[p];
+                    }
+                });
+                e[dstProperty] = array ? [child] : child;
+            }
+            return obj;
+        }
+    },
+
 };

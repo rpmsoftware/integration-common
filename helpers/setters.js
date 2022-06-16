@@ -5,7 +5,10 @@ const {
     toBoolean,
     toArray,
     getEager,
-    getDeepValue
+    getDeepValue,
+    validatePropertyConfig,
+    demandDeepValue,
+    isEmpty
 } = require('../util');
 const moment = require('dayjs');
 const {
@@ -13,7 +16,8 @@ const {
     getFieldByUid,
     ISO_DATE_FORMAT,
     ISO_DATE_TIME_FORMAT,
-    isTableField
+    isTableField,
+    isReferenceField
 } = require('../api-wrappers');
 const assert = require('assert');
 const createHash = require('string-hash');
@@ -358,6 +362,10 @@ add('FieldTableDefinedRow',
 add('FieldTable', 'delimetered',
     async function (config, data, form) {
         data = getDeepValue(data, config.srcField);
+        if (!data) {
+            return;
+        }
+
         const existingRows = form && getField.call(form.Form || form, config.dstField, true).Rows.filter(r => !r.IsDefinition);
         function getRowID() {
             return (existingRows && existingRows.length) ? existingRows.shift().RowID : 0;
@@ -418,48 +426,49 @@ add('FieldTable', 'delimetered',
 );
 
 add('FieldTable',
-    async function (config, data, form) {
-        data = getDeepValue(data, config.srcField) || [];
+    async function ({
+        srcField, dstField, dstKeyField, tableFields, createRows, srcKeyProperty
+    }, data, form) {
+        data = getDeepValue(data, srcField);
+        if (!data || srcKeyProperty && isEmpty(data)) {
+            return;
+        }
         assert.strictEqual(typeof data, 'object', 'Object is expected');
-        const existingRows = form ? getField.call(form.Form || form, config.dstField, true)
+        const existingRows = form ? getField.call(form.Form || form, dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
 
-        const isArray = Array.isArray(data);
         let getExistingRow;
-        if (isArray) {
-            getExistingRow = () => existingRows && existingRows.shift();
-        } else if (config.key) {
-            const getKey = row => {
-                let key = getFieldByUid.call(row, config.key, true).Values[0];
-                return key && key.Value;
-            };
-            getExistingRow = key => {
-                assert(key !== undefined, 'Row key is required');
-                const idx = existingRows.findIndex(r => key === getKey(r));
+        if (!srcKeyProperty) {
+            getExistingRow = () => existingRows.shift();
+        } else if (dstKeyField) {
+            getExistingRow = srcKeyValue => {
+                const idx = existingRows.findIndex(existingRow => {
+                    const key = getFieldByUid.call(existingRow, dstKeyField.Uid, true).Values[0];
+                    return key && srcKeyValue === (dstKeyField.IsReference ? key.ID : key.Value);
+                });
                 return idx < 0 ? undefined : existingRows.splice(idx, 1)[0];
             }
         } else {
             getExistingRow = rowID => {
                 const key = +rowID;
-                assert(typeof key === 'number', 'Numeric key is required: ' + rowID);
+                if (isNaN(key)) {
+                    throw 'Numeric key is required: ' + rowID;
+                }
                 const idx = existingRows.findIndex(r => key === r.RowID);
                 return idx < 0 ? undefined : existingRows.splice(idx, 1)[0];
             }
         }
 
-        let rows = [];
+        let Rows = [];
         let errors = [];
         let rownum = 0;
-        for (let key in data) {
-            const srcRow = data[key];
-            const existingRow = getExistingRow(key);
-            if (!(existingRow || isArray || config.createKeys)) {
-                continue;
-            }
-            let fieldValues = [];
-            rows.push({ RowID: existingRow && existingRow.RowID || 0, Fields: fieldValues });
+
+        const later = {};
+
+        const createDstRow = async (srcRow, existingRow) => {
+            const Fields = [];
             ++rownum;
-            for (let tabFieldConf of config.tableFields) {
+            for (let tabFieldConf of tableFields) {
                 const fieldPatch = await setField.call(this, tabFieldConf, srcRow);
                 if (!fieldPatch) {
                     continue;
@@ -467,25 +476,52 @@ add('FieldTable',
                 let err = fieldPatch.Errors;
                 delete fieldPatch.Errors;
                 if (err) {
-                    toArray(err).forEach(err => errors.push(`"${config.dstField}".${rownum}.` + err));
+                    toArray(err).forEach(err => errors.push(`"${dstField}".${rownum}.` + err));
                 }
-                fieldValues.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
+                Fields.push({ Values: [fieldPatch], Uid: tabFieldConf.dstUid });
             }
-            existingRow && config.key && !fieldValues.find(f => f.Uid === config.key) &&
-                fieldValues.push(getFieldByUid.call(existingRow, config.key, true));
-        }
-        if (!isArray) {
-            rows = rows.concat(existingRows);
+            return { RowID: existingRow && existingRow.RowID || 0, Fields };
         }
 
-        return { Rows: rows, Errors: errors.length > 0 ? errors : undefined };
+        for (let k in data) {
+            const srcRow = data[k];
+            k = srcKeyProperty && demandDeepValue(srcRow, srcKeyProperty);
+            const existingRow = getExistingRow(k);
+            existingRow ? Rows.push(await createDstRow(srcRow, existingRow)) : (createRows && (later[k] = srcRow));
+        }
+
+        for (const k in later) {
+            const row = await createDstRow(later[k], existingRows.shift());
+            const { Fields } = row;
+            if (!dstKeyField || Fields.find(({ Uid }) => Uid === dstKeyField.Uid)) {
+                continue;
+            }
+            const v = {};
+            if (dstKeyField.IsReference) {
+                v.ID = normalizeInteger(k);
+            } else {
+                v.Value = k;
+            }
+            Fields.push({ Values: [v], Uid: dstKeyField.Uid });
+        }
+
+        if (srcKeyProperty) {
+            Rows = Rows.concat(existingRows);
+        }
+
+        return { Rows, Errors: errors.length > 0 ? errors : undefined };
     }, initTableFields
 );
 
-async function initTableFields({ tableFields: srcTableFields, key, createKeys }, rpmField) {
+async function initTableFields({
+    tableFields: srcTableFields, key, createRows, srcKeyProperty, dstKeyField
+}, rpmField) {
+    assert(!key, '"key" property is obsolete. Use "dstKeyField" instead')
     const defRow = rpmField.Rows.find(row => row.IsDefinition);
     assert(defRow, 'No definition row');
     const tableFields = [];
+
+    srcKeyProperty = srcKeyProperty ? validatePropertyConfig(srcKeyProperty) : undefined;
 
     const push = c => {
         c.isTableField = true;
@@ -509,9 +545,12 @@ async function initTableFields({ tableFields: srcTableFields, key, createKeys },
             tabField.UserCanEdit && push(await initField.call(this, { srcField: tabField.Name }, tabField));
         }
     }
-    key = key ? getField.call(defRow, validateString(key), true).Uid : undefined;
-    createKeys = key && !!tableFields.find(tf => tf.dstUid === key);
-    return { tableFields, key, createKeys };
+    if (dstKeyField || (dstKeyField = undefined)) {
+        dstKeyField = getField.call(defRow, validateString(dstKeyField));
+        dstKeyField = { Uid: dstKeyField.Uid, IsReference: isReferenceField(dstKeyField) };
+    }
+    createRows = createRows === undefined ? !srcKeyProperty : toBoolean(createRows);
+    return { tableFields, dstKeyField, createRows, srcKeyProperty };
 }
 
 function toMoment(config, date) {

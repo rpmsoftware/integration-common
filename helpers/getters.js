@@ -462,16 +462,30 @@ async function getTableRow(fieldMap, srcRow) {
     return resultRow;
 }
 
-add('FieldTable', 'fieldMap', async function ({ srcUid, fieldMap }, form) {
+add('FieldTable', 'fieldMap', async function ({ srcUid, key, fieldMap }, form) {
     form = form.Form || form;
     const srcField = form.getFieldByUid(srcUid, true);
-    const result = [];
+    const result = key ? {} : [];
     for (const srcRow of srcField.Rows) {
-        srcRow.IsDefinition || srcRow.IsLabelRow ||
-            result.push(await getTableRow.call(this, fieldMap, srcRow));
+        if (srcRow.IsDefinition || srcRow.IsLabelRow) {
+            continue;
+        }
+        const row = await getTableRow.call(this, fieldMap, srcRow);
+        if (key) {
+            const k = row[key];
+            assert(k);
+            result[k] || (result[k] = row);
+        } else {
+            result.push(row);
+        }
     }
     return result;
-}, tableFieldMapInit);
+}, async function (conf, rpmField) {
+    const { key } = conf;
+    const r = await tableFieldMapInit.call(this, conf, rpmField);
+    r.key = key ? validateString(key) : undefined;
+    return r;
+});
 
 add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys }, form) {
     form = form.Form || form;
@@ -479,7 +493,7 @@ add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys
     const result = {};
     for (const srcRow of srcField.Rows) {
         const key = keys[srcRow.TemplateDefinedRowID];
-        srcRow.IsDefinition || srcRow.IsLabelRow || key && 
+        srcRow.IsDefinition || srcRow.IsLabelRow || key &&
             (result[key] = await getTableRow.call(this, fieldMap, srcRow));
     }
     return result;
