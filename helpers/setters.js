@@ -429,7 +429,7 @@ add('FieldTable',
     async function ({
         srcField, dstField, dstKeyField, tableFields, createRows, srcKeyProperty
     }, data, form) {
-        data = getDeepValue(data, srcField);
+        srcField === null || (data = getDeepValue(data, srcField));
         if (!data || srcKeyProperty && isEmpty(data)) {
             return;
         }
