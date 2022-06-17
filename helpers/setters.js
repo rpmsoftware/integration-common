@@ -485,13 +485,14 @@ add('FieldTable',
 
         for (let k in data) {
             const srcRow = data[k];
-            k = srcKeyProperty && demandDeepValue(srcRow, srcKeyProperty);
+            srcKeyProperty && (k = demandDeepValue(srcRow, srcKeyProperty));
             const existingRow = getExistingRow(k);
             existingRow ? Rows.push(await createDstRow(srcRow, existingRow)) : (createRows && (later[k] = srcRow));
         }
 
         for (const k in later) {
             const row = await createDstRow(later[k], existingRows.shift());
+            Rows.push(row);
             const { Fields } = row;
             if (!dstKeyField || Fields.find(({ Uid }) => Uid === dstKeyField.Uid)) {
                 continue;
@@ -506,7 +507,8 @@ add('FieldTable',
         }
 
         if (srcKeyProperty) {
-            Rows = Rows.concat(existingRows);
+            // Rows = Rows.concat(existingRows);
+            Rows = Rows.concat(existingRows.map(({ RowID }) => ({ RowID, Fields: [] })));
         }
 
         return { Rows, Errors: errors.length > 0 ? errors : undefined };
