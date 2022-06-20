@@ -91,7 +91,7 @@ const OPERATORS = {
             const conf = this;
             form = form.Form || form;
             const value = getOperandValue(conf.operand, form);
-            const m = moment(value, conf.format);
+            let m = moment(value, conf.format);
             if (!m.isValid()) {
                 throw new Error(`Cannot parse date "${value}". Format: "${conf.format}"`);
             }
@@ -105,7 +105,7 @@ const OPERATORS = {
                     increment = ic.value;
                 }
             }
-            increment && m.add(increment, conf.unit);
+            increment && (m = m.add(increment, conf.unit));
             const now = moment();
             return now.isSame(m) || now.isAfter(m);
         }
