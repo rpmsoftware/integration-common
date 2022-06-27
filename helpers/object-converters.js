@@ -1,3 +1,4 @@
+const { init: initView, getForms: getViewForms } = require('./views');
 const { init: initGetter, get, initMultiple: initGetters, getMultiple } = require('./getters');
 const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty } = require('../util');
 const { init: initCondition, process: processCondition } = require('../conditions');
@@ -250,4 +251,175 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+
+    addChildren: {
+        init: async function (conf) {
+            const { dstProperty, matchCondition } = conf;
+            conf = await initView.call(this, conf);
+            conf.dstProperty = validateString(dstProperty);
+            conf.matchCondition = await initCondition(matchCondition);
+            return conf;
+        },
+
+        convert: async function (conf, data) {
+            const children = await getViewForms.call(this, conf);
+            const { dstProperty, matchCondition } = conf;
+            toArray(data).forEach(parent =>
+                parent[dstProperty] = children.filter(child => processCondition(matchCondition, { parent, child }))
+            );
+            return data;
+        }
+    },
+
+    arrayTotals: {
+        init: function ({ array, properties: inProperties }) {
+            validateString(array);
+            const properties = {};
+            let initialized = false;
+            const ctx = {};
+            for (const destination in inProperties) {
+                const source = inProperties[destination];
+                let { total, condition } = typeof source === 'string' ? { total: source } : source;
+                validateString(total);
+                condition = condition ? initCondition.call(ctx, condition) : undefined;
+                properties[destination] = { total, condition };
+                initialized = true;
+            }
+            assert(initialized);
+            return { array, properties };
+        },
+
+        convert: function ({ array, properties }, data) {
+            toArray(data).forEach(e => {
+                const a = e[array];
+                assert(Array.isArray(a));
+                a.forEach(c => {
+                    for (const destination in properties) {
+                        const { total, condition } = properties[destination];
+                        e[destination] === undefined && (e[destination] = 0);
+                        (!condition || processCondition(condition, c)) && (e[destination] = e[destination] + (c[total] || 0));
+                    }
+                });
+            });
+            return data;
+        }
+    },
+
+    group: {
+        init: function ({ group, children, condition }) {
+            validateString(children);
+            group = toArray(group);
+            assert(group.length > 0);
+            group.forEach(validateString);
+            return { group, children, condition };
+        },
+
+        convert: function ({ group, children }, data) {
+            assert(Array.isArray(data));
+            return data.group(children, group);
+        }
+    },
+
+    fullHash: {
+        init: function ({ dstProperty }) {
+            validateString(dstProperty);
+            return { dstProperty };
+        },
+
+        convert: function ({ dstProperty }, data) {
+            toArray(data).forEach(e => e[dstProperty] = hash(e));
+            return data;
+        }
+
+    },
+
+    stringToObject: {
+        init: function ({ source, delimiter, properties, regExp, dstProperty }) {
+            delimiter = delimiter ? validateString(delimiter) : undefined;
+            validateString(regExp);
+            dstProperty ? validateString(dstProperty) : (dstProperty = source);
+            validateString(source);
+            let fmInit = false;
+            for (const p in properties) {
+                const v = +properties[p];
+                assert(v >= 0);
+                fmInit = true;
+            }
+            assert(fmInit);
+            return { source, delimiter, regExp, properties, dstProperty };
+        },
+
+        convert: function (conf, data) {
+            let { source, delimiter, regExp, dstProperty } = conf;
+            regExp instanceof RegExp || (regExp = conf.regExp = new RegExp(regExp));
+            toArray(data).forEach(obj => {
+                const s = obj[source];
+                if (delimiter) {
+                    const a = obj[dstProperty] = [];
+                    if (s) {
+                        for (let n of s.split(delimiter)) {
+                            n = string2object.call(conf, n);
+                            n && a.push(n);
+                        }
+                    }
+                } else {
+                    obj[dstProperty] = (s ? string2object.call(conf, s) : undefined);
+                }
+            });
+            return data;
+        }
+    },
+
+    totals: {
+        init: function ({ group, properties: inProperties }) {
+            group = toArray(group);
+            assert(group.length > 0);
+            group.forEach(validateString);
+            const properties = {};
+            let initialized = false;
+            const ctx = {};
+            for (const destination in inProperties) {
+                let { total, condition } = inProperties[destination];
+                validateString(total);
+                condition = condition ? initCondition.call(ctx, condition) : undefined;
+                properties[destination] = { total, condition };
+                initialized = true;
+            }
+            assert(initialized);
+            return { group, properties };
+        },
+
+        convert: function ({ group, properties }, data) {
+            assert(Array.isArray(data));
+            const result = data.group(PROP_CHILDREN, group);
+            result.forEach(e => {
+                e[PROP_CHILDREN].forEach(c => {
+                    for (const destination in properties) {
+                        const { total, condition } = properties[destination];
+                        e[destination] === undefined && (e[destination] = 0);
+                        (!condition || processCondition(condition, c)) && (e[destination] = e[destination] + (c[total] || 0));
+                    }
+                })
+                delete e[PROP_CHILDREN];
+            });
+            return result;
+        }
+    }
 };
+
+function string2object(string) {
+    let { regExp, properties } = this;
+    regExp instanceof RegExp || (regExp = new RegExp(regExp));
+    const result = {};
+    const a = regExp.exec(string.trim());
+    let hasData = false;
+    if (a) {
+        for (const p in properties) {
+            result[p] = a[properties[p]];
+            hasData = true;
+        }
+    }
+    return hasData ? result : undefined;
+}
+
+const PROP_CHILDREN = Symbol();
