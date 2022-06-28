@@ -193,6 +193,21 @@ const OPERATORS = {
             assert(Array.isArray(a), `Array is expected: ${array}`);
             return a.findIndex(e => process(condition, Object.assign({}, e, form))) >= 0;
         }
+    },
+    regexp: {
+        init: function (conf) {
+            const { regexp } = conf;
+            conf = init1.call(this, conf);
+            conf.regexp = validateString(regexp);
+            return conf;
+        },
+        process: function (data) {
+            let { operand, regexp } = this;
+            regexp instanceof RegExp || (regexp = this.regexp = new RegExp(regexp));
+            let value = getOperandValue(operand, data);
+            return regexp.test(value + '');
+        }
+
     }
 
 };

@@ -1,11 +1,8 @@
-const { init: initView, getForms: getViewForms } = require('./views');
-const { init: initGetter, get, initMultiple: initGetters, getMultiple } = require('./getters');
-const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty } = require('../util');
-const { init: initCondition, process: processCondition } = require('../conditions');
+const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty } = require('../../util');
+const { init: initCondition, process: processCondition } = require('../../conditions');
 const assert = require('assert');
-const hash = require('object-hash');
-const { ObjectType } = require('../api-enums');
-const { isEmptyValue } = require('./common');
+const { ObjectType } = require('../../api-enums');
+const { isEmptyValue } = require('../common');
 
 const DEFAULT_CONVERTER = 'getter';
 const PROP_PARENT = '_parent';
@@ -18,22 +15,21 @@ async function init(conf) {
             continue;
         }
         name || (name = DEFAULT_CONVERTER);
-        const { init } = getEager(OBJECT_CONVERTERS, name);
+        const { init } = OBJECT_CONVERTERS[name] || require('./' + name);
         c = init ? await init.call(this, c) : {};
         c.name = name;
         result.push(c);
     }
     return result;
 }
-exports.init = init;
 
 async function convert(conf, obj) {
     for (let c of conf) {
-        obj = await getEager(OBJECT_CONVERTERS, c.name).convert.call(this, c, obj);
+        const { name } = c;
+        obj = await (OBJECT_CONVERTERS[name] || require('./' + name)).convert.call(this, c, obj);
     }
     return obj;
 }
-exports.convert = convert;
 
 const OBJECT_CONVERTERS = {
 
@@ -62,50 +58,6 @@ const OBJECT_CONVERTERS = {
                 }
             }
             return result;
-        }
-    },
-
-    getter: {
-        init: async function (conf) {
-            const { dstProperty } = conf;
-            validateString(dstProperty);
-            conf = await initGetter.call(this, conf);
-            conf.dstProperty = dstProperty;
-            return conf;
-        },
-        convert: async function (conf, obj) {
-            const { dstProperty } = conf;
-            for (const e of toArray(obj)) {
-                e[dstProperty] = await get.call(this, conf, e);
-            }
-            return obj;
-        }
-    },
-
-    attachForm: {
-        init: async function ({ dstProperty, process, formIDProperty, fieldMap }) {
-            validateString(dstProperty);
-            const { api } = this;
-            validateString(formIDProperty);
-            process = (await api.getProcesses()).getActiveProcess(process, true);
-            const fields = await process.getFields();
-            fieldMap = await initGetters.call(this, fieldMap, fields);
-            process = process.ProcessID;
-            return { dstProperty, process, formIDProperty, fieldMap };
-        },
-        convert: async function ({ dstProperty, process, formIDProperty, fieldMap }, obj) {
-            const { api } = this;
-            for (const e of toArray(obj)) {
-                const formID = +e[formIDProperty];
-                let formData;
-                if (formID) {
-                    const { Form, ProcessID } = await api.demandForm(formID);
-                    assert.strictEqual(ProcessID, process);
-                    formData = await getMultiple.call(this, fieldMap, Form);
-                }
-                e[dstProperty] = formData;
-            }
-            return obj;
         }
     },
 
@@ -196,21 +148,6 @@ const OBJECT_CONVERTERS = {
         }
     },
 
-    hash: {
-        init: function ({ dstProperty, properties }) {
-            validateString(dstProperty);
-            properties = toArray(properties);
-            assert(properties.length > 0);
-            properties.forEach(validateString);
-            return { dstProperty, properties };
-        },
-        convert: function ({ dstProperty, properties }, obj) {
-            for (const e of toArray(obj)) {
-                e[dstProperty] = hash(properties.map(p => e[p]));
-            }
-            return obj;
-        }
-    },
 
     valueMap: {
         init: function ({ property, dstProperty, valueMap }) {
@@ -248,26 +185,6 @@ const OBJECT_CONVERTERS = {
                 e[dstProperty] = array ? [child] : child;
             }
             return obj;
-        }
-    },
-
-
-    addChildren: {
-        init: async function (conf) {
-            const { dstProperty, matchCondition } = conf;
-            conf = await initView.call(this, conf);
-            conf.dstProperty = validateString(dstProperty);
-            conf.matchCondition = await initCondition(matchCondition);
-            return conf;
-        },
-
-        convert: async function (conf, data) {
-            const children = await getViewForms.call(this, conf);
-            const { dstProperty, matchCondition } = conf;
-            toArray(data).forEach(parent =>
-                parent[dstProperty] = children.filter(child => processCondition(matchCondition, { parent, child }))
-            );
-            return data;
         }
     },
 
@@ -318,19 +235,6 @@ const OBJECT_CONVERTERS = {
             assert(Array.isArray(data));
             return data.group(children, group);
         }
-    },
-
-    fullHash: {
-        init: function ({ dstProperty }) {
-            validateString(dstProperty);
-            return { dstProperty };
-        },
-
-        convert: function ({ dstProperty }, data) {
-            toArray(data).forEach(e => e[dstProperty] = hash(e));
-            return data;
-        }
-
     },
 
     stringToObject: {
@@ -423,3 +327,5 @@ function string2object(string) {
 }
 
 const PROP_CHILDREN = Symbol();
+
+module.exports = { init, convert };

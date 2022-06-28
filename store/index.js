@@ -1,4 +1,4 @@
-const Store = require('./common').Store;
+const { Store } = require('./common');
 const assert = require('assert');
 
 const MEMCACHE_PROPERTY = 'memcache';
@@ -27,6 +27,7 @@ exports.cachedInit = async function (config, cbInit) {
     return value;
 };
 
-exports.createStore = function (module, ...parms) {
-    return require('./' + module).apply(undefined, parms);
-}
+exports.createStore = function (conf) {
+    typeof conf === 'string' && (conf = { provider: conf });
+    return require('./' + conf.provider)(conf);
+};

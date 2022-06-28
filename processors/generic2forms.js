@@ -6,7 +6,7 @@ const { getFieldEssentials } = require('../api-wrappers');
 const { MSG_FORM_NOT_FOUND } = require('../api-errors');
 const setters = require('../helpers/setters');
 const { init: initView, getForms: getViewForms } = require('../helpers/views');
-const { toArray, toBoolean, getEager, normalizeInteger, isEmpty } = require('../util');
+const { toArray, toBoolean, getEager, normalizeInteger, isEmpty, validatePropertyConfig, demandDeepValue } = require('../util');
 
 const debug = require('debug')('rpm:generic2Forms');
 
@@ -27,23 +27,13 @@ const FORM_FINDERS = {
         },
     },
     number: {
-        init: async function ({ formNumber, create }) {
-            formNumber = await setters.initValue.call(this,
-                (typeof formNumber === 'string' || Array.isArray(formNumber)) ? { srcField: formNumber } : formNumber
-            );
-            create = toBoolean(create) || undefined;
+        init: function ({ formNumber, create }) {
+            formNumber = validatePropertyConfig(formNumber);
             return { formNumber, create };
         },
-        create: async function ({ formNumber }) {
-            return async obj => {
-                const result = await setters.set.call(this, formNumber, obj);
-                assert.strictEqual(typeof result, 'object');
-                if (result.Errors) {
-                    throw result.Errors;
-                }
-                return { Number: result.Value };
-            };
-        },
+        create: function ({ formNumber }) {
+            return sourceObject => ({ Number: demandDeepValue(sourceObject, formNumber) + '' });
+        }
     }
 };
 
