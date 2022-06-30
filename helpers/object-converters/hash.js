@@ -1,4 +1,4 @@
-const { validateString, toArray } = require('../../util');
+const { validateString, toArray, validatePropertyConfig, getDeepValue } = require('../../util');
 const assert = require('assert');
 const hash = require('object-hash');
 
@@ -7,12 +7,12 @@ module.exports = {
         validateString(dstProperty);
         properties = toArray(properties);
         assert(properties.length > 0);
-        properties.forEach(validateString);
+        properties = properties.map(validatePropertyConfig);
         return { dstProperty, properties };
     },
     convert: function ({ dstProperty, properties }, obj) {
         for (const e of toArray(obj)) {
-            e[dstProperty] = hash(properties.map(p => e[p]));
+            e[dstProperty] = hash(properties.map(p => getDeepValue(e, p)));
         }
         return obj;
     }

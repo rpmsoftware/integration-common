@@ -1,6 +1,6 @@
 const fs = require('fs');
-const join = require('path').join;
-const homedir = require('os').homedir;
+const { join } = require('path');
+const { homedir } = require('os');
 const format = require('util').format.bind(undefined, '.keyvaluestore_%s');
 const PATTERN = /^\.keyvaluestore_.+$/;
 
@@ -49,6 +49,6 @@ class FsClient extends require('./common').Store {
     }
 }
 
-module.exports = function (dir) {
+module.exports = function ({ dir }) {
     return new FsClient(dir);
 };

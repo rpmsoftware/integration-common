@@ -498,12 +498,15 @@ add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys
     }
     return result;
 }, async function (conf, rpmField) {
-    const r = await tableFieldMapInit.call(this, conf, rpmField);
+    let { rows: rowNames } = conf;
+    const resultConf = await tableFieldMapInit.call(this, conf, rpmField);
     const keys = {};
-    rpmField.Rows.forEach(({ ID, Name, IsDefinition, IsLabelRow }) =>
-        IsDefinition || IsLabelRow || (keys[ID] = Name));
-    r.keys = keys;
-    return r;
+    const tableRows = rpmField.Rows.filter(({ IsDefinition, IsLabelRow }) => !IsDefinition && !IsLabelRow);
+    rowNames ?
+        toArray(rowNames).forEach(rn => keys[tableRows.demand(({ Name }) => Name === validateString(rn)).ID] = rn) :
+        tableRows.forEach(({ ID, Name }) => (keys[ID] = Name));
+    resultConf.keys = keys;
+    return resultConf;
 });
 
 fieldType = ObjectType.FormReference;

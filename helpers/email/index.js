@@ -21,9 +21,10 @@ exports.send = async function (conf, data) {
         debug('There is nothing to send');
         return;
     }
-    const { globals } = this.parentContext;
+
     let ctx;
     if (typeof transport === 'string') {
+        const { globals } = this.parentContext;
         ctx = globals;
         transport = getEager(globals, transport);
     } else {
@@ -82,7 +83,8 @@ async function getEmails(conf, form) {
 }
 
 async function initEmailConfig(conf) {
-    let { address, name } = conf;
+    let { address, name, getter } = conf;
+    getter || (conf.getter = 'none');
     let result = await initGetter.call(this, conf);
     assert(!result.name);
     assert(!result.address);
