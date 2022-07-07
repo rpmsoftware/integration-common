@@ -537,6 +537,12 @@ API.prototype.trashForm = function (id) {
     return this.request('ProcFormTrash', body);
 };
 
+API.prototype.restoreForm = function (id) {
+    const body = {};
+    body[typeof id === 'number' ? 'FormID' : 'AlternateID'] = id;
+    return this.request('ProcFormRestore', body);
+};
+
 function isReferenceField(field) {
     field = field || this;
     return field.FieldType === ObjectType.FormReference;

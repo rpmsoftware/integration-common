@@ -180,7 +180,7 @@ module.exports = function (api) {
         return result;
     };
 
-    ['trashForm', '_archiveForm', '_unarchiveForm'].forEach(prop => {
+    ['trashForm', '_archiveForm', '_unarchiveForm', 'restoreForm'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
