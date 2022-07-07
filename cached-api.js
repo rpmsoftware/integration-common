@@ -23,18 +23,18 @@ module.exports = function (api) {
     const cache = new Cache();
 
     cache.clearFormRelated = function (result, clearDemand) {
-        const form = result.Form;
+        const { Form } = result;
         let getter = 'demandForm';
         if (clearDemand) {
-            this.clear(getter, form.FormID);
-            form.AlternateID && this.clear(getter, form.AlternateID);
-            this.clear(getter, [result.ProcessID, form.Number]);
-            this.clear(getter, [result.Process, form.Number]);
+            this.clear(getter, Form.FormID);
+            Form.AlternateID && this.clear(getter, Form.AlternateID);
+            this.clear(getter, [result.ProcessID, Form.Number]);
+            this.clear(getter, [result.Process, Form.Number]);
         } else {
-            this.put(getter, form.FormID, result);
-            form.AlternateID && this.put(getter, form.AlternateID, result);
-            this.put(getter, [result.ProcessID, form.Number], result);
-            this.put(getter, [result.Process, form.Number], result);
+            this.put(getter, Form.FormID, result);
+            Form.AlternateID && this.put(getter, Form.AlternateID, result);
+            this.put(getter, [result.ProcessID, Form.Number], result);
+            this.put(getter, [result.Process, Form.Number], result);
         }
         getter = 'getForms';
         this.clear(getter, result.ProcessID);
@@ -173,11 +173,20 @@ module.exports = function (api) {
         cache.clear('_getProcesses');
     };
 
-    ['trashForm', '_archiveForm', '_unarchiveForm', 'evaluateForm'].forEach(prop => {
+    const evaluateForm = api.evaluateForm;
+    api.evaluateForm = async function () {
+        const result = await evaluateForm.apply(this, arguments);
+        cleanAfterFormID(arguments[0]);
+        return result;
+    };
+
+    ['trashForm', '_archiveForm', '_unarchiveForm'].forEach(prop => {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            cleanAfterFormID(arguments[0]);
+            cache.clear('getForms');
+            cache.clear('getFormList');
+            cache.clear('demandForm');
             return result;
         };
     });

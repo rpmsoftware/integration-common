@@ -639,25 +639,41 @@ API.prototype.getFormList = function (processID, viewID, refType) {
     return this.request('ProcFormList', request);
 };
 
-API.prototype.demandForm = function (processOrFormId, formNumber) {
-    let request;
-    assert(arguments.length <= 2);
-    const type = typeof processOrFormId;
-    if (arguments.length > 1) {
-        assert.strictEqual(typeof formNumber, 'string');
-        request = { FormNumber: formNumber };
-        if (type === 'number') {
-            request.ProcessID = processOrFormId;
-        } else {
-            assert(type === 'string');
-            request.Process = processOrFormId;
-        }
-    } else if (type === 'number') {
-        request = { FormID: processOrFormId };
-    } else {
-        request = { AlternateID: processOrFormId };
+API.prototype.demandForm = function (processOrFormId, formNumber, AllowTrashed) {
+    AllowTrashed === undefined || assert.strictEqual(typeof AllowTrashed, 'boolean');
+    if (typeof formNumber === 'boolean') {
+        AllowTrashed = formNumber;
+        formNumber = undefined;
     }
-    return this.request('ProcForm', request).then(form => this._extendForm(form));
+    let Process, ProcessID, FormNumber, AlternateID, FormID;
+    const type = typeof processOrFormId;
+    if (formNumber === undefined) {
+        Process = undefined;
+        ProcessID = undefined;
+        FormNumber = undefined;
+        if (type === 'number') {
+            AlternateID = undefined;
+            FormID = processOrFormId;
+        } else {
+            assert.strictEqual(type, 'string');
+            AlternateID = processOrFormId;
+            FormID = undefined;
+        }
+    } else {
+        AlternateID = undefined;
+        FormID = undefined;
+        FormNumber = formNumber + '';
+        if (type === 'number') {
+            Process = undefined;
+            ProcessID = processOrFormId;
+        } else {
+            assert.strictEqual(type, 'string');
+            ProcessID = undefined;
+            Process = processOrFormId;
+        }
+    }
+    return this.request('ProcForm', { FormID, ProcessID, Process, FormNumber, AlternateID, AllowTrashed })
+        .then(form => this._extendForm(form));
 };
 
 API.prototype._extendForm = function (form) {
