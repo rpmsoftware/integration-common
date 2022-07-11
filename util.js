@@ -798,3 +798,5 @@ exports.validatePropertyConfig = p => {
     result.forEach(p => typeof p === 'object' && !Array.isArray(p) || validateString(p));
     return length > 1 ? result : result[0];
 };
+
+exports.setParent = (obj, parent) => Object.defineProperty(obj, 'parent', { value: parent });

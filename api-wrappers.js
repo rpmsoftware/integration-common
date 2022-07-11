@@ -22,7 +22,8 @@ const {
     defineStandardProperty,
     toBase64,
     toArray,
-    getDataURLPrefix
+    getDataURLPrefix,
+    setParent
 } = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
@@ -33,10 +34,6 @@ const MAX_PARALLEL_CALLS = 20;
 
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
-
-function setParent(obj, parent) {
-    return Object.defineProperty(obj, 'parent', { value: parent });
-}
 
 function API(url, key, postRequest) {
     let maxParallelCalls;
@@ -991,7 +988,7 @@ function objectToId(nameOrID, property) {
     return typeof nameOrID === 'object' ? nameOrID[property] : nameOrID;
 }
 
-API.prototype.demandCustomer = async function (nameOrID) {
+API.prototype.demandCustomer = async function (nameOrID, IncludeLocations) {
     let prop = typeof nameOrID;
     if (prop === 'number') {
         prop = 'CustomerID';
@@ -999,7 +996,8 @@ API.prototype.demandCustomer = async function (nameOrID) {
         assert.strictEqual(prop, 'string');
         prop = 'Customer';
     }
-    const request = {};
+    IncludeLocations === undefined || assert(typeof IncludeLocations, 'boolean');
+    const request = { IncludeLocations };
     request[prop] = nameOrID;
     const result = await this.request('Customer', request);
     return this._normalizeCustomer(result);
@@ -1025,9 +1023,9 @@ API.prototype.searchCustomers = function (field, value) {
 
 API.prototype._normalizeCustomer = function (customer) {
     customer.Age = customer.Age || 0;
-    ['Locations', 'Accounts'].forEach(prop =>
-        customer[prop].forEach(ch => setParent(ch, customer))
-    );
+    const { Locations, Accounts } = customer;
+    Accounts.forEach(ch => setParent(ch, customer))
+    Locations && Locations.forEach(ch => setParent(ch, customer))
     return Object.setPrototypeOf(this.tweakDates(customer), CUSTOMER_PROTO);
 };
 
