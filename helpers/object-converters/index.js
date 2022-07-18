@@ -131,7 +131,7 @@ const OBJECT_CONVERTERS = {
         },
         convert: async function ({ array: arrayProperty, convert: convertConf }, obj) {
             for (const parent of toArray(obj)) {
-                const array = getDeepValue(obj, arrayProperty);
+                const array = getDeepValue(parent, arrayProperty);
                 if (typeof array !== 'object') {
                     continue;
                 }
