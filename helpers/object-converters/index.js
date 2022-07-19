@@ -117,7 +117,15 @@ const OBJECT_CONVERTERS = {
         convert: async function ({ array: arrayProperty, condition, dstProperty }, obj) {
             for (const parent of toArray(obj)) {
                 const array = getDeepValue(obj, arrayProperty);
-                array && (parent[dstProperty] = toArray(array).filter(e => processCondition(condition, e)));
+                if (!array) {
+                    continue;
+                }
+                const r = [];
+                for (let e in array) {
+                    e = array[e];
+                    processCondition(condition, e) && r.push(e);
+                }
+                parent[dstProperty] = r;
             }
             return obj;
         }
