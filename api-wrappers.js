@@ -29,6 +29,7 @@ const errors = require('./api-errors');
 const { URL } = require('url');
 const assert = require('assert');
 const util = require('util');
+const { EventEmitter } = require('events');
 
 const MAX_PARALLEL_CALLS = 20;
 
@@ -66,6 +67,9 @@ function API(url, key, postRequest) {
     this.validateParameters = true;
 }
 
+API.prototype = new EventEmitter();
+API.prototype.constructor = API;
+
 defineStandardProperty(API.prototype, 'parallelRunner', function () {
     if (!this._parallelRunner) {
         const { maxParallelCalls } = this;
@@ -91,7 +95,7 @@ API.prototype.assignTo = function (object) {
     return object;
 };
 
-API.prototype.request = function (endPoint, data, log) {
+API.prototype.request = async function (endPoint, data, log) {
     const api = this;
     const url = api.getUrl(endPoint);
     if (log === undefined) {
@@ -102,24 +106,22 @@ API.prototype.request = function (endPoint, data, log) {
     }
     debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
-    return this.postRequest(url, data, api.getHeaders()).then(data => {
-        const responseTime = new Date();
-        if (!data.Result) {
-            throw typeof data === 'object' ? data : new Error(data + '');
-        }
-        const isError = data.Result.Error;
-        data = isError || data.Result || data;
-        if (typeof data === 'object') {
-            Object.defineProperty(data, 'requestTime', { value: requestTime });
-            Object.defineProperty(data, 'responseTime', { value: responseTime });
-            api.assignTo(data);
-        }
-        if (isError) {
-            throw data;
-        }
-        return data;
-    });
-
+    data = await this.postRequest(url, data, api.getHeaders())
+    const responseTime = new Date();
+    if (!data.Result) {
+        throw typeof data === 'object' ? data : new Error(data + '');
+    }
+    const isError = data.Result.Error;
+    data = isError || data.Result || data;
+    if (typeof data === 'object') {
+        Object.defineProperty(data, 'requestTime', { value: requestTime });
+        Object.defineProperty(data, 'responseTime', { value: responseTime });
+        api.assignTo(data);
+    }
+    if (isError) {
+        throw data;
+    }
+    return data;
 };
 
 API.prototype.getUser = function (userName) {
@@ -505,7 +507,9 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     fields = fields || [];
     properties.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
-    return this._extendForm(await this.request('ProcFormEdit', body));
+    const result = this._extendForm(await this.request('ProcFormEdit', body));
+    this.emit('FormEdit', result);
+    return result;
 };
 
 API.prototype._archiveForm = function (formID) {

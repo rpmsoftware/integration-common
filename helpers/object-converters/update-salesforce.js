@@ -46,7 +46,7 @@ module.exports = {
             if (condition && !processCondition(condition, e)) {
                 continue;
             }
-            const id = getDeepValue(getObjectID.property);
+            const id = getDeepValue(e, getObjectID.property);
             if (!id) {
                 continue;
             }
@@ -57,7 +57,7 @@ module.exports = {
             await sfApi.updateSObject(type, id, data);
             dstProperty && (e[dstProperty] = await sfApi.getSObject(type, id));
         }
-        
+
         return obj;
     }
 

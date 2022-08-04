@@ -3,12 +3,12 @@ const { initMultiple, get } = require('../../helpers/getters');
 const assert = require('assert');
 
 module.exports = {
-    init: async function ({ create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap: inPropertyMap }) {
+    init: async function ({ create, customerID, customerName, dstProperty, fieldMap, propertyMap: inPropertyMap }) {
         validateString(dstProperty);
         create = toBoolean(create) || undefined;
-        idProperty = idProperty ? validatePropertyConfig(idProperty) : undefined;
-        nameProperty = nameProperty ? validatePropertyConfig(nameProperty) : undefined;
-        idProperty === undefined && assert(nameProperty);
+        customerID = customerID ? validatePropertyConfig(customerID) : undefined;
+        customerName = customerName ? validatePropertyConfig(customerName) : undefined;
+        customerID === undefined && assert(customerName);
         fieldMap = fieldMap ? await initMultiple.call(this, fieldMap) : {};
         let propertyMap = {};
         if (inPropertyMap) {
@@ -17,13 +17,13 @@ module.exports = {
             }
         }
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap };
+        return { create, customerID, customerName, dstProperty, fieldMap, propertyMap };
     },
-    convert: async function ({ create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap }, obj) {
+    convert: async function ({ create, customerID, customerName, dstProperty, fieldMap, propertyMap }, obj) {
         const { api } = this;
         for (const e of toArray(obj)) {
-            const id = +getDeepValue(e, idProperty);
-            const name = getDeepValue(e, nameProperty);
+            const id = +getDeepValue(e, customerID);
+            const name = getDeepValue(e, customerName);
             if (!id && !name) {
                 continue;
             }
