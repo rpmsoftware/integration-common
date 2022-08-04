@@ -250,7 +250,7 @@ const COMMON_GETTERS = {
             return result;
         },
         init: async function (config) {
-            let { matchCondition, demand, value, defaultValue } = config;
+            let { matchCondition, demand, value } = config;
             const resultConfig = await initView.call(this, config);
             if (Array.isArray(value)) {
                 assert(value.length > 0);
@@ -260,7 +260,6 @@ const COMMON_GETTERS = {
             }
             resultConfig.matchCondition = initCondition(matchCondition);
             resultConfig.demand = toBoolean(demand) || undefined;
-            resultConfig.defaultValue = defaultValue;
             resultConfig.value = value;
             assert(resultConfig.matchCondition);
             return resultConfig;
@@ -647,8 +646,9 @@ async function init(conf, rpmFields) {
         conf = { srcField: conf };
     }
     let rpmField;
-    if (conf.srcField) {
-        rpmField = getField.call(rpmFields, validateString(conf.srcField), true);
+    const { srcField } = conf;
+    if (srcField) {
+        rpmField = getField.call(rpmFields, validateString(srcField), true);
     }
     return initField.call(this, conf, rpmField, rpmFields);
 }
@@ -659,7 +659,7 @@ async function initField(conf, rpmField, rpmFields) {
         type = getFullType(rpmField);
     }
     const specificGetters = type && SPECIFIC_GETTERS[type];
-    const getterName = conf.getter;
+    const { getter: getterName, defaultValue } = conf;
     let getter = getterName ?
         (specificGetters && specificGetters[getterName] || COMMON_GETTERS[getterName]) :
         (specificGetters && specificGetters[DEFAULT_ACCESSOR_NAME] || COMMON_GETTERS[DEFAULT_ACCESSOR_NAME] || DEFAULT_GETTER);
@@ -681,6 +681,7 @@ async function initField(conf, rpmField, rpmFields) {
     } else {
         delete conf.getter;
     }
+    conf.defaultValue = defaultValue;
     return conf;
 }
 
@@ -691,8 +692,9 @@ function findGetter(fieldConfig) {
     return result.get;
 }
 
-function get(conf, form) {
-    return findGetter(conf).call(this, conf, form);
+async function get(conf, form) {
+    const result = await findGetter(conf).call(this, conf, form);
+    return result === undefined ? conf.defaultValue : result;
 }
 
 async function initMultiple(config, fields) {

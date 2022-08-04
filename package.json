@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.57.3",
+    "version": "4.58.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -29,6 +29,7 @@
         "hash.js",
         "mssql.js",
         "normalizers.js",
+        "salesforce-api.js",
         "util.js",
         "webhooks.js",
         "xml.js"

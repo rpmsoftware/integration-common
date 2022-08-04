@@ -1,4 +1,4 @@
-const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty } = require('../../util');
+const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty, validatePropertyConfig } = require('../../util');
 const { init: initCondition, process: processCondition } = require('../../conditions');
 const assert = require('assert');
 const { ObjectType } = require('../../api-enums');
@@ -27,6 +27,9 @@ async function convert(conf, obj) {
     for (let c of conf) {
         const { name } = c;
         obj = await (OBJECT_CONVERTERS[name] || require('./' + name)).convert.call(this, c, obj);
+        if (toArray(obj).length < 1) {
+            break;
+        }
     }
     return obj;
 }
@@ -116,7 +119,7 @@ const OBJECT_CONVERTERS = {
         },
         convert: async function ({ array: arrayProperty, condition, dstProperty }, obj) {
             for (const parent of toArray(obj)) {
-                const array = getDeepValue(obj, arrayProperty);
+                const array = getDeepValue(parent, arrayProperty);
                 if (!array) {
                     continue;
                 }
@@ -124,6 +127,25 @@ const OBJECT_CONVERTERS = {
                 for (let e in array) {
                     e = array[e];
                     processCondition(condition, e) && r.push(e);
+                }
+                parent[dstProperty] = r;
+            }
+            return obj;
+        }
+    },
+
+    concat: {
+        init: async function ({ dstProperty, arrays }) {
+            arrays = toArray(arrays).map(a => validatePropertyConfig(a));
+            assert(arrays.length > 0);
+            validateString(dstProperty);
+            return { dstProperty, arrays };
+        },
+        convert: async function ({ arrays, dstProperty }, obj) {
+            for (const parent of toArray(obj)) {
+                let r = [];
+                for (const a in arrays) {
+                    r = r.concat(toArray(getDeepValue(parent, arrays[a])));
                 }
                 parent[dstProperty] = r;
             }
@@ -336,4 +358,11 @@ function string2object(string) {
 
 const PROP_CHILDREN = Symbol();
 
-module.exports = { init, convert };
+const addConverter = (name, init, convert) => {
+    validateString(name);
+    assert(typeof init, 'function');
+    assert(typeof convert, 'function');
+    OBJECT_CONVERTERS[name] = { init, convert };
+};
+
+module.exports = { init, convert, addConverter };

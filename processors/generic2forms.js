@@ -136,6 +136,13 @@ module.exports = {
 
         const getForms = await getEager(FORM_FINDERS, getDstForms.getter).create.call(this, getDstForms);
 
+        const changedForms = {};
+
+        const addChanged = ({ Form }, Created) => {
+            const { FormID, Number } = Form;
+            changedForms[FormID] || (changedForms[FormID] = { FormID, Number, Created });
+        };
+
         for (const sourceObject of toArray(data)) {
 
             if (condition && !processCondition(condition, sourceObject)) {
@@ -165,10 +172,9 @@ module.exports = {
 
             const forms = toArray(await getForms(sourceObject));
             forms.length < 1 && getDstForms.create && later.push(async () => {
-                const form = await tweakArchived.call(api,
-                    await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent),
-                    formProperties
-                );
+                let form = await api.createForm(dstProcess, blindFormPatch, formProperties, fireWebEvent);
+                addChanged(form, true);
+                form = await tweakArchived.call(api, form, formProperties);
                 if (blindFormErrors.length < 1) {
                     return;
                 }
@@ -214,6 +220,7 @@ module.exports = {
                     if (formPatch.length < 1 && isEmpty(formProperties)) {
                         return;
                     }
+                    let created;
                     if (FormID) {
                         form = await api.editForm(FormID, formPatch, formProperties, fireWebEvent);
                     } else {
@@ -226,9 +233,11 @@ module.exports = {
                             if (getDstForms.create) {
                                 formProperties.Number = Number;
                                 form = await api.createForm(dstProcess, formPatch, formProperties, fireWebEvent);
+                                created = true;
                             }
                         }
                     }
+                    addChanged(form, created);
                     form = await tweakArchived.call(api, form, formProperties);
                     if (!form || formErrors.length < 1) {
                         return;
@@ -243,7 +252,8 @@ module.exports = {
             }
         }
         later.forEach(run => promises.push(api.parallelRunner(run)));
-        return Promise.all(promises);
+        await Promise.all(promises);
+        return Object.values(changedForms);
     }
 
 };

@@ -778,7 +778,7 @@ exports.fetch2json = async response => {
     const result = await response.text();
     if (ok) {
         try {
-            return JSON.parse(result);
+            return result ? JSON.parse(result) : undefined;
         } catch (e) {
             console.error(result);
             throw e;
