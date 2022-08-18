@@ -180,20 +180,55 @@ const OBJECT_CONVERTERS = {
 
 
     valueMap: {
-        init: function ({ property, keyProperty, dstProperty, valueMap }) {
-            validateString(dstProperty);
-            keyProperty = validatePropertyConfig(keyProperty || property);
-            assert.strictEqual(typeof valueMap, 'object');
-            assert(!isEmpty(valueMap));
-            return { keyProperty, dstProperty, valueMap };
+        init: function (conf) {
+
+            const initSingle = (dstProperty, { property, keyProperty, valueMap, propertyMap }) => {
+                validateString(dstProperty);
+                keyProperty = validatePropertyConfig(keyProperty || property);
+                valueMap && !isEmpty(valueMap) || (valueMap = undefined);
+                if (propertyMap || (propertyMap = undefined)) {
+                    assert.strictEqual(typeof propertyMap, 'object');
+                    const resultMap = {};
+                    for (const k in propertyMap) {
+                        resultMap[k] = validatePropertyConfig(propertyMap[k]);
+                    }
+                    propertyMap = resultMap;
+                }
+                valueMap || assert(propertyMap);
+                return { keyProperty, dstProperty, valueMap, propertyMap };
+            }
+            
+            const { dstProperties, dstProperty } = conf;
+            const result = [];
+            if (dstProperties) {
+                for (const dstProperty in dstProperties) {
+                    result.push(initSingle(dstProperty, dstProperties[dstProperty]));
+                }
+            } else {
+                result.push(initSingle(dstProperty, conf));
+            }
+            return { dstProperties: result };
+
         },
-        convert: function ({ keyProperty, dstProperty, valueMap }, obj) {
+
+        convert: function ({ dstProperties }, obj) {
             for (const e of toArray(obj)) {
-                e[dstProperty] = valueMap[e[keyProperty]];
+                for (const { keyProperty, dstProperty, valueMap, propertyMap } of dstProperties) {
+                    const k = e[keyProperty];
+                    let value;
+                    if (valueMap) {
+                        value = valueMap[k];
+                    } else {
+                        const p = propertyMap[k];
+                        p === undefined || (value = getDeepValue(e, p));
+                    }
+                    e[dstProperty] = value;
+                }
             }
             return obj;
         }
     },
+
 
     extractChildren: {
         init: function ({ properties, dstProperty, array }) {

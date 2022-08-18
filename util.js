@@ -141,6 +141,7 @@ Statistics.prototype.hasChanges = function () {
 exports.ChangeStatistics = Statistics;
 
 const isEmpty = object => {
+    assert.strictEqual(typeof object, 'object');
     if (Array.isArray(object)) {
         return object.length < 1;
     }
