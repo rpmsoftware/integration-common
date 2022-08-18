@@ -180,16 +180,16 @@ const OBJECT_CONVERTERS = {
 
 
     valueMap: {
-        init: function ({ property, dstProperty, valueMap }) {
+        init: function ({ property, keyProperty, dstProperty, valueMap }) {
             validateString(dstProperty);
-            validateString(property);
+            keyProperty = validatePropertyConfig(keyProperty || property);
             assert.strictEqual(typeof valueMap, 'object');
             assert(!isEmpty(valueMap));
-            return { property, dstProperty, valueMap };
+            return { keyProperty, dstProperty, valueMap };
         },
-        convert: function ({ property, dstProperty, valueMap }, obj) {
+        convert: function ({ keyProperty, dstProperty, valueMap }, obj) {
             for (const e of toArray(obj)) {
-                e[dstProperty] = valueMap[e[property]];
+                e[dstProperty] = valueMap[e[keyProperty]];
             }
             return obj;
         }
@@ -253,12 +253,12 @@ const OBJECT_CONVERTERS = {
     },
 
     group: {
-        init: function ({ group, children, condition }) {
+        init: function ({ group, children }) {
             validateString(children);
             group = toArray(group);
             assert(group.length > 0);
             group.forEach(validateString);
-            return { group, children, condition };
+            return { group, children };
         },
 
         convert: function ({ group, children }, data) {
