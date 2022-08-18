@@ -603,14 +603,10 @@ add('List', function (config, data) {
 }, async function ({ demand, defaultValue }, rpmField) {
     demand = toBoolean(demand) || undefined;
     let { Options: options } = rpmField;
-    if (demand) {
-        assert(options);
-        options = options
-            .filter(({ IsHidden, IsLabel }) => !IsHidden && !IsLabel)
-            .map(({ Text, ID }) => ({ Text, ID }));
-    } else {
-        options = [];
-    }
+    assert(options);
+    options = options
+        .filter(({ IsHidden, IsLabel }) => !IsHidden && !IsLabel)
+        .map(({ Text, ID }) => ({ Text, ID }));
     return { options, demand, defaultValue };
 });
 
