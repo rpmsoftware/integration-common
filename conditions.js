@@ -159,6 +159,14 @@ const OPERATORS = {
             return !isNaN(value1) && value1 === value2;
         }
     },
+    equalBooleans: {
+        init: init2,
+        process: function (form) {
+            const { operand1, operand2 } = this;
+            form = form.Form || form;
+            return toBoolean(getOperandValue(operand1, form)) === toBoolean(getOperandValue(operand2, form));
+        }
+    },
     equalDates: {
         init: init2,
         process: function (form) {
