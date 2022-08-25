@@ -1,6 +1,6 @@
 const assert = require('assert');
 const {
-    getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue, toMoment
+    getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue, toMoment, validatePropertyConfig
 } = require('./util');
 const {
     getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT
@@ -216,7 +216,27 @@ const OPERATORS = {
             return regexp.test(value + '');
         }
 
+    },
+
+    all: {
+        init: function ({ collection, condition }) {
+            collection = validatePropertyConfig(collection);
+            condition = init.call(this, condition);
+            return { collection, condition };
+        },
+        process: function (data) {
+            let { collection, condition } = this;
+            collection = getDeepValue(data, collection);
+            assert(typeof Array.isArray(collection));
+            for (let e in collection) {
+                if (!process(condition, collection[e])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
+
 
 };
 

@@ -138,7 +138,7 @@ const COMMON_GETTERS = {
         get: async function ({ fieldPath, targetField }, form) {
             form = form.Form || form;
             for (let f of fieldPath) {
-                form = toSimpleField(getFieldByUid.call(form, f.uid, true)).ID;
+                form = toSimpleField(getFieldByUid.call(form, f, true)).ID;
                 if (!form) {
                     return;
                 }
@@ -153,7 +153,7 @@ const COMMON_GETTERS = {
             for (let f of fieldPathIn) {
                 f = getField.call(rpmFields, validateString(f), true);
                 validateProcessReference(f);
-                fieldPath.push({ name: f.Name, uid: f.Uid });
+                fieldPath.push(f.Uid);
                 rpmFields = await this.api.getFields(f.ProcessID);
             }
             targetField = await init.call(this, targetField, rpmFields);
@@ -265,6 +265,19 @@ const COMMON_GETTERS = {
             return resultConfig;
         }
     },
+    statusID: {
+        get: async function ({ status }) {
+            return status;
+        },
+
+        init: async function ({ process, status }) {
+            const { api } = this;
+            process = (await api.getProcesses()).getActiveProcess(process, true);
+            status = (await process.getFields()).getStatus(status, true).ID;
+            return { status };
+        }
+    },
+
 };
 
 
