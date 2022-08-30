@@ -434,19 +434,31 @@ add('FieldTable',
             return;
         }
         assert.strictEqual(typeof data, 'object', 'Object is expected');
-        const existingRows = form ? getField.call(form.Form || form, dstField, true)
+        let existingRows = form ? getField.call(form.Form || form, dstField, true)
             .Rows.filter(r => !r.IsDefinition && !r.IsLabelRow) : [];
-
         let getExistingRow;
         if (!srcKeyProperty) {
             getExistingRow = () => existingRows.shift();
         } else if (dstKeyField) {
+            const prop = dstKeyField.IsReference ? 'ID' : 'Value';
+            const existingKeyed = {};
             getExistingRow = srcKeyValue => {
-                const idx = existingRows.findIndex(existingRow => {
-                    const key = getFieldByUid.call(existingRow, dstKeyField.Uid, true).Values[0];
-                    return key && srcKeyValue === (dstKeyField.IsReference ? key.ID : key.Value);
-                });
-                return idx < 0 ? undefined : existingRows.splice(idx, 1)[0];
+                if (isEmptyValue(srcKeyValue)) {
+                    return;
+                }
+                let a = existingKeyed[srcKeyValue];
+                if (!a) {
+                    a = existingKeyed[srcKeyValue] = [];
+                    existingRows = existingRows.filter(r => {
+                        const key = getFieldByUid.call(r, dstKeyField.Uid, true).Values[0];
+                        if (key && srcKeyValue === key[prop]) {
+                            a.push(r);
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+                return a.shift();
             }
         } else {
             getExistingRow = rowID => {
@@ -463,7 +475,6 @@ add('FieldTable',
         let errors = [];
         let rownum = 0;
 
-        const later = {};
 
         const createDstRow = async (srcRow, existingRow) => {
             const Fields = [];
@@ -483,31 +494,39 @@ add('FieldTable',
             return { RowID: existingRow && existingRow.RowID || 0, Fields };
         }
 
+        const later = {};
         for (let k in data) {
             const srcRow = data[k];
             srcKeyProperty && (k = demandDeepValue(srcRow, srcKeyProperty));
             const existingRow = getExistingRow(k);
-            existingRow ? Rows.push(await createDstRow(srcRow, existingRow)) : (createRows && (later[k] = srcRow));
+            if (existingRow) {
+                Rows.push(await createDstRow(srcRow, existingRow))
+            } else if (createRows) {
+                const a = later[k] || (later[k] = []);
+                a.push(srcRow);
+            }
         }
 
         for (const k in later) {
-            const row = await createDstRow(later[k], existingRows.shift());
-            Rows.push(row);
-            const { Fields } = row;
-            if (!dstKeyField || Fields.find(({ Uid }) => Uid === dstKeyField.Uid)) {
-                continue;
+            let keyFieldPatch;
+            if (dstKeyField) {
+                keyFieldPatch = {};
+                if (dstKeyField.IsReference) {
+                    keyFieldPatch.ID = normalizeInteger(k);
+                } else {
+                    keyFieldPatch.Value = k;
+                }
+                keyFieldPatch = { Values: [keyFieldPatch], Uid: dstKeyField.Uid };
             }
-            const v = {};
-            if (dstKeyField.IsReference) {
-                v.ID = normalizeInteger(k);
-            } else {
-                v.Value = k;
+            for (let srcRow of later[k]) {
+                const row = await createDstRow(srcRow, existingRows.shift());
+                Rows.push(row);
+                const { Fields } = row;
+                dstKeyField && !Fields.find(({ Uid }) => Uid === dstKeyField.Uid) && Fields.push(keyFieldPatch);
             }
-            Fields.push({ Values: [v], Uid: dstKeyField.Uid });
         }
 
         if (srcKeyProperty) {
-            // Rows = Rows.concat(existingRows);
             Rows = Rows.concat(existingRows.map(({ RowID }) => ({ RowID, Fields: [] })));
         }
 

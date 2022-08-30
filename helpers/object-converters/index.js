@@ -197,7 +197,7 @@ const OBJECT_CONVERTERS = {
                 valueMap || assert(propertyMap);
                 return { keyProperty, dstProperty, valueMap, propertyMap };
             }
-            
+
             const { dstProperties, dstProperty } = conf;
             const result = [];
             if (dstProperties) {
@@ -288,17 +288,58 @@ const OBJECT_CONVERTERS = {
     },
 
     group: {
-        init: function ({ group, children }) {
+        init: function ({ group, children, array }) {
             validateString(children);
             group = toArray(group);
             assert(group.length > 0);
             group.forEach(validateString);
-            return { group, children };
+            array = array ? validateString(array) : undefined;
+            return { group, children, array };
         },
 
-        convert: function ({ group, children }, data) {
+        convert: function ({ group, children, array }, data) {
+            if (array) {
+                toArray(data).forEach(e => {
+                    const a = e[array];
+                    if (!array) {
+                        return;
+                    }
+                    assert(Array.isArray(a));
+                    e[array] = a.group(children, group)
+                });
+                return data;
+            }
             assert(Array.isArray(data));
             return data.group(children, group);
+        }
+    },
+
+    concatenate: {
+        init: function ({ arrays, dstProperty, deleteSources }) {
+            validateString(dstProperty);
+            deleteSources = toBoolean(deleteSources);
+            arrays = toArray(arrays);
+            assert(arrays.length > 0);
+            arrays.forEach(validateString);
+            return { arrays, dstProperty, deleteSources };
+        },
+
+        convert: function ({ arrays, dstProperty, deleteSources }, data) {
+            toArray(data).forEach(e => {
+                let result = [];
+                arrays.forEach(prop => {
+                    let a = e[prop];
+                    if (a === undefined) {
+                        return;
+                    }
+                    result = result.concat(a);
+                    if (deleteSources) {
+                        delete e[prop];
+                    }
+                })
+                e[dstProperty] = result;
+            });
+            return data;
         }
     },
 
