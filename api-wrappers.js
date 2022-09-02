@@ -338,6 +338,22 @@ ENTITY_GETTERS[ObjectType.Rep] = {
         return this.getReps();
     }
 };
+ENTITY_GETTERS[ObjectType.StaffGroup] = {
+    demand: async function (nameOrID) {
+        const t = typeof nameOrID;
+        let prop;
+        if (t === 'number') {
+            prop = 'ID';
+        } else {
+            assert.strictEqual(t, 'string');
+            prop = 'Group';
+        }
+        return (await this.getStaffGroups()).Groups.demand(e => e[prop] === nameOrID);
+    },
+    getEntities: async function () {
+        return (await this.getStaffGroups()).Groups;
+    }
+};
 
 function getProcess(obj) {
     return (obj || this).process;
@@ -774,6 +790,7 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
     properties.Form.Fields = Array.isArray(fields) ? fields :
         Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
     if (fireWebEvent) {
+        assert.strictEqual(typeof fireWebEvent, 'boolean');
         properties.WebhookEvaluate = true;
     }
     return this.request('ProcFormAdd', properties).then(form => this._extendForm(form));

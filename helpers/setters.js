@@ -629,6 +629,23 @@ add('List', function (config, data) {
     return { options, demand, defaultValue };
 });
 
+add('ListMultiSelect', function (config, data) {
+    const { srcField, defaultValue, isTableField } = config;
+    assert(!isTableField);
+    let value = getDeepValue(data, srcField);
+    isEmptyValue(value) && (value = defaultValue);
+    Array.isArray(value) && (value = value.join(','));
+    return isEmptyValue(value) ? EMPTY : value;
+}, async function ({ demand, defaultValue }, rpmField) {
+    demand = toBoolean(demand) || undefined;
+    let { Options: options } = rpmField;
+    assert(options);
+    options = options
+        .filter(({ IsHidden, IsLabel }) => !IsHidden && !IsLabel)
+        .map(({ Text, ID }) => ({ Text, ID }));
+    return { defaultValue, options, demand };
+});
+
 fieldType = ObjectType.FormReference;
 subTypes = ObjectType;
 

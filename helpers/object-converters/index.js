@@ -5,7 +5,6 @@ const { ObjectType } = require('../../api-enums');
 const { isEmptyValue } = require('../common');
 
 const DEFAULT_CONVERTER = 'getter';
-const PROP_PARENT = '_parent';
 
 async function init(conf) {
     const result = [];
@@ -166,12 +165,7 @@ const OBJECT_CONVERTERS = {
                     continue;
                 }
                 for (const key in array) {
-                    const element = array[key];
-                    if (typeof element !== 'object') {
-                        continue;
-                    }
-                    element[PROP_PARENT] || Object.defineProperty(element, PROP_PARENT, { value: parent });
-                    await convert.call(this, convertConf, element);
+                    array[key] = await convert.call(this, convertConf, array[key]);
                 }
             }
             return obj;
@@ -414,7 +408,31 @@ const OBJECT_CONVERTERS = {
             });
             return result;
         }
-    }
+    },
+
+    wrap: {
+        init: function ({ dstProperty, srcProperties }) {
+            validateString(dstProperty);
+            srcProperties = toArray(srcProperties).map(validateString);
+            srcProperties.length > 0 || (srcProperties = undefined);
+            return { srcProperties, dstProperty };
+        },
+
+        convert: function ({ srcProperties, dstProperty }, data) {
+            const result = toArray(data).map(e => {
+                const result = {};
+                if (srcProperties) {
+                    const part = {};
+                    srcProperties.forEach(sp => part[sp] = e[sp]);
+                    e = part;
+                }
+                result[dstProperty] = e;
+                return result;
+            });
+            return Array.isArray(data) ? result : result[0];
+        }
+    },
+
 };
 
 function string2object(string) {
