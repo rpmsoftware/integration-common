@@ -23,25 +23,27 @@ module.exports = function (api) {
     const cache = new Cache();
 
     cache.clearFormRelated = function (result, clearDemand) {
-        const { Form } = result;
-        let getter = 'demandForm';
+        let { ProcessID, Process, Form, Trashed } = result;
+        Trashed = !!Trashed;
+        const { FormID, Number, AlternateID } = Form;
+        let getter = '_demandForm';
         if (clearDemand) {
             this.clear(getter, Form.FormID);
-            Form.AlternateID && this.clear(getter, Form.AlternateID);
-            this.clear(getter, [result.ProcessID, Form.Number]);
-            this.clear(getter, [result.Process, Form.Number]);
+            AlternateID && this.clear(getter, AlternateID);
+            this.clear(getter, [ProcessID, Number]);
+            this.clear(getter, [Process, Number]);
         } else {
-            this.put(getter, Form.FormID, result);
-            Form.AlternateID && this.put(getter, Form.AlternateID, result);
-            this.put(getter, [result.ProcessID, Form.Number], result);
-            this.put(getter, [result.Process, Form.Number], result);
+            this.put(getter, [FormID, undefined, Trashed], result);
+            AlternateID && this.put(getter, [AlternateID, undefined, Trashed], result);
+            this.put(getter, [ProcessID, Number, Trashed], result);
+            this.put(getter, [Process, Number, Trashed], result);
         }
         getter = 'getForms';
-        this.clear(getter, result.ProcessID);
-        this.clear(getter, result.Process);
+        this.clear(getter, ProcessID);
+        this.clear(getter, Process);
         getter = 'getFormList';
-        this.clear(getter, result.ProcessID);
-        this.clear(getter, result.Process);
+        this.clear(getter, ProcessID);
+        this.clear(getter, Process);
         return result;
     };
 
@@ -84,7 +86,7 @@ module.exports = function (api) {
         'getUser',
         'getProcessSecurity',
         'getActionTypes',
-        'demandForm',
+        '_demandForm',
         'demandCustomer',
         'demandAgency',
         'demandAccount',
@@ -162,7 +164,7 @@ module.exports = function (api) {
     };
 
     const cleanAfterFormID = id => {
-        let getter = 'demandForm';
+        let getter = '_demandForm';
         const cached = cache.clear(getter, id)[0];
         if (cached) {
             cache.clearFormRelated(cached, true);
@@ -186,7 +188,7 @@ module.exports = function (api) {
             const result = await original.apply(this, arguments);
             cache.clear('getForms');
             cache.clear('getFormList');
-            cache.clear('demandForm');
+            cache.clear('_demandForm');
             return result;
         };
     });

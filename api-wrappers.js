@@ -662,12 +662,20 @@ API.prototype.getFormList = function (processID, viewID, refType) {
     return this.request('ProcFormList', request);
 };
 
+const PROP_TRASHED = 'Trashed';
+
 API.prototype.demandForm = function (processOrFormId, formNumber, AllowTrashed) {
-    AllowTrashed === undefined || assert.strictEqual(typeof AllowTrashed, 'boolean');
     if (typeof formNumber === 'boolean') {
         AllowTrashed = formNumber;
         formNumber = undefined;
     }
+    formNumber || (formNumber = undefined);
+    return this._demandForm(processOrFormId, formNumber, toBoolean(AllowTrashed));
+}
+
+API.prototype._demandForm = async function (processOrFormId, formNumber, AllowTrashed) {
+    assert.strictEqual(typeof AllowTrashed, 'boolean');
+    formNumber === undefined || assert.strictEqual(typeof formNumber, 'string');
     let Process, ProcessID, FormNumber, AlternateID, FormID;
     const type = typeof processOrFormId;
     if (formNumber === undefined) {
@@ -695,8 +703,10 @@ API.prototype.demandForm = function (processOrFormId, formNumber, AllowTrashed) 
             Process = processOrFormId;
         }
     }
-    return this.request('ProcForm', { FormID, ProcessID, Process, FormNumber, AlternateID, AllowTrashed })
+    const result = await this.request('ProcForm', { FormID, ProcessID, Process, FormNumber, AlternateID, AllowTrashed })
         .then(form => this._extendForm(form));
+    AllowTrashed && Object.defineProperty(result, PROP_TRASHED, { value: true });
+    return result;
 };
 
 API.prototype._extendForm = function (form) {
