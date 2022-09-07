@@ -33,6 +33,8 @@ async function convert(conf, obj) {
     return obj;
 }
 
+const PARENT_PROPERTY = '_parent';
+
 const OBJECT_CONVERTERS = {
 
     flatten: {
@@ -165,7 +167,9 @@ const OBJECT_CONVERTERS = {
                     continue;
                 }
                 for (const key in array) {
-                    array[key] = await convert.call(this, convertConf, array[key]);
+                    const e = array[key];
+                    Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
+                    array[key] = await convert.call(this, convertConf, e);
                 }
             }
             return obj;
