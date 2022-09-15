@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { validateString, toArray, getEager, isEmpty, demandDeepValue, toBoolean, getDeepValue } = require('../util');
+const { validateString, toArray, getEager, isEmpty, demandDeepValue, toBoolean, getDeepValue, validatePropertyConfig } = require('../util');
 const { DEFAULT_ACCESSOR_NAME, getFullType, isEmptyValue } = require('./common');
 const { toSimpleField } = require('../api-wrappers');
 const { init: initView, getForms: getViewForms } = require('./views');
@@ -36,9 +36,7 @@ const COMMON_GETTERS = {
             }
         },
         init: function ({ property, condition, demand }, field, fields) {
-            property = toArray(property);
-            assert(property.length > 0);
-            property.forEach(assert);
+            property = validatePropertyConfig(property);
             demand = toBoolean(demand) || undefined;
             condition = condition ? initCondition.call(fields, condition) : undefined;
             return {

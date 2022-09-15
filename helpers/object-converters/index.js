@@ -16,7 +16,7 @@ async function init(conf) {
         name || (name = DEFAULT_CONVERTER);
         const { init } = OBJECT_CONVERTERS[name] || require('./' + name);
         c = init ? await init.call(this, c) : {};
-        c.name = name;
+        c.name || (c.name = name);
         result.push(c);
     }
     return result;
