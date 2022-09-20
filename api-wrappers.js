@@ -1657,5 +1657,5 @@ exports.toSimpleField = function (field) {
     return field;
 };
 
-exports.getFieldEssentials = ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType }) =>
-    ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType });
+exports.getFieldEssentials = ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType, Options }) =>
+    ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType, Options });
