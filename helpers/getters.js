@@ -146,6 +146,7 @@ const COMMON_GETTERS = {
             return get.call(this, targetField, form);
         },
         init: async function ({ fieldPath: fieldPathIn, srcField }, rpmField, rpmFields) {
+            srcField || (srcField = fieldPathIn[0]);
             let targetField = fieldPathIn.pop();
             const fieldPath = [];
             for (let f of fieldPathIn) {
@@ -155,7 +156,6 @@ const COMMON_GETTERS = {
                 rpmFields = await this.api.getFields(f.ProcessID);
             }
             targetField = await init.call(this, targetField, rpmFields);
-            srcField || (srcField = fieldPath[0].name);
             return { fieldPath, targetField, srcField };
         }
     },
