@@ -1,4 +1,4 @@
-const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, getDeepValue, getEager } = require('../../util');
+const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, getDeepValue, getEager, throwError } = require('../../util');
 const { ObjectType } = require('../../api-enums');
 const assert = require('assert');
 
@@ -21,11 +21,15 @@ OBJECT_UPDATERS[ObjectType.AgentCompany] = {
 };
 
 module.exports = {
-    init: async function ({ type, create, idProperty, nameProperty, dstProperty, fieldMap: inFieldMap, propertyMap: inPropertyMap }) {
+    init: async function ({
+        type, create, idProperty, nameProperty, dstProperty, fieldMap: inFieldMap, propertyMap: inPropertyMap, verify, errProperty
+    }) {
         typeof type === 'string' && (type = getEager(ObjectType, type));
         getEager(OBJECT_UPDATERS, type);
         validateString(dstProperty);
+        errProperty = errProperty ? validateString(errProperty) : undefined;
         create = toBoolean(create) || undefined;
+        verify = toBoolean(verify) || undefined;
         idProperty = idProperty ? validatePropertyConfig(idProperty) : undefined;
         nameProperty = nameProperty ? validatePropertyConfig(nameProperty) : undefined;
         idProperty === undefined && assert(nameProperty);
@@ -42,9 +46,11 @@ module.exports = {
             }
         }
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap };
+        return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, errProperty, verify };
     },
-    convert: async function ({ type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap }, obj) {
+    convert: async function ({
+        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty
+    }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
         for (const e of toArray(obj)) {
@@ -53,10 +59,10 @@ module.exports = {
             if (!id && !name) {
                 continue;
             }
-            const fields = [];
+            const fieldPatch = [];
             for (const Field in fieldMap) {
                 const Value = await getDeepValue(e, fieldMap[Field]);
-                Value === undefined || fields.push({ Field, Value });
+                Value === undefined || fieldPatch.push({ Field, Value });
             }
             const props = {};
             name && (props.Name = name);
@@ -64,23 +70,40 @@ module.exports = {
                 const v = getDeepValue(e, propertyMap[k]);
                 v === undefined || (props[k] = v);
             }
-            if (isEmpty(fields)) {
+            if (isEmpty(fieldPatch)) {
                 delete propertyMap.Fields;
             } else {
-                props.Fields = fields;
+                props.Fields = fieldPatch;
             }
-            let be = id && await api.getEntity(type,id);
-            be || (be = name && await api.getEntity(name));
-            if (be) {
-                name && be.Name !== name && (props.Name = name);
-                isEmpty(props) || (be = await editEntity.call(api, be.EntityID, props));
+            let beforeUpdate = id && await api.getEntity(type, id);
+            beforeUpdate || (beforeUpdate = name && await api.getEntity(name));
+            let afterUpdate;
+            if (beforeUpdate) {
+                name && beforeUpdate.Name !== name && (props.Name = name);
+                isEmpty(props) || (afterUpdate = await editEntity.call(api, beforeUpdate.EntityID, props));
             } else if (create) {
                 assert(name);
                 props.Name = name;
-                be = await createEntity.call(api, props);
+                afterUpdate = await createEntity.call(api, props);
             }
-            e[dstProperty] = be;
+            if (verify && afterUpdate) {
+                const { Fields: fieldsAfter } = afterUpdate;
+                assert(fieldsAfter);
+                let errors = [];
+                for (const { Field, Value } of fieldPatch) {
+                    const { Value: Result } = fieldsAfter.demand(({ Field: fieldName }) => fieldName === Field);
+                    Result === Value || errors.push({ Field, Value, Result });
+                }
+                errors.length > 0 || (errors = undefined);
+                if (!errProperty && errors) {
+                    throwError(`Field(s) didn't update: ${JSON.stringify(errors)}`, FIELD_UPDATE_ERROR, errors);
+                }
+                e[errProperty] = errors;
+            }
+            e[dstProperty] = afterUpdate;
         }
         return obj;
     }
 };
+
+const FIELD_UPDATE_ERROR = 'FieldUpdateError';

@@ -496,7 +496,7 @@ API.prototype.getRoles = function () {
 };
 
 API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields, properties, control) {
-    if (formNumberOrID === undefined || typeof formNumberOrID === 'object') {
+    if (typeof formNumberOrID === 'object') {
         control = properties;
         properties = fields;
         fields = formNumberOrID;
@@ -1198,9 +1198,7 @@ function extractContact(object) {
 API.prototype.demandAgency = async function (nameOrID) {
     const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
-    const agency = await this.request('Agency', request);
-    agency.Reps.forEach(rep => setParent(rep, agency));
-    return Object.setPrototypeOf(extractContact(this.tweakDates(agency)), AGENCY_PROTO);
+    return this.request('Agency', request).then(a => this._normalizeAgency(a));
 };
 
 API.prototype.getAgency = async function (nameOrID, demand) {
@@ -1213,12 +1211,20 @@ API.prototype.getAgency = async function (nameOrID, demand) {
     }
 };
 
+API.prototype._normalizeAgency = function (agency) {
+    agency = extractContact(this.tweakDates(agency));
+    const { StaffAssignment, Reps } = agency;
+    StaffAssignment && StaffAssignment.forEach(sa => sa.StaffID || (sa.Name = ''));
+    Reps && Reps.forEach(rep => setParent(rep, agency));
+    return Object.setPrototypeOf(agency, AGENCY_PROTO);
+};
+
 API.prototype.createAgency = function (data, fireWebEvent) {
     if (typeof data !== 'object') {
         data = { Agency: data };
     }
     return this.request('AgencyAdd', { Agency: data, WebhookEvaluate: !!fireWebEvent })
-        .then(a => Object.setPrototypeOf(extractContact(this.tweakDates(a)), AGENCY_PROTO));
+        .then(a => this._normalizeAgency(a));
 };
 
 API.prototype.editAgency = function (id, data, fireWebEvent) {
@@ -1237,7 +1243,7 @@ API.prototype.editAgency = function (id, data, fireWebEvent) {
         }
     }
     return this.request('AgencyEdit', { Agency: data, WebhookEvaluate: !!fireWebEvent })
-        .then(a => Object.setPrototypeOf(extractContact(this.tweakDates(a)), AGENCY_PROTO));
+        .then(a => this._normalizeAgency(a));
 };
 
 API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
