@@ -1,5 +1,13 @@
 const { validateString, toArray, validatePropertyConfig, getDeepValue } = require('../../util');
-const { ObjectType } = require('../../api-enums');
+
+const getStaffList = async function () {
+    let [staffList, staffGroups] = await Promise.all([this.getStaffList(), this.getStaffGroups()]);
+    staffGroups = staffGroups.Groups;
+    staffList.StaffList.forEach(({ Groups }) => Groups.forEach(g =>
+        g.Group = staffGroups.demand(({ ID }) => ID === g.ID).Group)
+    );
+    return staffList;
+};
 
 module.exports = {
     init: async function ({ dstProperty, groups }) {
@@ -9,24 +17,17 @@ module.exports = {
     },
 
     convert: async function ({ dstProperty, groups: groupsCfg }, data) {
-        const stubs = await this.api.getEntities(ObjectType.Staff);
-        let staffGroups;
+        const { StaffList } = await getStaffList.call(this.api);
         for (const e of toArray(data)) {
-            let groups = toArray(getDeepValue(e, groupsCfg));
-            let ids;
-            if (groups.length > 0) {
-                ids = {};
-                staffGroups || (staffGroups = await this.api.getEntities(ObjectType.StaffGroup));
-                toArray(groups).forEach(nameOrID => {
-                    if (!nameOrID) {
-                        return;
-                    }
-                    const prop = typeof nameOrID === 'number' ? 'ID' : 'Group';
-                    const g = staffGroups.find(g => g[prop] === nameOrID);
-                    g && (ids[g.ID] = true);
-                });
+            let result = StaffList;
+            let groups = getDeepValue(e, groupsCfg);
+            if (groups) {
+                groups = toArray(groups);
+                result = result.filter(({ Groups }) => Groups.find(({ Group, ID }) =>
+                    groups.find(nameOrID => nameOrID === Group || nameOrID === ID)
+                ));
             }
-            e[dstProperty] = ids ? stubs.filter(({ Groups }) => Groups.find(({ ID }) => ids[ID])) : stubs;
+            e[dstProperty] = result;
         }
         return data;
     }

@@ -54,9 +54,9 @@ const OBJECT_CONVERTERS = {
                 }
                 assert.strictEqual(typeof a, 'object');
                 for (let k in a) {
-                    const child = a[k];
+                    let child = a[k];
                     assert.strictEqual(typeof child, 'object');
-                    Object.assign(child, parent);
+                    child = Object.assign({}, child, parent);
                     delete child[firstProperty];
                     result.push(child);
                 }
@@ -113,7 +113,7 @@ const OBJECT_CONVERTERS = {
 
     filterArray: {
         init: async function ({ condition, dstProperty, array }) {
-            assert(array);
+            validatePropertyConfig(array);
             validateString(dstProperty);
             condition = initCondition(condition);
             return { condition, dstProperty, array };
@@ -130,6 +130,31 @@ const OBJECT_CONVERTERS = {
                     processCondition(condition, e) && r.push(e);
                 }
                 parent[dstProperty] = r;
+            }
+            return obj;
+        }
+    },
+
+    mapArray: {
+        init: async function ({ property, dstProperty, array }) {
+            array = validatePropertyConfig(array);
+            dstProperty = validateString(dstProperty);
+            // Single property for now. Add fieldMap when needed
+            property = validatePropertyConfig(property);
+            return { property, dstProperty, array };
+        },
+        convert: async function ({ array: arrayProperty, property, dstProperty }, obj) {
+            for (const parent of toArray(obj)) {
+                const array = getDeepValue(parent, arrayProperty);
+                if (!array) {
+                    continue;
+                }
+                const result = [];
+                for (let e in array) {
+                    e = array[e];
+                    result.push(getDeepValue(e, property));
+                }
+                parent[dstProperty] = result;
             }
             return obj;
         }
