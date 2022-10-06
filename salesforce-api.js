@@ -3,6 +3,10 @@ const fetch = require('node-fetch');
 const assert = require('assert');
 const debug = require('debug')('rpm:salesforce');
 
+const REGEX_WHITESPACE = /\s+/g;
+const PLUS = '+';
+const BASE_PATH = '/services/data/v55.0/';
+
 class SalesForceAPI {
     static async create({ userName, password, clientID, clientSecret, securityToken, dryRun }) {
         validateString(userName);
@@ -24,30 +28,41 @@ class SalesForceAPI {
     }
 
     constructor(instanceUrl, accessToken, dryRun) {
-        this.instanceUrl = validateString(instanceUrl) + '/services/data/v55.0/';
+        validateString(instanceUrl);
+        this.instanceUrl = instanceUrl;
         this.headers = { Authorization: 'Bearer ' + validateString(accessToken), 'Content-Type': 'application/json' };
         this.dryRun = toBoolean(dryRun) || undefined;
     }
 
-    _get(path) {
-        let { headers, instanceUrl } = this;
-        if (path) {
-            assert(!path.startsWith('/'));
-            instanceUrl += path;
-        }
-        return fetch(instanceUrl, { headers }).then(fetch2json);
-    }
-
     getResources() {
-        return this._get();
+        return this._request();
     }
 
-    getObjects() {
-        return this._get('sobjects');
+    getSObjects() {
+        return this._request('sobjects');
     }
 
     getSObject(sObject, id) {
+        validateString(sObject);
+        validateString(id);
         return this._request(`sobjects/${sObject}/${id}`);
+    }
+
+    describe(sObject) {
+        validateString(sObject);
+        return this._request(`sobjects/${sObject}/describe`);
+    }
+
+    async query(query) {
+        validateString(query);
+        query = query.trim().replace(REGEX_WHITESPACE, PLUS);
+        let { nextRecordsUrl, records } = await this._request(`query?q=${query}`);
+        while (nextRecordsUrl) {
+            const response = await this._requestAbsolute(nextRecordsUrl);
+            records = records.concat(response.records);
+            nextRecordsUrl = response.nextRecordsUrl
+        }
+        return records;
     }
 
     updateSObject(sObject, id, data) {
@@ -58,17 +73,20 @@ class SalesForceAPI {
     }
 
     _request(path, method, body) {
+        path ? assert(!path.startsWith('/')) : (path = '');
+        return this._requestAbsolute(BASE_PATH + path, method, body);
+    }
+
+    _requestAbsolute(path, method, body) {
         method || (method = undefined);
         body = body ? JSON.stringify(body) : undefined;
         let { headers, instanceUrl: url } = this;
-        if (path) {
-            assert(!path.startsWith('/'));
-            url += path;
-        }
+        validateString(path);
+        assert(path.startsWith('/'));
+        url += path;
         debug('%s %s\n%s', method || 'GET', url, body || '');
         return fetch(url, { method, headers, body }).then(fetch2json);
     }
-
 }
 
 module.exports = SalesForceAPI;

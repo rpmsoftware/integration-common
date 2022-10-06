@@ -19,6 +19,14 @@ OBJECT_UPDATERS[ObjectType.AgentCompany] = {
         return this.createAgency(props);
     }
 };
+OBJECT_UPDATERS[ObjectType.Supplier] = {
+    edit: function (id, props) {
+        return this.editSupplier(id, props);
+    },
+    create: function (props) {
+        return this.createSupplier(props);
+    }
+};
 
 module.exports = {
     init: async function ({
@@ -85,6 +93,7 @@ module.exports = {
                 assert(name);
                 props.Name = name;
                 afterUpdate = await createEntity.call(api, props);
+                afterUpdate._created = true;
             }
             if (verify && afterUpdate) {
                 const { Fields: fieldsAfter } = afterUpdate;

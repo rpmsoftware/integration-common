@@ -217,6 +217,21 @@ module.exports = function (api) {
         };
     });
 
+    ['createSupplier', 'editSupplier'].forEach(prop => {
+        const original = api[prop];
+        api[prop] = async function () {
+            const result = await original.apply(this, arguments);
+            let getter = 'getSupplier';
+            if (clearOnUpdate) {
+                cache.clear(getter, result.SupplierID);
+            } else {
+                cache.put(getter, result.SupplierID, result);
+            }
+            cache.clear('getSuppliers');
+            return result;
+        };
+    });
+
     [
         'addCustomerLocation',
         'editCustomerLocation',

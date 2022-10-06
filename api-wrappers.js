@@ -330,7 +330,7 @@ ENTITY_GETTERS[ObjectType.Supplier] = {
         return (await this.getSuppliers()).Suppliers;
     }
 };
-ENTITY_GETTERS[ObjectType.Rep] = {
+ENTITY_GETTERS[ObjectType.AgentRep] = {
     demand: function (id) {
         return this.getRep(id.RepID || id);
     },
@@ -1343,13 +1343,42 @@ API.prototype.createStaff = async function (contact, role, enabled) {
     }), STAFF_PROTO);
 };
 
+const SUPPLIER_PROTO = Object.defineProperties({
+    EntityType: ObjectType.Supplier,
+    RefType: ObjectType.Supplier,
+    IDProperty: 'SupplierID'
+}, {
+    EntityID: { get() { return this.SupplierID } },
+    RefName: { get() { return this.Name || this.Supplier } },
+});
+
+API.prototype._normalizeSupplier = function (supplier) {
+    return Object.setPrototypeOf(supplier, SUPPLIER_PROTO);
+};
+
 API.prototype.getSupplier = function (id) {
     if (this.validateParameters) {
         id = normalizeInteger(id);
     }
-    return this.request('Supplier', { SupplierID: id });
+    return this.request('Supplier', { SupplierID: id }).then(s => this._normalizeSupplier(s));
 };
 
+API.prototype.createSupplier = function (data) {
+    if (typeof data !== 'object') {
+        data = { Supplier: data };
+    }
+    assert.notStrictEqual(typeof data.Supplier, 'object');
+    return this.request('SupplierAdd', { Supplier: data }).then(s => this._normalizeSupplier(s));
+};
+
+API.prototype.editSupplier = function (id, data) {
+    if (typeof data !== 'object') {
+        data = { Supplier: data };
+    }
+    assert.notStrictEqual(typeof data.Supplier, 'object');
+    data.SupplierID = id;
+    return this.request('SupplierEdit', { Supplier: data }).then(s => this._normalizeSupplier(s));
+};
 
 API.prototype.createAccessValidator = async function (inConfig) {
     const config = {
