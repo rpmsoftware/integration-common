@@ -1,5 +1,6 @@
 const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, getDeepValue, getEager, throwError } = require('../../util');
 const { ObjectType } = require('../../api-enums');
+const { init: initCondition, process: processCondition } = require('../../conditions');
 const assert = require('assert');
 
 const OBJECT_UPDATERS = {};
@@ -30,7 +31,9 @@ OBJECT_UPDATERS[ObjectType.Supplier] = {
 
 module.exports = {
     init: async function ({
-        type, create, idProperty, nameProperty, dstProperty, fieldMap: inFieldMap, propertyMap: inPropertyMap, verify, errProperty
+        type, create, idProperty, nameProperty, dstProperty, fieldMap: inFieldMap,
+        propertyMap: inPropertyMap, verify, errProperty,
+        condition
     }) {
         typeof type === 'string' && (type = getEager(ObjectType, type));
         getEager(OBJECT_UPDATERS, type);
@@ -54,14 +57,18 @@ module.exports = {
             }
         }
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, errProperty, verify };
+        condition = condition ? initCondition(condition) : undefined;
+        return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, errProperty, verify, condition };
     },
     convert: async function ({
-        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty
+        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty, condition
     }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
         for (const e of toArray(obj)) {
+            if (condition && !processCondition(condition, e)) {
+                continue;
+            }
             const id = idProperty ? +getDeepValue(e, idProperty) : undefined;
             const name = nameProperty ? getDeepValue(e, nameProperty) : undefined;
             if (!id && !name) {
