@@ -80,7 +80,6 @@ module.exports = {
                 Value === undefined || fieldPatch.push({ Field, Value });
             }
             const props = {};
-            name && (props.Name = name);
             for (let k in propertyMap) {
                 const v = getDeepValue(e, propertyMap[k]);
                 v === undefined || (props[k] = v);
@@ -91,14 +90,11 @@ module.exports = {
                 props.Fields = fieldPatch;
             }
             let beforeUpdate = id && await api.getEntity(type, id);
-            beforeUpdate || (beforeUpdate = name && await api.getEntity(name));
+            beforeUpdate || (name && await api.getEntity(type, name));
             let afterUpdate;
             if (beforeUpdate) {
-                name && beforeUpdate.Name !== name && (props.Name = name);
                 isEmpty(props) || (afterUpdate = await editEntity.call(api, beforeUpdate.EntityID, props));
             } else if (create) {
-                assert(name);
-                props.Name = name;
                 afterUpdate = await createEntity.call(api, props);
                 afterUpdate._created = true;
             }
