@@ -1372,9 +1372,7 @@ API.prototype.createSupplier = function (data) {
 };
 
 API.prototype.editSupplier = function (id, data) {
-    if (typeof data !== 'object') {
-        data = { Supplier: data };
-    }
+    typeof data === 'object' ? Object.assign({}, data) : (data = { Supplier: data });
     assert.notStrictEqual(typeof data.Supplier, 'object');
     data.SupplierID = id;
     return this.request('SupplierEdit', { Supplier: data }).then(s => this._normalizeSupplier(s));
