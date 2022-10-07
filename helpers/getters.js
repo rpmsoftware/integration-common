@@ -714,10 +714,18 @@ async function get(conf, form) {
     return result === undefined ? conf.defaultValue : result;
 }
 
-async function initMultiple(config, fields) {
+async function initMultiple(config, fields, noGetterDefault) {
+    if (typeof fields === 'function') {
+        noGetterDefault = fields;
+        fields = undefined;
+    } else if (noGetterDefault) {
+        assert.strictEqual(typeof noGetterDefault, 'function');
+    }
     const resultConfig = {};
     for (const dstProp in config) {
-        resultConfig[dstProp] = await init.call(this, config[dstProp], fields);
+        const c = config[dstProp];
+        const { getter } = c;
+        resultConfig[dstProp] = await init.call(this, (!getter && noGetterDefault) ? noGetterDefault(c) : c, fields);
     }
     return resultConfig;
 }

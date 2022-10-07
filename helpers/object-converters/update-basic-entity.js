@@ -2,6 +2,7 @@ const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, get
 const { ObjectType } = require('../../api-enums');
 const { init: initCondition, process: processCondition } = require('../../conditions');
 const assert = require('assert');
+const { initMultiple, get: getValue } = require('../getters');
 
 const OBJECT_UPDATERS = {};
 OBJECT_UPDATERS[ObjectType.Customer] = {
@@ -31,9 +32,7 @@ OBJECT_UPDATERS[ObjectType.Supplier] = {
 
 module.exports = {
     init: async function ({
-        type, create, idProperty, nameProperty, dstProperty, fieldMap: inFieldMap,
-        propertyMap: inPropertyMap, verify, errProperty,
-        condition
+        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty, condition
     }) {
         typeof type === 'string' && (type = getEager(ObjectType, type));
         getEager(OBJECT_UPDATERS, type);
@@ -44,18 +43,11 @@ module.exports = {
         idProperty = idProperty ? validatePropertyConfig(idProperty) : undefined;
         nameProperty = nameProperty ? validatePropertyConfig(nameProperty) : undefined;
         idProperty === undefined && assert(nameProperty);
-        const propertyMap = {};
-        if (inPropertyMap) {
-            for (let k in inPropertyMap) {
-                propertyMap[k] = validatePropertyConfig(inPropertyMap[k]);
-            }
-        }
-        const fieldMap = {};
-        if (inFieldMap) {
-            for (let k in inFieldMap) {
-                fieldMap[k] = validatePropertyConfig(inFieldMap[k]);
-            }
-        }
+
+        const defaultNoGetterConverter = property => ({ getter: 'property', property, default: null });
+
+        propertyMap = await initMultiple.call(this, propertyMap || {}, defaultNoGetterConverter);
+        fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
         condition = condition ? initCondition(condition) : undefined;
         return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, errProperty, verify, condition };
@@ -76,12 +68,12 @@ module.exports = {
             }
             const fieldPatch = [];
             for (const Field in fieldMap) {
-                const Value = await getDeepValue(e, fieldMap[Field]);
+                const Value = await getValue.call(this, fieldMap[Field], e);
                 Value === undefined || fieldPatch.push({ Field, Value });
             }
             const props = {};
             for (let k in propertyMap) {
-                const v = getDeepValue(e, propertyMap[k]);
+                const v = await getValue.call(this, propertyMap[k], e);
                 v === undefined || (props[k] = v);
             }
             if (isEmpty(fieldPatch)) {
