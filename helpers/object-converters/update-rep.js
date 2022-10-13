@@ -100,9 +100,11 @@ module.exports = {
                         throw e;
                     }
                     result = await api.createRep(agencyID, props);
+                    result._created = true;
                 }
             } else if (create) {
                 result = await api.createRep(agencyID, props);
+                result._created = true;
             }
             e[dstProperty] = result;
         }
