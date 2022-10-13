@@ -1254,7 +1254,29 @@ API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
         request.Rep = repNameOrID;
         request[typeof agencyNameOrID === 'number' ? 'AgencyID' : 'Agency'] = agencyNameOrID;
     }
-    return this.request('Rep', request).then(r => extractContact(this.tweakDates(r)));
+    return this.request('Rep', request);
+};
+
+API.prototype.createRep = function (agencyID, data) {
+    if (typeof agencyID === 'object') {
+        data = agencyID;
+        agencyID = data.AgencyID;
+    }
+    assert.strictEqual(typeof data, 'object');
+    assert.notStrictEqual(typeof data.Rep, 'object');
+    data.AgencyID = agencyID;
+    return this.request('RepAdd', { Rep: data });
+};
+
+API.prototype.editRep = function (repID, data) {
+    if (typeof repID === 'object') {
+        data = repID;
+        repID = data.RepID;
+    }
+    assert.strictEqual(typeof data, 'object');
+    assert.notStrictEqual(typeof data.Rep, 'object');
+    data.RepID = repID;
+    return this.request('RepEdit', { Rep: data });
 };
 
 API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {

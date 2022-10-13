@@ -141,10 +141,10 @@ module.exports = function (api) {
     const editFormAction = api.editFormAction;
     api.editFormAction = async function () {
         const result = await editFormAction.apply(this, arguments);
-        const form = result.Action.Form;
-        cache.clear('getForms', form.ProcessID);
-        cache.clear('getFormList', form.ProcessID);
-        cleanAfterFormID(form.FormID);
+        const { FormID, ProcessID } = result.Action.Form;
+        cache.clear('getForms', ProcessID);
+        cache.clear('getFormList', ProcessID);
+        cleanAfterFormID(FormID);
         return result;
     };
 
@@ -158,8 +158,9 @@ module.exports = function (api) {
     const editFormFile = api.editFormFile;
     api.editFormFile = async function () {
         const result = await editFormFile.apply(this, arguments);
-        cleanAfterFormID(result.FileAttachment.FormID);
-        cache.clear('_getFileCached', result.FileAttachment.FileID);
+        const { FormID, FileID } = result.FileAttachment;
+        cleanAfterFormID(FormID);
+        cache.clear('_getFileCached', FileID);
         return result;
     };
 
@@ -204,13 +205,14 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            let getter = 'demandAgency';
+            const getter = 'demandAgency';
+            const { AgencyID, Agency } = result;
             if (clearOnUpdate) {
-                cache.clear(getter, result.AgencyID);
-                cache.clear(getter, result.Agency);
+                cache.clear(getter, AgencyID);
+                cache.clear(getter, Agency);
             } else {
-                cache.put(getter, result.AgencyID, result);
-                cache.put(getter, result.Agency, result);
+                cache.put(getter, AgencyID, result);
+                cache.put(getter, Agency, result);
             }
             cache.clear('getAgencies');
             return result;
@@ -221,13 +223,26 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            let getter = 'getSupplier';
-            if (clearOnUpdate) {
-                cache.clear(getter, result.SupplierID);
-            } else {
-                cache.put(getter, result.SupplierID, result);
-            }
+            const getter = 'getSupplier';
+            const { SupplierID } = result;
+            clearOnUpdate ?
+                cache.clear(getter, SupplierID) :
+                cache.put(getter, SupplierID, result);
             cache.clear('getSuppliers');
+            return result;
+        };
+    });
+
+    ['createRep', 'editRep'].forEach(prop => {
+        const original = api[prop];
+        api[prop] = async function () {
+            const result = await original.apply(this, arguments);
+            const getter = 'getRep';
+            const { RepID } = result;
+            clearOnUpdate ?
+                cache.clear(getter, RepID) :
+                cache.put(getter, RepID, result);
+            cache.clear('getAgentUsers');
             return result;
         };
     });
@@ -241,7 +256,7 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function (customerID) {
             const result = await original.apply(this, arguments);
-            let getter = 'demandCustomer';
+            const getter = 'demandCustomer';
             customerID = normalizeInteger(customerID.CustomerID || customerID);
             const deleted = cache.clear(getter, customerID)[0];
             deleted && cache.clear(getter, deleted.Name);
@@ -254,12 +269,13 @@ module.exports = function (api) {
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
             const getter = 'demandCustomer';
+            const { CustomerID, Name } = result;
             if (clearOnUpdate) {
-                cache.clear(getter, result.CustomerID);
-                cache.clear(getter, result.Name);
+                cache.clear(getter, CustomerID);
+                cache.clear(getter, Name);
             } else {
-                cache.put(getter, result.CustomerID, result);
-                cache.put(getter, result.Name, result);
+                cache.put(getter, CustomerID, result);
+                cache.put(getter, Name, result);
             }
             cache.clear('getCustomers');
             return result;
@@ -270,11 +286,11 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            if (clearOnUpdate) {
-                cache.clear('getStaff', result.StaffID);
-            } else {
-                cache.put('getStaff', result.StaffID, result);
-            }
+            const getter = 'getStaff';
+            const { StaffID } = result;
+            clearOnUpdate ?
+                cache.clear(getter, StaffID) :
+                cache.put(getter, StaffID, result);
             cache.clear('getStaffList');
             return result;
         };
