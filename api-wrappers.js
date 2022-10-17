@@ -992,26 +992,28 @@ API.prototype.getAccountGroupsInUse = function () {
     });
 };
 
-API.prototype.createAccount = function (name, customer, supplier, location, group, fields) {
-    var data = { Name: name };
-    if (fields) {
-        data.Fields = fields;
+API.prototype.createAccount = function (name, customer, supplier, data) {
+    if (typeof name === 'object') {
+        data = name;
+        name = data.Name;
+        customer = data.CustomerID || data.CustomerName;
+        supplier = data.SupplierID || data.SupplierName;
     }
-    customer = customer && (customer.CustomerID || customer.Customer || customer);
-    supplier = supplier && (supplier.SupplierID || supplier.Supplier || supplier);
-    location = location && (location.LocationID || location.Name || location);
-    group = group && (group.ID || group.AccountGroup || group);
-
+    data = Object.assign({}, data);
+    data.Name = name;
     data[typeof customer === 'number' ? 'CustomerID' : 'CustomerName'] = customer;
     data[typeof supplier === 'number' ? 'SupplierID' : 'SupplierName'] = supplier;
-    data[typeof location === 'number' ? 'LocationID' : 'LocationName'] = location;
-    data[typeof group === 'number' ? 'AccountGroupID' : 'AccountGroupName'] = group;
     return this.request('AccountAdd', { Account: data });
 };
 
 API.prototype.editAccount = function (accountID, data) {
+    if (typeof accountID === 'object') {
+        data = accountID;
+        accountID = data.AccountID;
+    }
     this.validateParameters && (accountID = normalizeInteger(accountID));
-    data = Object.assign({}, data || {}, { AccountID: accountID });
+    data = Object.assign({}, data);
+    data.AccountID = accountID;
     return this.request('AccountEdit', { Account: data });
 };
 
@@ -1263,7 +1265,7 @@ API.prototype.createRep = function (agencyID, data) {
         agencyID = data.AgencyID;
     }
     assert.strictEqual(typeof data, 'object');
-    assert.notStrictEqual(typeof data.Rep, 'object');
+    data = Object.assign({}, data);
     data.AgencyID = agencyID;
     return this.request('RepAdd', { Rep: data });
 };
@@ -1274,7 +1276,7 @@ API.prototype.editRep = function (repID, data) {
         repID = data.RepID;
     }
     assert.strictEqual(typeof data, 'object');
-    assert.notStrictEqual(typeof data.Rep, 'object');
+    data = Object.assign({}, data);
     data.RepID = repID;
     return this.request('RepEdit', { Rep: data });
 };
@@ -1389,13 +1391,15 @@ API.prototype.createSupplier = function (data) {
     if (typeof data !== 'object') {
         data = { Supplier: data };
     }
-    assert.notStrictEqual(typeof data.Supplier, 'object');
     return this.request('SupplierAdd', { Supplier: data }).then(s => this._normalizeSupplier(s));
 };
 
 API.prototype.editSupplier = function (id, data) {
+    if (id === 'object') {
+        data = id;
+        id = data.SupplierID;
+    }
     typeof data === 'object' ? Object.assign({}, data) : (data = { Supplier: data });
-    assert.notStrictEqual(typeof data.Supplier, 'object');
     data.SupplierID = id;
     return this.request('SupplierEdit', { Supplier: data }).then(s => this._normalizeSupplier(s));
 };

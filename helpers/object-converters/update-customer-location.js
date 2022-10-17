@@ -1,5 +1,5 @@
 const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, getDeepValue } = require('../../util');
-const { initMultiple, getMultiple } = require('../../helpers/getters');
+const { initMultiple, getMultiple } = require('../getters');
 const assert = require('assert');
 
 module.exports = {

@@ -1,5 +1,5 @@
 const { validateString, toArray, toBoolean, validatePropertyConfig, isEmpty, getDeepValue } = require('../../util');
-const { initMultiple, get: getValue } = require('../../helpers/getters');
+const { initMultiple, get: getValue } = require('../getters');
 const { PhoneType: PT } = require('../../api-enums');
 const assert = require('assert');
 
@@ -51,7 +51,8 @@ module.exports = {
         validateString(dstProperty);
         idProperty = validatePropertyConfig(idProperty);
         create = toBoolean(create) || undefined;
-        create && validatePropertyConfig(agencyIdProperty);
+        agencyIdProperty = agencyIdProperty ? validatePropertyConfig(agencyIdProperty) : undefined;
+        create && assert(agencyIdProperty);
         const defaultNoGetterConverter = property => ({ getter: 'property', property, default: null });
         propertyMap = await initMultiple.call(this, propertyMap || {}, defaultNoGetterConverter);
         fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
