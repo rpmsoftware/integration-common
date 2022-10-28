@@ -88,24 +88,19 @@ const OPERATORS = {
             return resultConf;
         },
         process: function (form) {
-            const conf = this;
+            const { operand, format, increment: ic, unit } = this;
             form = form.Form || form;
-            const value = getOperandValue(conf.operand, form);
-            let m = moment(value, conf.format);
+            const value = getOperandValue(operand, form);
+            let m = moment(value, format);
             if (!m.isValid()) {
-                throw new Error(`Cannot parse date "${value}". Format: "${conf.format}"`);
+                throw new Error(`Cannot parse date "${value}". Format: "${format}"`);
             }
-            let ic = conf.increment;
             let increment;
             if (ic) {
-                if (ic.field) {
-                    increment = toSimpleField(getFieldByUid.call(form, ic.field.Uid, true)).Value;
-                    increment = increment ? normalizeInteger(increment) : 0;
-                } else {
-                    increment = ic.value;
-                }
+                increment = getOperandValue(ic, form);
+                increment = increment ? normalizeInteger(increment) : 0;
             }
-            increment && (m = m.add(increment, conf.unit));
+            increment && (m = m.add(increment, unit));
             const now = moment();
             return now.isSame(m) || now.isAfter(m);
         }

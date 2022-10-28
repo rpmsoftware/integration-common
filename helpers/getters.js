@@ -663,9 +663,12 @@ async function init(conf, rpmFields) {
         conf = { srcField: conf };
     }
     let rpmField;
-    const { srcField } = conf;
+    const { srcField, property, getter } = conf;
     if (srcField) {
         rpmField = getField.call(rpmFields, validateString(srcField), true);
+    }
+    if (property && !getter) {
+        conf.getter = 'property';
     }
     return initField.call(this, conf, rpmField, rpmFields);
 }
