@@ -1395,7 +1395,7 @@ API.prototype.createSupplier = function (data) {
 };
 
 API.prototype.editSupplier = function (id, data) {
-    if (id === 'object') {
+    if (typeof id === 'object') {
         data = id;
         id = data.SupplierID;
     }
