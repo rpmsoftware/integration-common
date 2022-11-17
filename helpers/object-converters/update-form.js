@@ -7,13 +7,27 @@ const { initMultiple: initGetters, getMultiple } = require('../getters');
 const { set, initMultiple: initSetters } = require('../setters');
 
 module.exports = {
-    init: async function ({ process, formIDProperty, fieldMap, propertyMap, create, status, statusMap, blindPatch, dstProperty }) {
+    init: async function ({
+        process,
+        formIDProperty,
+        formNumberProperty,
+        fieldMap,
+        propertyMap,
+        create,
+        status,
+        statusMap,
+        blindPatch,
+        dstProperty,
+        parallel
+    }) {
         const { api } = this;
         dstProperty = dstProperty ? validateString(dstProperty) : undefined;
         blindPatch = blindPatch === undefined || toBoolean(blindPatch);
         create = toBoolean(create) || undefined;
+        parallel = toBoolean(parallel) || undefined;
         formIDProperty = formIDProperty ? validatePropertyConfig(formIDProperty) : undefined;
-        formIDProperty || assert(create);
+        formNumberProperty = formNumberProperty ? validatePropertyConfig(formNumberProperty) : undefined;
+        formIDProperty || formNumberProperty || assert(create);
         const processes = await api.getProcesses();
         const fields = await processes.getActiveProcess(process, true).getFields();
         process = fields.ProcessID;
@@ -36,12 +50,23 @@ module.exports = {
         fieldMap.length > 0 || statusMap || assert(propertyMap);
 
         return {
-            process, formIDProperty, fieldMap,
+            process, formIDProperty, fieldMap, formNumberProperty, parallel,
             propertyMap, statusMap, blindPatch, create, dstProperty
         };
 
     },
-    convert: async function ({ process, formIDProperty, blindPatch, create, dstProperty, fieldMap, propertyMap, statusMap }, obj) {
+    convert: async function ({
+        process,
+        formIDProperty,
+        formNumberProperty,
+        blindPatch,
+        create,
+        dstProperty,
+        fieldMap,
+        propertyMap,
+        statusMap,
+        parallel
+    }, obj) {
         const { api } = this;
         const createFormUpdatePack = async (source, dstForm) => {
             let formPatch = [];
@@ -60,27 +85,36 @@ module.exports = {
             }
             return { formPatch, formProps };
         };
-
+        const number2id = {};
+        formNumberProperty && (await api.getFormList(process, true)).Forms.forEach(({ N, ID }) => number2id[N] = ID);
+        const promises = [];
         for (let source of toArray(obj)) {
-            const formID = formIDProperty && +getDeepValue(source, formIDProperty);
-            let form;
-            if (formID) {
-                if (!blindPatch) {
-                    form = await api.demandForm(formID);
-                    assert.strictEqual(form.ProcessID, process);
-                }
-                const { formPatch, formProps } = await createFormUpdatePack(source, form);
-                if (formPatch.length > 0 || !isEmpty(formProps)) {
-                    form = await api.editForm(formID, formPatch, formProps);
-                    assert.strictEqual(form.ProcessID, process);
-                }
-            } else if (create) {
-                const { formPatch, dstFormProps } = await createFormUpdatePack(source);
-                (formPatch.length > 0 || !isEmpty(dstFormProps)) &&
-                    (form = await api.createForm(process, formPatch, dstFormProps));
+            let formID = formIDProperty && +getDeepValue(source, formIDProperty);
+            if (!formID) {
+                const formNumber = formNumberProperty && getDeepValue(source, formNumberProperty);
+                formNumber && (formID = number2id[formNumber]);
             }
-            dstProperty && (source[dstProperty] = form);
-
+            const run = async () => {
+                let form;
+                if (formID) {
+                    if (!blindPatch) {
+                        form = await api.demandForm(formID);
+                        assert.strictEqual(form.ProcessID, process);
+                    }
+                    const { formPatch, formProps } = await createFormUpdatePack(source, form);
+                    if (formPatch.length > 0 || !isEmpty(formProps)) {
+                        form = await api.editForm(formID, formPatch, formProps);
+                        assert.strictEqual(form.ProcessID, process);
+                    }
+                } else if (create) {
+                    const { formPatch, formProps } = await createFormUpdatePack(source);
+                    (formPatch.length > 0 || !isEmpty(formProps)) &&
+                        (form = await api.createForm(process, formPatch, formProps));
+                }
+                dstProperty && (source[dstProperty] = form);
+            };
+            parallel ? promises.push(api.parallelRunner(run)) : await run();
         }
+        await Promise.all(promises);
     }
 };
