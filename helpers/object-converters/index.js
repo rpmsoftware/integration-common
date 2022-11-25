@@ -462,6 +462,56 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    sortArray: {
+        init: function ({ array, desc, properties: inProperties }) {
+            array = validatePropertyConfig(array);
+            let properties = [];
+            for (let p of inProperties) {
+                let { desc, property } = typeof p === 'string' ? { property: p } : p;
+                property = validatePropertyConfig(property);
+                desc = toBoolean(desc) || undefined;
+                properties.push({ property, desc });
+            }
+            if (properties.length > 0) {
+                desc = undefined;
+            } else {
+                properties = undefined;
+                desc = toBoolean(desc) || undefined;
+            }
+            return { array, properties, desc };
+        },
+
+        convert: function ({ array, properties, desc }, data) {
+            toArray(data).forEach(e => {
+                const a = e[array];
+                if (!a) {
+                    return;
+                }
+                assert(Array.isArray(a));
+                a.sort((e1, e2) => {
+                    if (!properties) {
+                        let r = e2 === e1 ? 0 : (e1 > e2 ? -1 : 1);
+                        desc && (r *= -1);
+                        return r;
+                    }
+                    for (const { property, desc } of properties) {
+                        const p1 = getDeepValue(e1, property);
+                        const p2 = getDeepValue(e2, property);
+                        if (p1 === p2) {
+                            continue;
+                        }
+                        let r = p1 > p2 ? -1 : 1;
+                        desc && (r *= -1);
+                        return r;
+                    }
+                    return 0;
+                });
+            });
+            return data;
+        }
+    }
+
+
 };
 
 function string2object(string) {
