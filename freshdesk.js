@@ -64,7 +64,7 @@ class API {
         const response = await fetch(url, {
             method,
             headers: this.headers,
-            body: options
+            body: JSON.stringify(options)
         });
 
         const { status: statusCode, headers } = response;
@@ -120,6 +120,14 @@ class API {
         return this.getPaged('companies');
     }
 
+    getContact(id) {
+        return this.get('contacts/' + normalizeInteger(id));
+    }
+
+    getContacts() {
+        return this.getPaged('contacts');
+    }
+
     getGroups() {
         return this.getPaged('groups');
     }
@@ -128,10 +136,24 @@ class API {
         return this.get('tickets/' + normalizeInteger(id));
     }
 
+    getTimeEntry(id) {
+        return this.get('time_entries/' + normalizeInteger(id));
+    }
+
     getTickets(since) {
         return this.getPaged('tickets', {
             updated_since: since ? toMoment(since).toISOString() : undefined
         });
+    }
+
+    updateContact(id, data) {
+        assert.strictEqual(typeof data, 'object');
+        return this.requestEndpoint('put', `contacts/${id}`, data);
+    }
+
+    updateTicket(id, data) {
+        assert.strictEqual(typeof data, 'object');
+        return this.requestEndpoint('put', `tickets/${id}`, data);
     }
 
 }
