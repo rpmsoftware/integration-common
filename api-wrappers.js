@@ -1558,6 +1558,10 @@ API.prototype.getEntity = async function () {
     }
 };
 
+API.prototype.getActionsDue = function () {
+    return this.request('ProcActionsDue');
+};
+
 exports.RpmApi = API;
 
 exports.FIELD_FORMAT = FieldFormat;
