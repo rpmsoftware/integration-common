@@ -9,11 +9,18 @@ class EventsCollector {
         this.events = [];
         const {
             editForm, createForm, trashForm, _archiveForm, _unarchiveForm, createFormSet,
-            addFormParticipant, addNoteByFormID, addNoteByFormNumber, editAccount
+            addFormParticipant, addNoteByFormID, addNoteByFormNumber, editAccount, getForms
         } = api;
 
         const formProcesses = {};
         const self = this;
+
+        api.getForms = async function () {
+            const result = await getForms.apply(this, arguments);
+            const { ProcessID, Forms } = result;
+            Forms.forEach(({ FormID }) => formProcesses[FormID] = ProcessID);
+            return result;
+        };
 
         api.editForm = async function () {
             const result = await editForm.apply(this, arguments);
