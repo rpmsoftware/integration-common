@@ -732,10 +732,18 @@ API.prototype.getFile = function (fileID, returnUrl) {
 };
 
 API.prototype.addFormFile = function (formID, fileName, fileData, folderID, description, shared) {
+    if (typeof formID === 'object') {
+        fileName = formID.Name;
+        fileData = formID.File;
+        folderID = formID.FolderID;
+        description = formID.Description;
+        shared = !formID.IsStaffOnly;
+        formID = formID.FormID;
+    }
     if (this.validateParameters) {
-        fileData = toBase64(fileData);
+        Buffer(fileData) ? (fileData = fileData.toString('base64')) : validateString(fileData);
         formID = normalizeInteger(formID);
-        fileName = validateString(fileName);
+        validateString(fileName);
     }
     return this.request('ProcFormFileAdd', {
         FormID: formID,
@@ -747,15 +755,21 @@ API.prototype.addFormFile = function (formID, fileName, fileData, folderID, desc
     }, false);
 };
 
-API.prototype.editFormFile = async function (fileID, formID, fileName, folderID, description, shared) {
+API.prototype.editFormFile = async function (fileID, fileName, folderID, description, shared) {
+    if (typeof fileID === 'object') {
+        fileName = fileID.Name;
+        folderID = fileID.FolderID;
+        description = fileID.Description;
+        shared = !fileID.IsStaffOnly;
+        fileID = fileID.FileID;
+    }
     if (this.validateParameters) {
         fileID = normalizeInteger(fileID);
-        fileName = fileName === undefined ? undefined : validateString(fileName);
-        folderID = folderID === undefined ? undefined : normalizeInteger(folderID);
+        fileName = fileName ? validateString(fileName) : undefined;
+        folderID = folderID ? normalizeInteger(folderID) : undefined;
     }
     return this.request('ProcFormFileEdit', {
         FileID: fileID,
-        FormID: formID,
         Name: fileName,
         Description: description,
         FolderID: folderID,
