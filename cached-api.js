@@ -90,7 +90,7 @@ module.exports = function (api) {
         'demandCustomer',
         'demandAgency',
         'demandAccount',
-        'getRep',
+        'demandRep',
         'getRepByAssignment',
         'getAccountGroups',
         '_getFileCached',
@@ -237,7 +237,7 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            const getter = 'getRep';
+            const getter = 'demandRep';
             const { RepID } = result;
             clearOnUpdate ?
                 cache.clear(getter, RepID) :
@@ -304,8 +304,8 @@ module.exports = function (api) {
         cache.clear('getCustomerUsers');
         cache.clear('getAgentUsers');
         cache.clear('getUser');
-        cache.clear('getRep');
-        cache.clear('getCustomer');
+        cache.clear('demandRep');
+        cache.clear('demandCustomer');
         return result;
     };
 

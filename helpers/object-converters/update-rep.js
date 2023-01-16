@@ -47,7 +47,9 @@ const normalizeRequest = ({
 };
 
 module.exports = {
-    init: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap }) {
+
+    init: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }) {
+        errorProperty = errorProperty ? validateString(errorProperty) : undefined;
         validateString(dstProperty);
         idProperty = validatePropertyConfig(idProperty);
         create = toBoolean(create) || undefined;
@@ -57,30 +59,34 @@ module.exports = {
         propertyMap = await initMultiple.call(this, propertyMap || {}, defaultNoGetterConverter);
         fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap };
+        return { idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty };
     },
-    convert: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap }, obj) {
+    
+    convert: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }, obj) {
         const { api } = this;
-        for (const e of toArray(obj)) {
-            const repID = +getDeepValue(e, idProperty);
+        for (const srcObj of toArray(obj)) {
+            if (errorProperty) {
+                delete srcObj[errorProperty];
+            }
+            const repID = +getDeepValue(srcObj, idProperty);
             if (!repID && !create) {
                 continue;
             }
             let agencyID;
             if (create && !repID) {
-                agencyID = +getDeepValue(e, agencyIdProperty);
+                agencyID = +getDeepValue(srcObj, agencyIdProperty);
                 if (!agencyID) {
                     continue;
                 }
             }
             const fieldPatch = [];
             for (const Field in fieldMap) {
-                const Value = await getValue.call(this, fieldMap[Field], e);
+                const Value = await getValue.call(this, fieldMap[Field], srcObj);
                 Value === undefined || fieldPatch.push({ Field, Value });
             }
             let props = {};
             for (let k in propertyMap) {
-                const v = await getValue.call(this, propertyMap[k], e);
+                const v = await getValue.call(this, propertyMap[k], srcObj);
                 v === undefined || (props[k] = v);
             }
             if (!create) {
@@ -92,22 +98,40 @@ module.exports = {
                 continue;
             }
             noFields || (props.Fields = fieldPatch);
+
             let result;
-            if (repID) {
-                try {
-                    result = await api.editRep(repID, props);
-                } catch (e) {
-                    if (!create) {
-                        throw e;
+            try {
+                if (repID) {
+                    try {
+                        result = await api.editRep(repID, props);
+                    } catch (err) {
+                        if (!create) {
+                            throw err;
+                        }
+                        result = await api.createRep(agencyID, props);
+                        result._created = true;
                     }
+                } else if (create) {
                     result = await api.createRep(agencyID, props);
                     result._created = true;
                 }
-            } else if (create) {
-                result = await api.createRep(agencyID, props);
-                result._created = true;
+            } catch (err) {
+                if (!errorProperty) {
+                    throw err;
+                }
+                const agency = await api.getAgency(agencyID);
+                const rep = result || repID && await api.getRep(repID);
+                srcObj[errorProperty] = {
+                    Error: (err.Message || err).toString(),
+                    TimeStamp: new Date().toISOString(),
+                    AgencyID: agency?.AgencyID || agencyID,
+                    Agency: agency?.Agency,
+                    RepID: rep?.RepID || repID,
+                    Rep: rep?.Rep
+                };
+                result = undefined;
             }
-            e[dstProperty] = result;
+            srcObj[dstProperty] = result;
         }
         return obj;
     }

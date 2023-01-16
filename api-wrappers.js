@@ -20,7 +20,6 @@ const {
     toMoment,
     createParallelRunner,
     defineStandardProperty,
-    toBase64,
     toArray,
     getDataURLPrefix,
     setParent
@@ -332,7 +331,7 @@ ENTITY_GETTERS[ObjectType.Supplier] = {
 };
 ENTITY_GETTERS[ObjectType.AgentRep] = {
     demand: function (id) {
-        return this.getRep(id.RepID || id);
+        return this.demandRep(id.RepID || id);
     },
     getEntities: function () {
         return this.getReps();
@@ -1262,7 +1261,20 @@ API.prototype.editAgency = function (id, data, fireWebEvent) {
         .then(a => this._normalizeAgency(a));
 };
 
-API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
+const REP_PROTO = Object.defineProperties({
+    EntityType: ObjectType.AgentRep,
+    RefType: ObjectType.AgentRep,
+    IDProperty: 'RepID'
+}, {
+    EntityID: { get() { return this.RepID } },
+    RefName: { get() { return this.Rep } },
+});
+
+API.prototype._normalizeRep = function (rep) {
+    return Object.setPrototypeOf(rep, REP_PROTO);
+};
+
+API.prototype.demandRep = function (repNameOrID, agencyNameOrID) {
     const request = {};
     if (typeof repNameOrID === 'number') {
         request.RepID = repNameOrID;
@@ -1270,7 +1282,17 @@ API.prototype.getRep = function (repNameOrID, agencyNameOrID) {
         request.Rep = repNameOrID;
         request[typeof agencyNameOrID === 'number' ? 'AgencyID' : 'Agency'] = agencyNameOrID;
     }
-    return this.request('Rep', request);
+    return this.request('Rep', request).then(r => this._normalizeRep(r));
+};
+
+API.prototype.getRep = async function () {
+    try {
+        return await this.demandRep.apply(this, arguments);
+    } catch (e) {
+        if (e.Message !== errors.MSG_REP_NOT_FOUND) {
+            throw e;
+        }
+    }
 };
 
 API.prototype.createRep = function (agencyID, data) {
@@ -1281,7 +1303,7 @@ API.prototype.createRep = function (agencyID, data) {
     assert.strictEqual(typeof data, 'object');
     data = Object.assign({}, data);
     data.AgencyID = agencyID;
-    return this.request('RepAdd', { Rep: data });
+    return this.request('RepAdd', { Rep: data }).then(r => this._normalizeRep(r));
 };
 
 API.prototype.editRep = function (repID, data) {
@@ -1292,7 +1314,7 @@ API.prototype.editRep = function (repID, data) {
     assert.strictEqual(typeof data, 'object');
     data = Object.assign({}, data);
     data.RepID = repID;
-    return this.request('RepEdit', { Rep: data });
+    return this.request('RepEdit', { Rep: data }).then(r => this._normalizeRep(r));
 };
 
 API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {

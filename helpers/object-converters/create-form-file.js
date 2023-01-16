@@ -1,5 +1,7 @@
+/* global Buffer */
+
 const {
-    toArray, getDeepValue, validatePropertyConfig, getEager, normalizeInteger, validateString, toBoolean
+    toArray, getDeepValue, validatePropertyConfig, normalizeInteger, validateString, toBoolean
 } = require('../../util');
 const assert = require('assert');
 

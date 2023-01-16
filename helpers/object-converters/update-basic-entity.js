@@ -32,12 +32,15 @@ OBJECT_UPDATERS[ObjectType.Supplier] = {
 
 module.exports = {
     init: async function ({
-        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty, condition
+        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify,
+        fieldErrorProperty, errProperty, condition, errorProperty
     }) {
+        assert(!errProperty, '"errProperty" is discontinued. Use "fieldErrorProperty" instead');
         typeof type === 'string' && (type = getEager(ObjectType, type));
         getEager(OBJECT_UPDATERS, type);
         validateString(dstProperty);
-        errProperty = errProperty ? validateString(errProperty) : undefined;
+        fieldErrorProperty = fieldErrorProperty ? validateString(fieldErrorProperty) : undefined;
+        errorProperty = errorProperty ? validateString(errorProperty) : undefined;
         create = toBoolean(create) || undefined;
         verify = toBoolean(verify) || undefined;
         idProperty = idProperty ? validatePropertyConfig(idProperty) : undefined;
@@ -50,10 +53,14 @@ module.exports = {
         fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
         condition = condition ? initCondition(condition) : undefined;
-        return { type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, errProperty, verify, condition };
+        return {
+            type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap,
+            errorProperty, fieldErrorProperty, verify, condition
+        };
     },
     convert: async function ({
-        type, create, idProperty, nameProperty, dstProperty, fieldMap, propertyMap, verify, errProperty, condition
+        type, create, idProperty, nameProperty, dstProperty, fieldMap,
+        propertyMap, verify, fieldErrorProperty, condition, errorProperty
     }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
@@ -84,11 +91,24 @@ module.exports = {
             let beforeUpdate = id && await api.getEntity(type, id);
             beforeUpdate || (name && await api.getEntity(type, name));
             let afterUpdate;
-            if (beforeUpdate) {
-                isEmpty(props) || (afterUpdate = await editEntity.call(api, beforeUpdate.EntityID, props));
-            } else if (create) {
-                afterUpdate = await createEntity.call(api, props);
-                afterUpdate._created = true;
+            try {
+                if (beforeUpdate) {
+                    isEmpty(props) || (afterUpdate = await editEntity.call(api, beforeUpdate.EntityID, props));
+                } else if (create) {
+                    afterUpdate = await createEntity.call(api, props);
+                    afterUpdate._created = true;
+                }
+            } catch (error) {
+                if (!errorProperty) {
+                    throw error;
+                }
+                e[errorProperty] = {
+                    Error: (error.Message || error).toString(),
+                    TimeStamp: new Date().toISOString(),
+                    EntityID: beforeUpdate?.EntityID || id,
+                    Entity: beforeUpdate?.RefName || name
+                };
+                continue;
             }
             if (verify && afterUpdate) {
                 const { Fields: fieldsAfter } = afterUpdate;
@@ -99,10 +119,10 @@ module.exports = {
                     Result === Value || errors.push({ Field, Value, Result });
                 }
                 errors.length > 0 || (errors = undefined);
-                if (!errProperty && errors) {
+                if (!fieldErrorProperty && errors) {
                     throwError(`Field(s) didn't update: ${JSON.stringify(errors)}`, FIELD_UPDATE_ERROR, errors);
                 }
-                e[errProperty] = errors;
+                e[fieldErrorProperty] = errors;
             }
             e[dstProperty] = afterUpdate;
         }
