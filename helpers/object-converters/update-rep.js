@@ -68,13 +68,13 @@ module.exports = {
             if (errorProperty) {
                 delete srcObj[errorProperty];
             }
-            const repID = +getDeepValue(srcObj, idProperty);
+            const repID = +getDeepValue(srcObj, idProperty) || undefined;
             if (!repID && !create) {
                 continue;
             }
             let agencyID;
             if (create && !repID) {
-                agencyID = +getDeepValue(srcObj, agencyIdProperty);
+                agencyID = +getDeepValue(srcObj, agencyIdProperty) || undefined;
                 if (!agencyID) {
                     continue;
                 }

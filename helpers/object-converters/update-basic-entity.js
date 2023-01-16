@@ -64,23 +64,26 @@ module.exports = {
     }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
-        for (const e of toArray(obj)) {
-            if (condition && !processCondition(condition, e)) {
+        for (const srcObj of toArray(obj)) {
+            if (condition && !processCondition(condition, srcObj)) {
                 continue;
             }
-            const id = idProperty ? +getDeepValue(e, idProperty) : undefined;
-            const name = nameProperty ? getDeepValue(e, nameProperty) : undefined;
+            if (errorProperty) {
+                delete srcObj[errorProperty];
+            }
+            const id = idProperty ? +getDeepValue(srcObj, idProperty) : undefined;
+            const name = nameProperty ? getDeepValue(srcObj, nameProperty) : undefined;
             if (!id && !name) {
                 continue;
             }
             const fieldPatch = [];
             for (const Field in fieldMap) {
-                const Value = await getValue.call(this, fieldMap[Field], e);
+                const Value = await getValue.call(this, fieldMap[Field], srcObj);
                 Value === undefined || fieldPatch.push({ Field, Value });
             }
             const props = {};
             for (let k in propertyMap) {
-                const v = await getValue.call(this, propertyMap[k], e);
+                const v = await getValue.call(this, propertyMap[k], srcObj);
                 v === undefined || (props[k] = v);
             }
             if (isEmpty(fieldPatch)) {
@@ -102,7 +105,7 @@ module.exports = {
                 if (!errorProperty) {
                     throw error;
                 }
-                e[errorProperty] = {
+                srcObj[errorProperty] = {
                     Error: (error.Message || error).toString(),
                     TimeStamp: new Date().toISOString(),
                     EntityID: beforeUpdate?.EntityID || id,
@@ -122,9 +125,9 @@ module.exports = {
                 if (!fieldErrorProperty && errors) {
                     throwError(`Field(s) didn't update: ${JSON.stringify(errors)}`, FIELD_UPDATE_ERROR, errors);
                 }
-                e[fieldErrorProperty] = errors;
+                srcObj[fieldErrorProperty] = errors;
             }
-            e[dstProperty] = afterUpdate;
+            srcObj[dstProperty] = afterUpdate;
         }
         return obj;
     }
