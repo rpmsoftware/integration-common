@@ -39,7 +39,7 @@ module.exports = {
 
         let sfApi = getEager(globals, api);
         if (!(sfApi instanceof SalesforceAPI)) {
-            sfApi = globals[api] = await SalesforceAPI.create(sfApi);
+            sfApi = globals[api] = new SalesforceAPI(sfApi);
         }
 
         for (const e of toArray(obj)) {
