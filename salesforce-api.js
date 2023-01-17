@@ -6,32 +6,40 @@ const debug = require('debug')('rpm:salesforce');
 const REGEX_WHITESPACE = /\s+/g;
 const PLUS = '+';
 const BASE_PATH = '/services/data/v55.0/';
+const URL_TOKEN = 'https://login.salesforce.com/services/oauth2/token';
+const TOKEN_TTL = 3 * 60 * 60 * 1000;
 
 class SalesForceAPI {
-    static async create({ userName, password, clientID, clientSecret, securityToken, dryRun }) {
+
+    constructor({ userName, password, clientID, clientSecret, securityToken, dryRun }) {
         validateString(userName);
         validateString(password);
         validateString(clientID);
         validateString(clientSecret);
         securityToken && (password += securityToken);
-        const { instance_url, access_token } = await fetch('https://login.salesforce.com/services/oauth2/token', {
-            method: 'POST',
-            body: new URLSearchParams({
+        Object.defineProperty(this, 'authParams', {
+            value: new URLSearchParams({
                 grant_type: 'password',
                 password: password,
                 username: userName,
                 client_id: clientID,
                 client_secret: clientSecret
             })
-        }).then(fetch2json);
-        return new SalesForceAPI(instance_url, access_token, dryRun);
+        });
+        this.dryRun = toBoolean(dryRun) || undefined;
     }
 
-    constructor(instanceUrl, accessToken, dryRun) {
-        validateString(instanceUrl);
-        this.instanceUrl = instanceUrl;
-        this.headers = { Authorization: 'Bearer ' + validateString(accessToken), 'Content-Type': 'application/json' };
-        this.dryRun = toBoolean(dryRun) || undefined;
+    async _getAccessToken() {
+        let { token, authParams: body } = this;
+        if (!token || Date.now() - token.issued_at > TOKEN_TTL) {
+            token = await fetch(URL_TOKEN, { method: 'POST', body }).then(fetch2json);
+            assert(token.issued_at = +token.issued_at);
+            this.token = token;
+            const { instance_url, access_token } = token;
+            validateString(access_token);
+            validateString(instance_url);
+        }
+        return token;
     }
 
     getResources() {
@@ -77,13 +85,14 @@ class SalesForceAPI {
         return this._requestAbsolute(BASE_PATH + path, method, body);
     }
 
-    _requestAbsolute(path, method, body) {
-        method || (method = undefined);
-        body = body ? JSON.stringify(body) : undefined;
-        let { headers, instanceUrl: url } = this;
+    async _requestAbsolute(path, method, body) {
         validateString(path);
         assert(path.startsWith('/'));
+        method || (method = undefined);
+        body = body ? JSON.stringify(body) : undefined;
+        let { instance_url: url, access_token } = await this._getAccessToken();
         url += path;
+        const headers = { Authorization: 'Bearer ' + access_token, 'Content-Type': 'application/json' };
         debug('%s %s\n%s', method || 'GET', url, body || '');
         return fetch(url, { method, headers, body }).then(fetch2json);
     }
