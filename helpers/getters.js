@@ -202,7 +202,7 @@ const COMMON_GETTERS = {
                 }
             }
         },
-        init: async function ({ valueMap: inValueMap }) {
+        init: async function ({ valueMap: inValueMap }, field, fields) {
             const valueMap = [];
             for (let k in inValueMap) {
                 const c = inValueMap[k];
@@ -212,7 +212,7 @@ const COMMON_GETTERS = {
                 if (value === undefined) {
                     continue;
                 }
-                condition = initCondition(condition);
+                condition = initCondition.call(fields, condition);
                 valueMap.push({ value, condition });
             }
             assert(valueMap.length > 0);
@@ -247,7 +247,7 @@ const COMMON_GETTERS = {
             }
             return result;
         },
-        init: async function (config) {
+        init: async function (config, field, fields) {
             let { matchCondition, demand, value } = config;
             const resultConfig = await initView.call(this, config);
             if (Array.isArray(value)) {
@@ -256,7 +256,7 @@ const COMMON_GETTERS = {
             } else {
                 assert(resultConfig.fieldMap[validateString(value)]);
             }
-            resultConfig.matchCondition = initCondition(matchCondition);
+            resultConfig.matchCondition = initCondition(fields, matchCondition);
             resultConfig.demand = toBoolean(demand) || undefined;
             resultConfig.value = value;
             assert(resultConfig.matchCondition);
