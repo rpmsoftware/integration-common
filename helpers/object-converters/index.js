@@ -180,12 +180,13 @@ const OBJECT_CONVERTERS = {
     },
 
     forEach: {
-        init: async function ({ array, convert }) {
+        init: async function ({ array, condition, convert }) {
             assert(array);
+            condition = condition ? initCondition(condition) : undefined;
             convert = await init.call(this, convert);
-            return { array, convert };
+            return { array, convert, condition };
         },
-        convert: async function ({ array: arrayProperty, convert: convertConf }, obj) {
+        convert: async function ({ array: arrayProperty, condition, convert: convertConf }, obj) {
             for (const parent of toArray(obj)) {
                 const array = getDeepValue(parent, arrayProperty);
                 if (typeof array !== 'object') {
@@ -193,6 +194,9 @@ const OBJECT_CONVERTERS = {
                 }
                 for (const key in array) {
                     const e = array[key];
+                    if (condition && !processCondition(condition, e)) {
+                        continue;
+                    }
                     Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
                     array[key] = await convert.call(this, convertConf, e);
                 }
