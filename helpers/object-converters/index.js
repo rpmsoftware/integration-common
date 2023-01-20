@@ -181,24 +181,33 @@ const OBJECT_CONVERTERS = {
 
     forEach: {
         init: async function ({ array, condition, convert }) {
-            assert(array);
+            array = array ? validatePropertyConfig(array) : undefined;
             condition = condition ? initCondition(condition) : undefined;
             convert = await init.call(this, convert);
             return { array, convert, condition };
         },
         convert: async function ({ array: arrayProperty, condition, convert: convertConf }, obj) {
-            for (const parent of toArray(obj)) {
-                const array = getDeepValue(parent, arrayProperty);
-                if (typeof array !== 'object') {
-                    continue;
-                }
-                for (const key in array) {
-                    const e = array[key];
-                    if (condition && !processCondition(condition, e)) {
+            if (arrayProperty) {
+                for (const parent of toArray(obj)) {
+                    const array = getDeepValue(parent, arrayProperty);
+                    if (typeof array !== 'object') {
                         continue;
                     }
-                    Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
-                    array[key] = await convert.call(this, convertConf, e);
+                    for (const key in array) {
+                        const e = array[key];
+                        if (condition && !processCondition(condition, e)) {
+                            continue;
+                        }
+                        Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
+                        array[key] = await convert.call(this, convertConf, e);
+                    }
+                }
+            } else {
+                const array = toArray(obj);
+                for (const key in array) {
+                    const e = array[key];
+                    condition && !processCondition(condition, e) ||
+                        (array[key] = await convert.call(this, convertConf, e));
                 }
             }
             return obj;

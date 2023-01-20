@@ -35,7 +35,7 @@ module.exports = {
     },
 
     convert: async function ({ dstProperty, api, type, condition, create, getObjectID, fieldMap }, obj) {
-        const { globals } = this;
+        const { globals } = this.parentContext || this;
 
         let sfApi = getEager(globals, api);
         if (!(sfApi instanceof SalesforceAPI)) {

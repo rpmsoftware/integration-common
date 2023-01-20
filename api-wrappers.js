@@ -296,8 +296,10 @@ ENTITY_GETTERS[ObjectType.AgentCompany] = {
     demand: function (id) {
         return this.demandAgency(id.AgencyID || id);
     },
-    getEntities: async function () {
-        return (await this.getAgencies()).Agencies;
+    getEntities: async function (normalize) {
+        const { Agencies } = await this.getAgencies();
+        normalize && Agencies.forEach(a => Object.defineProperties(a, { ID: { value: a.AgencyID }, Name: { value: a.Agency } }));
+        return Agencies;
     }
 };
 ENTITY_GETTERS[ObjectType.Staff] = {
@@ -317,24 +319,30 @@ ENTITY_GETTERS[ObjectType.Customer] = {
     demand: function (id) {
         return this.demandCustomer(id.CustomerID || id);
     },
-    getEntities: async function () {
-        return (await this.getCustomers()).Customers;
+    getEntities: async function (normalize) {
+        const { Customers } = await this.getCustomers();
+        normalize && Customers.forEach(a => Object.defineProperties(a, { ID: { value: a.CustomerID }, Name: { value: a.Customer } }));
+        return Customers;
     }
 };
 ENTITY_GETTERS[ObjectType.Supplier] = {
     demand: function (id) {
         return this.getSupplier(id.SupplierID || id);
     },
-    getEntities: async function () {
-        return (await this.getSuppliers()).Suppliers;
+    getEntities: async function (normalize) {
+        const { Suppliers } = await this.getSuppliers();
+        normalize && Suppliers.forEach(a => Object.defineProperties(a, { ID: { value: a.SupplierID }, Name: { value: a.Supplier } }));
+        return Suppliers;
     }
 };
 ENTITY_GETTERS[ObjectType.AgentRep] = {
     demand: function (id) {
         return this.demandRep(id.RepID || id);
     },
-    getEntities: function () {
-        return this.getReps();
+    getEntities: async function (normalize) {
+        const result = await this.getReps();
+        normalize && result.forEach(a => Object.defineProperties(a, { ID: { value: a.RepID } }));
+        return result;
     }
 };
 ENTITY_GETTERS[ObjectType.StaffGroup] = {
@@ -349,8 +357,10 @@ ENTITY_GETTERS[ObjectType.StaffGroup] = {
         }
         return (await this.getStaffGroups()).Groups.demand(e => e[prop] === nameOrID);
     },
-    getEntities: async function () {
-        return (await this.getStaffGroups()).Groups;
+    getEntities: async function (normalize) {
+        const { Groups } = await this.getStaffGroups();
+        normalize && Groups.forEach(a => Object.defineProperties(a, { Name: { value: a.Group } }));
+        return Groups;
     }
 };
 
@@ -1578,8 +1588,8 @@ API.prototype.getCommAgencies = function (run) {
     return this.request('CommAgencies', { Run: run });
 };
 
-API.prototype.getEntities = function (type) {
-    return getEager(ENTITY_GETTERS, type).getEntities.call(this);
+API.prototype.getEntities = function (type, normalize) {
+    return getEager(ENTITY_GETTERS, type).getEntities.call(this, toBoolean(normalize));
 };
 
 API.prototype.demandEntity = function (type, id) {

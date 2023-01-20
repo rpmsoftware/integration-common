@@ -24,7 +24,7 @@ exports.send = async function (conf, data) {
 
     let ctx;
     if (typeof transport === 'string') {
-        const { globals } = this.parentContext;
+        const { globals } = this.parentContext || this;
         ctx = globals;
         transport = getEager(globals, transport);
     } else {
@@ -94,7 +94,7 @@ async function initEmailConfig(conf) {
 }
 
 exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
-    const { globals } = this;
+    const { globals } = this.parentContext || this;
     fromEmail = await initEmailConfig.call(this, fromEmail);
     subject = subject ? validateString(subject.trim()) : undefined;
     body = body ? validateString(body.trim()) : undefined;

@@ -64,6 +64,7 @@ module.exports = {
     }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
+        let entities;
         for (const srcObj of toArray(obj)) {
             if (condition && !processCondition(condition, srcObj)) {
                 continue;
@@ -91,12 +92,17 @@ module.exports = {
             } else {
                 props.Fields = fieldPatch;
             }
-            let beforeUpdate = id && await api.getEntity(type, id);
-            beforeUpdate || (name && await api.getEntity(type, name));
+            entities || (entities = await api.getEntities(type, true));
+            let stub = id && entities.find(({ ID }) => id === ID);
+            if(!stub ){
+                console.log(srcObj)
+                throw 'stop'
+            }
+            stub || name && (stub = entities.find(({ Name }) => name === Name));
             let afterUpdate;
             try {
-                if (beforeUpdate) {
-                    isEmpty(props) || (afterUpdate = await editEntity.call(api, beforeUpdate.EntityID, props));
+                if (stub) {
+                    isEmpty(props) || (afterUpdate = await editEntity.call(api, stub.ID, props));
                 } else if (create) {
                     afterUpdate = await createEntity.call(api, props);
                     afterUpdate._created = true;
@@ -108,8 +114,8 @@ module.exports = {
                 srcObj[errorProperty] = {
                     Error: (error.Message || error).toString(),
                     TimeStamp: new Date().toISOString(),
-                    EntityID: beforeUpdate?.EntityID || id,
-                    Entity: beforeUpdate?.RefName || name
+                    EntityID: stub?.ID || id,
+                    Entity: stub?.Name || name
                 };
                 continue;
             }

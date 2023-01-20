@@ -1,4 +1,4 @@
-const { validateString, toArray, validatePropertyConfig, getDeepValue, toBoolean } = require('../../util');
+const { validateString, toArray, validatePropertyConfig, getDeepValue } = require('../../util');
 const assert = require('assert');
 const hash = require('object-hash');
 const { init: initCondition, process: processCondition } = require('../../conditions');
