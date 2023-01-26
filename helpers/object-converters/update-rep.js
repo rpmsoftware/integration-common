@@ -48,36 +48,32 @@ const normalizeRequest = ({
 
 module.exports = {
 
-    init: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }) {
+    init: async function ({ idProperty, agencyIdProperty, nameProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }) {
         errorProperty = errorProperty ? validateString(errorProperty) : undefined;
         validateString(dstProperty);
-        idProperty = validatePropertyConfig(idProperty);
-        create = toBoolean(create) || undefined;
+        idProperty = idProperty ? validatePropertyConfig(idProperty) :undefined;
         agencyIdProperty = agencyIdProperty ? validatePropertyConfig(agencyIdProperty) : undefined;
-        create && assert(agencyIdProperty);
+        nameProperty = nameProperty ? validatePropertyConfig(nameProperty) : undefined;
+        create = toBoolean(create) || undefined;
+        assert(idProperty || agencyIdProperty && nameProperty);
         const defaultNoGetterConverter = property => ({ getter: 'property', property, default: null });
         propertyMap = await initMultiple.call(this, propertyMap || {}, defaultNoGetterConverter);
         fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty };
+        return { idProperty, agencyIdProperty, nameProperty, create, dstProperty, propertyMap, fieldMap, errorProperty };
     },
-    
-    convert: async function ({ idProperty, agencyIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }, obj) {
+
+    convert: async function ({ idProperty, agencyIdProperty, nameProperty, create, dstProperty, propertyMap, fieldMap, errorProperty }, obj) {
         const { api } = this;
         for (const srcObj of toArray(obj)) {
             if (errorProperty) {
                 delete srcObj[errorProperty];
             }
-            const repID = +getDeepValue(srcObj, idProperty) || undefined;
-            if (!repID && !create) {
+            const id = idProperty ? +getDeepValue(srcObj, idProperty) : undefined;
+            const name = nameProperty ? getDeepValue(srcObj, nameProperty) : undefined;
+            const agencyID = agencyIdProperty ? +getDeepValue(srcObj, agencyIdProperty) : undefined;
+            if (!id && !(name && agencyID)) {
                 continue;
-            }
-            let agencyID;
-            if (create && !repID) {
-                agencyID = +getDeepValue(srcObj, agencyIdProperty) || undefined;
-                if (!agencyID) {
-                    continue;
-                }
             }
             const fieldPatch = [];
             for (const Field in fieldMap) {
@@ -89,29 +85,28 @@ module.exports = {
                 const v = await getValue.call(this, propertyMap[k], srcObj);
                 v === undefined || (props[k] = v);
             }
-            if (!create) {
-                delete props.Username;
-            }
             props = normalizeRequest(props);
             const noFields = fieldPatch.length < 1;
             if (noFields && isEmpty(props)) {
                 continue;
             }
             noFields || (props.Fields = fieldPatch);
-
+            let beforeUpdate;
             let result;
             try {
-                if (repID) {
-                    try {
-                        result = await api.editRep(repID, props);
-                    } catch (err) {
-                        if (!create) {
+                if (id) {
+                    result = await api.editRep(id, props).catch(async err => {
+                        beforeUpdate = await api.getRep(id);
+                        if (beforeUpdate) {
                             throw err;
                         }
-                        result = await api.createRep(agencyID, props);
-                        result._created = true;
-                    }
-                } else if (create) {
+                    });
+                }
+                if (!result && name) {
+                    beforeUpdate = await api.getRep(agencyID, name);
+                    beforeUpdate && (result = await api.editRep(beforeUpdate.RepID, props));
+                }
+                if (!result && create) {
                     result = await api.createRep(agencyID, props);
                     result._created = true;
                 }
@@ -120,14 +115,14 @@ module.exports = {
                     throw err;
                 }
                 const agency = await api.getAgency(agencyID);
-                const rep = result || repID && await api.getRep(repID);
                 srcObj[errorProperty] = {
                     Error: (err.Message || err).toString(),
                     TimeStamp: new Date().toISOString(),
                     AgencyID: agency?.AgencyID || agencyID,
                     Agency: agency?.Agency,
-                    RepID: rep?.RepID || repID,
-                    Rep: rep?.Rep
+                    RepID: beforeUpdate?.RepID || id,
+                    Rep: beforeUpdate?.Rep || name,
+                    Username: beforeUpdate?.Username || props.Username
                 };
                 result = undefined;
             }

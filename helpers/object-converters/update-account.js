@@ -23,7 +23,7 @@ module.exports = {
         propertyMap = await initMultiple.call(this, propertyMap || {}, defaultNoGetterConverter);
         fieldMap = await initMultiple.call(this, fieldMap || {}, defaultNoGetterConverter);
         isEmpty(fieldMap) && assert(!isEmpty(propertyMap));
-        return { idProperty, customerIdProperty, supplierIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty };
+        return { idProperty, nameProperty, customerIdProperty, supplierIdProperty, create, dstProperty, propertyMap, fieldMap, errorProperty };
     },
 
 
@@ -38,7 +38,7 @@ module.exports = {
                 continue;
             }
             let customerID, supplierID, name;
-            if (create && !accountID) {
+            if (!accountID) {
                 customerID = +getDeepValue(srcObj, customerIdProperty);
                 if (!customerID) {
                     continue;
@@ -48,7 +48,7 @@ module.exports = {
                     continue;
                 }
                 name = getDeepValue(srcObj, nameProperty);
-                if (!nameProperty) {
+                if (!name) {
                     continue;
                 }
             }
@@ -62,24 +62,31 @@ module.exports = {
                 const v = await getValue.call(this, propertyMap[k], srcObj);
                 v === undefined || (props[k] = v);
             }
-            const noFields = fieldPatch.length < 1;
-            if (noFields && isEmpty(props)) {
+            if (fieldPatch.length > 0) {
+                props.Fields = fieldPatch
+            } else {
+                delete props.Fields;
+            }
+            if (isEmpty(props)) {
                 continue;
             }
-            noFields || (props.Fields = fieldPatch);
+            let beforeUpdate;
             let result;
+
             try {
                 if (accountID) {
-                    try {
-                        result = await api.editAccount(accountID, props);
-                    } catch (e) {
-                        if (!create) {
-                            throw e;
+                    result = await api.editAccount(accountID, props).catch(async err => {
+                        beforeUpdate = await api.getAccount(accountID);
+                        if (beforeUpdate) {
+                            throw err;
                         }
-                        result = await api.createAccount(name, customerID, supplierID, props);
-                        result._created = true;
-                    }
-                } else if (create) {
+                    });
+                }
+                if (!result && name && supplierID) {
+                    beforeUpdate = await api.getAccount(name, supplierID);
+                    beforeUpdate && (result = await api.editAccount(beforeUpdate.AccountID, props));
+                }
+                if (!result && create) {
                     result = await api.createAccount(name, customerID, supplierID, props);
                     result._created = true;
                 }
@@ -87,15 +94,21 @@ module.exports = {
                 if (!errorProperty) {
                     throw err;
                 }
-                const acc = result || accountID && await api.getAccount(accountID);
+                let { Supplier, SupplierID, Name: supName } = beforeUpdate ||
+                    supplierID && await api.getSupplier(supplierID) ||
+                    { SupplierID: supplierID };
+                Supplier || (Supplier = supName);
+                let { Customer, CustomerID, Name: custName } = beforeUpdate ||
+                    customerID && await api.getCustomer(customerID) ||
+                    { CustomerID: customerID };
+                Customer || (Customer = custName);
                 srcObj[errorProperty] = {
                     Error: (err.Message || err).toString(),
                     TimeStamp: new Date().toISOString(),
-                    AccountID: acc?.AccountID || accountID,
-                    Account: acc?.Account || name
+                    AccountID: beforeUpdate?.AccountID || accountID,
+                    Account: beforeUpdate?.Account || name,
+                    CustomerID, Customer, SupplierID, Supplier
                 };
-                result = undefined;
-
             }
             srcObj[dstProperty] = result;
         }

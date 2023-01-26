@@ -34,7 +34,7 @@ module.exports = {
         return { dstProperty, api, type, getObjectID, condition, create, fieldMap };
     },
 
-    convert: async function ({ dstProperty, api, type, condition, create, getObjectID, fieldMap }, obj) {
+    convert: async function ({ dstProperty, api, type, condition, getObjectID, fieldMap }, obj) {
         const { globals } = this.parentContext || this;
 
         let sfApi = getEager(globals, api);

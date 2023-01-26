@@ -64,7 +64,6 @@ module.exports = {
     }, obj) {
         const { api } = this;
         const { create: createEntity, edit: editEntity } = OBJECT_UPDATERS[type];
-        let entities;
         for (const srcObj of toArray(obj)) {
             if (condition && !processCondition(condition, srcObj)) {
                 continue;
@@ -92,20 +91,27 @@ module.exports = {
             } else {
                 props.Fields = fieldPatch;
             }
-            entities || (entities = await api.getEntities(type, true));
-            let stub = id && entities.find(({ ID }) => id === ID);
-            if(!stub ){
-                console.log(srcObj)
-                throw 'stop'
+            if (isEmpty(props)) {
+                continue;
             }
-            stub || name && (stub = entities.find(({ Name }) => name === Name));
-            let afterUpdate;
+            let beforeUpdate;
+            let result;
             try {
-                if (stub) {
-                    isEmpty(props) || (afterUpdate = await editEntity.call(api, stub.ID, props));
-                } else if (create) {
-                    afterUpdate = await createEntity.call(api, props);
-                    afterUpdate._created = true;
+                if (id) {
+                    result = await editEntity.call(api, id, props).catch(async err => {
+                        beforeUpdate = await api.getEntity(type, id);
+                        if (beforeUpdate) {
+                            throw err;
+                        }
+                    });
+                } 
+                if (!result && name) {
+                    beforeUpdate = await api.getEntity(type, name);
+                    beforeUpdate && (result = await editEntity.call(api, beforeUpdate.EntityID, props));
+                }
+                if (!result && create) {
+                    result = await createEntity.call(api, props);
+                    result._created = true;
                 }
             } catch (error) {
                 if (!errorProperty) {
@@ -114,13 +120,13 @@ module.exports = {
                 srcObj[errorProperty] = {
                     Error: (error.Message || error).toString(),
                     TimeStamp: new Date().toISOString(),
-                    EntityID: stub?.ID || id,
-                    Entity: stub?.Name || name
+                    EntityID: beforeUpdate?.EntityID || id,
+                    Entity: beforeUpdate?.RefName || name
                 };
                 continue;
             }
-            if (verify && afterUpdate) {
-                const { Fields: fieldsAfter } = afterUpdate;
+            if (verify && result) {
+                const { Fields: fieldsAfter } = result;
                 assert(fieldsAfter);
                 let errors = [];
                 for (const { Field, Value } of fieldPatch) {
@@ -133,7 +139,7 @@ module.exports = {
                 }
                 srcObj[fieldErrorProperty] = errors;
             }
-            srcObj[dstProperty] = afterUpdate;
+            srcObj[dstProperty] = result;
         }
         return obj;
     }

@@ -116,5 +116,6 @@ module.exports = {
             parallel ? promises.push(api.parallelRunner(run)) : await run();
         }
         await Promise.all(promises);
+        return obj;
     }
 };

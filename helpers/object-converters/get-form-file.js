@@ -7,7 +7,7 @@ module.exports = {
         dstProperty = validateString(dstProperty);
         url = toBoolean(url) || undefined
         fileIdProperty = fileIdProperty ? validatePropertyConfig(fileIdProperty) : 'FileID';
-        return { fileIdProperty, dstProperty, undefined };
+        return { fileIdProperty, dstProperty, url };
     },
 
     convert: async function ({ fileIdProperty, dstProperty, url }, data) {

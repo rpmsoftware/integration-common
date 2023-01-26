@@ -1,4 +1,7 @@
-const { validateString, toArray, getEager, toBoolean, getDeepValue, isEmpty, validatePropertyConfig } = require('../../util');
+const {
+    validateString, toArray, getEager, toBoolean, getDeepValue,
+    isEmpty, validatePropertyConfig, normalizeInteger, createParallelRunner
+} = require('../../util');
 const { init: initCondition, process: processCondition } = require('../../conditions');
 const assert = require('assert');
 const { ObjectType } = require('../../api-enums');
@@ -107,7 +110,9 @@ const OBJECT_CONVERTERS = {
             return { condition };
         },
         convert: async function ({ condition }, obj) {
-            return toArray(obj).filter(e => processCondition(condition, e));
+            const result = toArray(obj).filter(e => processCondition(condition, e));
+            // console.log('Filtered down to',result.length);
+            return result;
         }
     },
 
@@ -180,13 +185,15 @@ const OBJECT_CONVERTERS = {
     },
 
     forEach: {
-        init: async function ({ array, condition, convert }) {
+        init: async function ({ array, condition, convert, parallel }) {
             array = array ? validatePropertyConfig(array) : undefined;
             condition = condition ? initCondition(condition) : undefined;
+            parallel = parallel && normalizeInteger(parallel);
+            parallel > 0 || (parallel = undefined);
             convert = await init.call(this, convert);
-            return { array, convert, condition };
+            return { array, convert, condition, parallel };
         },
-        convert: async function ({ array: arrayProperty, condition, convert: convertConf }, obj) {
+        convert: async function ({ array: arrayProperty, condition, convert: convertConf, parallel }, obj) {
             if (arrayProperty) {
                 for (const parent of toArray(obj)) {
                     const array = getDeepValue(parent, arrayProperty);
@@ -203,12 +210,11 @@ const OBJECT_CONVERTERS = {
                     }
                 }
             } else {
-                const array = toArray(obj);
-                for (const key in array) {
-                    const e = array[key];
-                    condition && !processCondition(condition, e) ||
-                        (array[key] = await convert.call(this, convertConf, e));
-                }
+                const runner = createParallelRunner(parallel || 1);
+                obj = await Promise.all(toArray(obj).map(e =>
+                    condition && !processCondition(condition, e) ? e :
+                        runner(() => convert.call(this, convertConf, e))
+                ));
             }
             return obj;
         }
