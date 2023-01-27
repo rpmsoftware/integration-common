@@ -348,6 +348,11 @@ add('Percent', function (conf, form) {
     return conf.isTableField ? result / 100 : result;
 });
 
+add('YesNo', function (conf, form) {
+    const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, conf.srcUid, true));
+    return Value ? toBoolean(Value) : undefined;
+});
+
 add('FieldTableDefinedRow', async function (conf, form) {
     const srcRows = (form.Form || form).getFieldByUid(conf.srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
     const result = {};
@@ -643,18 +648,19 @@ const DEFAULT_GETTER = {
     },
     get: function (config, form) {
         form = form.Form || form;
-        let { Value } = toSimpleField(getFieldByUid.call(form, config.srcUid, true));
-        if (config.pattern) {
-            if (!(config.pattern instanceof RegExp)) {
-                config.pattern = new RegExp(config.pattern);
+        let { pattern, type, srcUid } = config;
+        let { Value } = toSimpleField(getFieldByUid.call(form, srcUid, true));
+        if (pattern) {
+            if (!(pattern instanceof RegExp)) {
+                pattern = config.pattern = new RegExp(pattern);
             }
-            const parts = config.pattern.exec(Value);
+            const parts = pattern.exec(Value);
             if (!parts) {
                 throw new Error(`Could not parse value "${Value}"`);
             }
             Value = parts[parts.length > 1 ? 1 : 0];
         }
-        return (Value && config.type) ? getEager(CONVERTERS, config.type)(Value) : Value;
+        return (Value && type) ? getEager(CONVERTERS, type)(Value) : (Value || undefined);
     }
 };
 

@@ -2,6 +2,9 @@ const { toBoolean, validateString, toArray, getEager, validatePropertyConfig, ge
 const { init: initCondition, process: processCondition } = require('../../conditions');
 const SalesforceAPI = require('../../salesforce-api');
 const assert = require('assert');
+const { render } = require('mustache');
+
+const ERR_NOT_UNIQUE = 'More then one record returned';
 
 module.exports = {
 
@@ -42,11 +45,25 @@ module.exports = {
             sfApi = globals[api] = new SalesforceAPI(sfApi);
         }
 
+        let { property: objIdProperty, query } = getObjectID;
+
+        if (objIdProperty) {
+            getObjectID = e => getDeepValue(e, objIdProperty);
+        } else {
+            query = `select Id from ${type} where ${query}`;
+            getObjectID = async e => {
+                const q = render(query, e);
+                const result = await sfApi.query(q);
+                assert(result.length < 2, ERR_NOT_UNIQUE);
+                return result[0]?.Id;
+            };
+        }
+
         for (const e of toArray(obj)) {
             if (condition && !processCondition(condition, e)) {
                 continue;
             }
-            const id = getDeepValue(e, getObjectID.property);
+            const id = await getObjectID(e);
             if (!id) {
                 continue;
             }
