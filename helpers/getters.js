@@ -256,7 +256,7 @@ const COMMON_GETTERS = {
             } else {
                 assert(resultConfig.fieldMap[validateString(value)]);
             }
-            resultConfig.matchCondition = initCondition(fields, matchCondition);
+            resultConfig.matchCondition = initCondition.call(fields, matchCondition);
             resultConfig.demand = toBoolean(demand) || undefined;
             resultConfig.value = value;
             assert(resultConfig.matchCondition);
