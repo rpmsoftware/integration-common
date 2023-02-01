@@ -21,7 +21,7 @@ module.exports = {
             array.forEach(parent =>
                 parent[dstProperty] = forms[action]((child, idx) => {
                     const result = child && processCondition(matchCondition, { parent, child });
-                    result && (array[idx] = undefined);
+                    result && (forms[idx] = undefined);
                     return result;
                 })
             );
