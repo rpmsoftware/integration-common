@@ -1608,6 +1608,14 @@ API.prototype.getActionsDue = function () {
     return this.request('ProcActionsDue');
 };
 
+API.prototype.shareFormLayout = function (FormID, LayoutID) {
+    if (this.validateParameters) {
+        FormID = normalizeInteger(FormID);
+        LayoutID = LayoutID ? normalizeInteger(LayoutID) : undefined;
+    }
+    return this.request('ProcFormLayoutShare', { FormID, LayoutID });
+};
+
 exports.RpmApi = API;
 
 exports.FIELD_FORMAT = FieldFormat;

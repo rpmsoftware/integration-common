@@ -1,7 +1,6 @@
 const debug = require('debug')('rpm:send-email');
 const assert = require('assert');
-const { init: initGetter, get: getValue } = require('../getters');
-const { validateString, toArray, getEager, toBoolean, isEmpty } = require('../../util');
+const { validateString, toArray, getEager, toBoolean, isEmpty, validatePropertyConfig, getDeepValue } = require('../../util');
 const { render } = require('mustache');
 
 exports.send = async function (conf, data) {
@@ -9,6 +8,7 @@ exports.send = async function (conf, data) {
         transport,
         fromEmail: fromEmailConf,
         toEmails: toEmailsConf,
+        replyToEmail,
         ccEmails: ccEmailsConf,
         subject,
         body,
@@ -45,57 +45,64 @@ exports.send = async function (conf, data) {
         type
     }));
     subject || assert(body);
-    const fromEmail = (await getEmails.call(this, fromEmailConf, data))[0];
+    const fromEmail = getEmails.call(this, fromEmailConf, data)[0];
     assert(fromEmail);
+    replyToEmail = replyToEmail && getEmails.call(this, replyToEmail, data)[0];
     let toEmails = [];
     let ccEmails = [];
     for (let c of toEmailsConf) {
-        toEmails = toEmails.concat(await getEmails.call(this, c, data));
+        toEmails = toEmails.concat(getEmails.call(this, c, data));
     }
     for (let c of ccEmailsConf) {
-        ccEmails = ccEmails.concat(await getEmails.call(this, c, data));
+        ccEmails = ccEmails.concat(getEmails.call(this, c, data));
     }
     if (toEmails.length < 1 && ccEmails.length < 1) {
         return;
     }
     dryRun ?
-        debug('_sendEmail(%j, %j, %j, %s, %s, %s)', fromEmail, toEmails, ccEmails, subject, body, html) :
-        await _sendEmail(fromEmail, toEmails, ccEmails, subject, body, html, attachments);
+        debug('_sendEmail(%j, %j, %j, %j, %s, %s, %s)', fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html) :
+        await _sendEmail(fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html, attachments);
     debug('Email is sent');
 
 };
 
-async function getEmails(conf, form) {
-    let { address: addressConf, name: nameConf } = conf;
+function getEmails(conf, form) {
+    let { property, address: addressConf, name: nameConf } = conf;
     const result = {};
     for (let f of toArray(form)) {
-        const addresses = await getValue.call(this, conf, f) || f;
-        for (let address of toArray(addresses)) {
+        property && (f = getDeepValue(f, property));
+        for (let address of toArray(f)) {
             if (!address) {
                 continue;
             }
-            const name = nameConf ? await getValue.call(this, nameConf, address) : undefined;
-            address = addressConf ? await getValue.call(this, addressConf, address) : validateString(address);
+            const name = nameConf && getDeepValue(address, nameConf) || undefined;
+            address = getDeepValue(address, addressConf);
             address && (result[address] = { name, address });
         }
     }
     return Object.values(result);
 }
 
-async function initEmailConfig(conf) {
-    let { address, name, getter } = conf;
-    getter || (conf.getter = 'none');
-    let result = await initGetter.call(this, conf);
-    assert(!result.name);
-    assert(!result.address);
-    result.address = address ? await initGetter.call(this, address) : undefined;
-    result.name = (address && name) ? await initGetter.call(this, name) : undefined;
-    return result;
+function initEmailConfig(conf) {
+    let { address, name, property } = conf;
+    name = name ? validatePropertyConfig(name) : undefined;
+    if (!(address || property)) {
+        property = undefined;
+        address = validatePropertyConfig(conf);
+    } else if (address) {
+        address = validatePropertyConfig(address);
+        property = property ? validatePropertyConfig(property) : undefined;
+    } else {
+        address = validatePropertyConfig(property);
+        property = undefined;
+    }
+    return { property, address, name };
 }
 
-exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
+exports.init = async function ({ transport, fromEmail, toEmails, replyToEmail, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
     const { globals } = this.parentContext || this;
-    fromEmail = await initEmailConfig.call(this, fromEmail);
+    fromEmail = initEmailConfig.call(this, fromEmail);
+    replyToEmail = replyToEmail ? initEmailConfig.call(this, replyToEmail) : undefined;
     subject = subject ? validateString(subject.trim()) : undefined;
     body = body ? validateString(body.trim()) : undefined;
 
@@ -111,7 +118,7 @@ exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subje
         const result = [];
         if (emails) {
             for (let conf of toArray(emails)) {
-                result.push(await initEmailConfig.call(this, conf));
+                result.push(initEmailConfig.call(this, conf));
             }
         }
         return result;
@@ -128,5 +135,5 @@ exports.init = async function ({ transport, fromEmail, toEmails, ccEmails, subje
     html = toBoolean(html) || undefined;
     dryRun = toBoolean(dryRun) || undefined;
     sendEmpty = toBoolean(sendEmpty) || undefined;
-    return { transport, fromEmail, toEmails, ccEmails, subject, body, attachments, html, dryRun, sendEmpty };
+    return { transport, fromEmail, toEmails, replyToEmail, ccEmails, subject, body, attachments, html, dryRun, sendEmpty };
 };

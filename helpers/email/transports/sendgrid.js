@@ -10,10 +10,11 @@ module.exports = ({ apiKey }) => {
     validateString(apiKey);
     const sgMail = new MailService();
     sgMail.setApiKey(apiKey);
-    return (fromEmail, toEmails, ccEmails, subject, messageBody, html, attachments) => {
+    return (fromEmail, replyToEmail, toEmails, ccEmails, subject, messageBody, html, attachments) => {
         const message = {
             subject,
             from: normalize(fromEmail),
+            reply_to: replyToEmail ? normalize(replyToEmail) : undefined,
             to: toEmails.map(normalize),
             cc: ccEmails.map(normalize),
             attachments: attachments ? attachments.map(({ content, filename, type }) => ({
