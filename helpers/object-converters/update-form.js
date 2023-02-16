@@ -18,7 +18,8 @@ module.exports = {
         statusMap,
         blindPatch,
         dstProperty,
-        parallel
+        parallel,
+        condition
     }) {
         const { api } = this;
         dstProperty = dstProperty ? validateString(dstProperty) : undefined;
@@ -48,10 +49,11 @@ module.exports = {
         status && (propertyMap.StatusID = { getter: 'constant', value: fields.getStatus(status, true).ID });
         isEmpty(propertyMap) && (propertyMap = undefined);
         fieldMap.length > 0 || statusMap || assert(propertyMap);
+        condition = condition ? initCondition(condition) : undefined;
 
         return {
             process, formIDProperty, fieldMap, formNumberProperty, parallel,
-            propertyMap, statusMap, blindPatch, create, dstProperty
+            propertyMap, statusMap, blindPatch, create, dstProperty,condition
         };
 
     },
@@ -65,7 +67,8 @@ module.exports = {
         fieldMap,
         propertyMap,
         statusMap,
-        parallel
+        parallel,
+        condition
     }, obj) {
         const { api } = this;
         const createFormUpdatePack = async (source, dstForm) => {
@@ -89,6 +92,9 @@ module.exports = {
         formNumberProperty && (await api.getFormList(process, true)).Forms.forEach(({ N, ID }) => number2id[N] = ID);
         const promises = [];
         for (let source of toArray(obj)) {
+            if (condition && !processCondition(condition, source)) {
+                continue;
+            }
             let formID = formIDProperty && +getDeepValue(source, formIDProperty);
             if (!formID) {
                 const formNumber = formNumberProperty && getDeepValue(source, formNumberProperty);
