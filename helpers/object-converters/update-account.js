@@ -38,19 +38,11 @@ module.exports = {
                 continue;
             }
             let customerID, supplierID, name;
-            if (!accountID) {
-                customerID = +getDeepValue(srcObj, customerIdProperty);
-                if (!customerID) {
-                    continue;
-                }
-                supplierID = +getDeepValue(srcObj, supplierIdProperty);
-                if (!supplierID) {
-                    continue;
-                }
-                name = getDeepValue(srcObj, nameProperty);
-                if (!name) {
-                    continue;
-                }
+            customerID = +getDeepValue(srcObj, customerIdProperty);
+            supplierID = +getDeepValue(srcObj, supplierIdProperty);
+            name = getDeepValue(srcObj, nameProperty);
+            if (!(accountID || customerID && supplierID && name)) {
+                continue;
             }
             const fieldPatch = [];
             for (const Field in fieldMap) {
@@ -83,7 +75,7 @@ module.exports = {
                     });
                 }
                 if (!result && name && supplierID) {
-                    beforeUpdate = await api.getAccount(name, supplierID);
+                    beforeUpdate = await api.getAccount(name, supplierID).catch(() => undefined);
                     beforeUpdate && (result = await api.editAccount(beforeUpdate.AccountID, props));
                 }
                 if (!result && create) {
