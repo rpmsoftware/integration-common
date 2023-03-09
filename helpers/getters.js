@@ -263,15 +263,16 @@ const COMMON_GETTERS = {
             return resultConfig;
         }
     },
+
     statusID: {
         get: async function ({ status }) {
             return status;
         },
 
-        init: async function ({ process, status }) {
+        init: async function ({ process, status }, field, fields) {
             const { api } = this;
-            process = (await api.getProcesses()).getActiveProcess(process, true);
-            status = (await process.getFields()).getStatus(status, true).ID;
+            process && (fields = await (await api.getProcesses()).getActiveProcess(process, true).getFields());
+            status = fields.getStatus(status, true).ID;
             return { status };
         }
     },
