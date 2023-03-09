@@ -8,7 +8,7 @@ const BASE_URL = 'https://api.track.toggl.com/api/v9/';
 class TogglTrackAPI {
 
     static STATUS_NOT_FOUND = 404;
-    static _TYPES = ['projects', 'clients'];
+    static _TYPES = ['projects', 'clients', 'tags'];
 
     static validateType(type) {
         assert(TogglTrackAPI._TYPES.indexOf(type) >= 0, `Type "${type}" is not supported`);
