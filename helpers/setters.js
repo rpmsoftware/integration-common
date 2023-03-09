@@ -25,7 +25,7 @@ const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
 const { FieldSubType, ObjectType, RepTypes } = require('../api-enums');
 const { render } = require('mustache');
-const tweakDate = require('../processors/tweak-date');
+const tweakDate = require('./tweak-date');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const { init: initView, getForms: getViewForms } = require('./views');
 

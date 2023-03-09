@@ -775,22 +775,24 @@ exports.defineLazyProperty = (obj, name, init) => {
 };
 
 exports.fetch2json = async response => {
-    const { ok } = response;
-    let result = await response.text();
+    let { ok, status, statusText } = response;
+    response = await response.text();
     if (ok) {
         try {
-            return result ? JSON.parse(result) : undefined;
+            return response ? JSON.parse(response) : undefined;
         } catch (e) {
-            console.error(result);
+            console.error(response);
             throw e;
         }
     }
+    response || (response = undefined);
+    statusText || (statusText = undefined);
     try {
-        result = JSON.parse(result);
+        response = response && JSON.parse(response);
     } catch (e) {
         // ;
     }
-    throw result;
+    throw { status, statusText, response };
 };
 
 exports.validatePropertyConfig = p => {
