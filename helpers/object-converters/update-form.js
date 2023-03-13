@@ -3,7 +3,6 @@ const {
     toArray, toBoolean, validateString, isEmpty, validatePropertyConfig, getDeepValue
 } = require('../../util');
 const { init: initCondition, process: processCondition } = require('../../conditions');
-const { initMultiple: initGetters, getMultiple } = require('../getters');
 const { set, initMultiple: initSetters } = require('../setters');
 
 module.exports = {
@@ -12,7 +11,7 @@ module.exports = {
         formIDProperty,
         formNumberProperty,
         fieldMap,
-        propertyMap,
+        propertyMap: propertyMapConf,
         create,
         status,
         statusMap,
@@ -33,7 +32,12 @@ module.exports = {
         const fields = await processes.getActiveProcess(process, true).getFields();
         process = fields.ProcessID;
         fieldMap = await initSetters.call(this, fieldMap, fields);
-        propertyMap = propertyMap ? await initGetters.call(this, propertyMap) : {};
+        let propertyMap = {};
+        for (const k in propertyMapConf) {
+            const c = propertyMapConf[k];
+            const { constant } = c;
+            propertyMap[k] = constant === undefined ? validatePropertyConfig(c) : { constant };
+        }
 
         if (statusMap || (statusMap = undefined)) {
             const resultStatusMap = [];
@@ -53,7 +57,7 @@ module.exports = {
 
         return {
             process, formIDProperty, fieldMap, formNumberProperty, parallel,
-            propertyMap, statusMap, blindPatch, create, dstProperty,condition
+            propertyMap, statusMap, blindPatch, create, dstProperty, condition
         };
 
     },
@@ -77,7 +81,13 @@ module.exports = {
                 const fieldPatch = await set.call(this, conf, source, dstForm);
                 fieldPatch && formPatch.push(fieldPatch);
             }
-            let formProps = propertyMap ? await getMultiple.call(this, propertyMap, source) : {};
+            const formProps = {};
+            for (const k in propertyMap) {
+                const c = propertyMap[k];
+                const { constant } = c;
+                const v = constant === undefined ? getDeepValue(source, c) : constant;
+                v === undefined || (formProps[k] = v);
+            }
             if (statusMap) {
                 for (let cond of statusMap) {
                     if (processCondition(cond, source)) {

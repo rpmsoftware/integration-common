@@ -121,7 +121,7 @@ const COMMON_SETTERS = {
     formNumberToID: async function ({ srcField, processID }, data) {
         assert(processID > 0);
         const srcValue = getDeepValue(data, srcField);
-        return srcValue ? { ID: (await this.api.demandForm(processID, srcValue)).Form.FormID } : EMPTY;
+        return srcValue ? { ID: (await this.api.demandForm(processID, srcValue)).Form.FormID } : getEmpty();
     },
 
     mustache: {
@@ -605,18 +605,18 @@ add('YesNo', function ({ srcField, normalize }, data) {
     return { Value: data };
 });
 
-const EMPTY = { Value: null, ID: 0 };
+const getEmpty = () => ({ Value: null, ID: 0 });
 
 add('List', function (config, data) {
     const { srcField, demand, options, defaultValue } = config;
     let value = getDeepValue(data, srcField);
     isEmptyValue(value) && (value = defaultValue);
     if (isEmptyValue(value)) {
-        return EMPTY;
+        return getEmpty();
     }
     let option = options.find(o => o.Text === value);
     return option ? { Value: option.Text, ID: option.ID } : (demand ?
-        Object.assign({ Errors: getErrorMessage(config, 'Unknown value: ' + value) }, EMPTY) :
+        Object.assign({ Errors: getErrorMessage(config, 'Unknown value: ' + value) }, getEmpty()) :
         { Value: value }
     );
 }, async function ({ demand, defaultValue }, rpmField) {
@@ -635,7 +635,7 @@ add('ListMultiSelect', function (config, data) {
     let value = getDeepValue(data, srcField);
     isEmptyValue(value) && (value = defaultValue);
     Array.isArray(value) && (value = value.join(','));
-    return isEmptyValue(value) ? EMPTY : value;
+    return isEmptyValue(value) ? getEmpty() : value;
 }, async function ({ demand, defaultValue }, rpmField) {
     demand = toBoolean(demand) || undefined;
     let { Options: options } = rpmField;
@@ -776,7 +776,7 @@ add('RestrictedReference', async function (conf, data) {
     const { isTableField } = conf;
     data = getObjectValue(conf, data);
     if (!data) {
-        return EMPTY;
+        return getEmpty();
     }
     if (typeof data === 'number') {
         if (isTableField) {
@@ -794,7 +794,7 @@ add('RestrictedReference', 'title2reference', async function (conf, data) {
         assert.strictEqual(typeof data, 'string');
         data = (await this.api.getFormList(conf.processID, true)).Forms.find(({ T }) => T === data);
     }
-    return data ? { ID: data.ID, Value: data.N } : EMPTY;
+    return data ? { ID: data.ID, Value: data.N } : getEmpty();
 });
 
 async function defaultBasicReference({ srcField, isTableField }, data) {

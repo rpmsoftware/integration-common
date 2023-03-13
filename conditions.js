@@ -173,15 +173,20 @@ const OPERATORS = {
         }
     },
     dateAfter: {
-        init: init2,
+        init: function (conf) {
+            const { equal } = conf;
+            const result = init2.call(this, conf);
+            toBoolean(equal) && (result.equal = true);
+            return result;
+        },
         process: function (form) {
-            const { operand1, operand2 } = this;
+            const { operand1, operand2, equal } = this;
             form = form.Form || form;
             let value1 = getOperandValue(operand1, form);
             let value2 = getOperandValue(operand2, form);
             value1 = toMoment(value1 || null);
             value2 = toMoment(value2 || null);
-            return value1.isAfter(value2);
+            return value1.isAfter(value2) || equal && value1.isSame(value2);
         }
     },
     exists: {

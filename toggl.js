@@ -8,7 +8,7 @@ const BASE_URL = 'https://api.track.toggl.com/api/v9/';
 class TogglTrackAPI {
 
     static STATUS_NOT_FOUND = 404;
-    static _TYPES = ['projects', 'clients', 'tags'];
+    static _TYPES = ['projects', 'clients', 'tags', 'groups', 'users'];
 
     static validateType(type) {
         assert(TogglTrackAPI._TYPES.indexOf(type) >= 0, `Type "${type}" is not supported`);
@@ -29,15 +29,27 @@ class TogglTrackAPI {
 
     setWorkspace(workspaceID) {
         this.workspaceID = normalizeInteger(workspaceID);
+        delete this.workspace;
+    }
+
+    async getGroups() {
+        return this._getFromOrganization('groups');
+    }
+
+    async getWorkspace() {
+        let { workspace } = this;
+        if (!workspace) {
+            workspace = this.workspace = await this._getFromWorkspace();
+        }
+        return workspace;
     }
 
     getMe() {
         return this._get('me');
     }
 
-    getUsers(organizationID) {
-        organizationID = normalizeInteger(organizationID);
-        return this._get(`organizations/${organizationID}/workspaces/${this.workspaceID}/workspace_users`);
+    getOrganizationUsers() {
+        return this._getFromOrganization('users');
     }
 
     getOrganizations() {
@@ -60,6 +72,10 @@ class TogglTrackAPI {
         return this._requestWorkspace('GET', endpoint);
     }
 
+    _getFromOrganization(endpoint) {
+        return this._requestOrganization('GET', endpoint);
+    }
+
     _get(endpoint) {
         return this._request('GET', endpoint);
     }
@@ -73,7 +89,16 @@ class TogglTrackAPI {
     }
 
     _requestWorkspace(method, endpoint, data) {
-        return this._request(method, `workspaces/${this.workspaceID}/${endpoint}`, data);
+        let url = `workspaces/${this.workspaceID}`;
+        endpoint && (url += `/${endpoint}`);
+        return this._request(method, url, data);
+    }
+
+    async _requestOrganization(method, endpoint, data) {
+        let { organization_id } = await this.getWorkspace();
+        let url = `organizations/${organization_id}`;
+        endpoint && (url += `/${endpoint}`);
+        return this._request(method, url, data);
     }
 
     async getEntities(type, query) {
