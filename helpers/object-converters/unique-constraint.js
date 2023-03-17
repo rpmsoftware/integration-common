@@ -1,19 +1,28 @@
-const { isEmpty, toArray, validatePropertyConfig, getDeepValue } = require('../../util');
+const { isEmpty, toArray, validatePropertyConfig, getDeepValue, toBoolean } = require('../../util');
 const assert = require('assert');
 const hash = require('object-hash');
 
 module.exports = {
-    init: function ({ properties }) {
+    init: function ({ properties, ignoreEmpty }) {
+        ignoreEmpty = toBoolean(ignoreEmpty) || undefined;
         properties = toArray(properties);
         assert(properties.length > 0);
         properties = properties.map(validatePropertyConfig);
         return { properties };
     },
-    convert: function ({ properties }, obj) {
+    convert: function ({ properties, ignoreEmpty }, obj) {
         const uniqueObjects = {};
         let duplicates = {};
         for (const e of toArray(obj)) {
-            const values = properties.map(p => getDeepValue(e, p));
+            let empty = true;
+            const values = properties.map(p => {
+                const r = getDeepValue(e, p);
+                empty = empty && (r === undefined || r === null || r === '');
+                return r;
+            });
+            if (empty && ignoreEmpty) {
+                continue;
+            }
             const h = hash(values);
             const d = uniqueObjects[h];
             d ?

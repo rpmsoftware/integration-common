@@ -127,7 +127,7 @@ module.exports = {
                     (formPatch.length > 0 || !isEmpty(formProps)) &&
                         (form = await api.createForm(process, formPatch, formProps));
                 }
-                dstProperty && (source[dstProperty] = form);
+                dstProperty && (source[dstProperty] = form && form.Form);
             };
             parallel ? promises.push(api.parallelRunner(run)) : await run();
         }

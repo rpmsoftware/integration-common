@@ -651,7 +651,7 @@ const DEFAULT_GETTER = {
         form = form.Form || form;
         let { pattern, type, srcUid } = config;
         let { Value } = toSimpleField(getFieldByUid.call(form, srcUid, true));
-        if (pattern) {
+        if (Value && pattern) {
             if (!(pattern instanceof RegExp)) {
                 pattern = config.pattern = new RegExp(pattern);
             }

@@ -529,9 +529,12 @@ API.prototype.editForm = async function (processNameOrID, formNumberOrID, fields
     } else {
         properties.AlternateID = formNumberOrID;
     }
-    fields = fields || [];
-    properties.Fields = Array.isArray(fields) ? fields :
-        Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    if (fields) {
+        properties.Fields = Array.isArray(fields) ? fields :
+            Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    } else {
+        delete properties.Fields;
+    }
     const result = this._extendForm(await this.request('ProcFormEdit', body));
     this.emit('FormEdit', result);
     return result;
@@ -817,11 +820,14 @@ API.prototype.createForm = function (processOrId, fields, properties, fireWebEve
     } else if (type !== 'object') {
         properties = {};
     }
-    fields = fields || [];
     properties = { Form: Object.assign({}, properties) };
     properties[typeof processOrId === 'number' ? 'ProcessID' : 'Process'] = processOrId;
-    properties.Form.Fields = Array.isArray(fields) ? fields :
-        Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    if (fields) {
+        properties.Form.Fields = Array.isArray(fields) ? fields :
+            Object.keys(fields).map(key => ({ Field: key, Value: fields[key] }));
+    } else {
+        delete properties.Form.Fields;
+    }
     if (fireWebEvent) {
         assert.strictEqual(typeof fireWebEvent, 'boolean');
         properties.WebhookEvaluate = true;
