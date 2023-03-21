@@ -8,7 +8,7 @@ module.exports = {
         properties = toArray(properties);
         assert(properties.length > 0);
         properties = properties.map(validatePropertyConfig);
-        return { properties };
+        return { properties, ignoreEmpty };
     },
     convert: function ({ properties, ignoreEmpty }, obj) {
         const uniqueObjects = {};
@@ -20,7 +20,9 @@ module.exports = {
                 empty = empty && (r === undefined || r === null || r === '');
                 return r;
             });
+
             if (empty && ignoreEmpty) {
+
                 continue;
             }
             const h = hash(values);
