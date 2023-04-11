@@ -29,6 +29,14 @@ OBJECT_UPDATERS[ObjectType.Supplier] = {
         return this.createSupplier(props);
     }
 };
+OBJECT_UPDATERS[ObjectType.Staff] = {
+    edit: function (id, props) {
+        return this.editStaff(id, props);
+    },
+    create: function () {
+        throw 'Implement me'
+    }
+};
 
 module.exports = {
     init: async function ({

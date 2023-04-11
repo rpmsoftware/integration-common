@@ -50,7 +50,7 @@ module.exports = {
             statusMap = resultStatusMap;
         }
 
-        status && (propertyMap.StatusID = { getter: 'constant', value: fields.getStatus(status, true).ID });
+        status && (propertyMap.StatusID = { constant: fields.getStatus(status, true).ID });
         isEmpty(propertyMap) && (propertyMap = undefined);
         fieldMap.length > 0 || statusMap || assert(propertyMap);
         condition = condition ? initCondition(condition) : undefined;
@@ -85,6 +85,7 @@ module.exports = {
             for (const k in propertyMap) {
                 const c = propertyMap[k];
                 const { constant } = c;
+                console.log(c)
                 const v = constant === undefined ? getDeepValue(source, c) : constant;
                 v === undefined || (formProps[k] = v);
             }

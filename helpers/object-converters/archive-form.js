@@ -1,4 +1,3 @@
-const assert = require('assert');
 const { toArray, toBoolean, validatePropertyConfig, getDeepValue } = require('../../util');
 
 module.exports = {
@@ -16,11 +15,22 @@ module.exports = {
 
     },
     convert: async function ({ formIDProperty, archive }, obj) {
-        assert.strictEqual(typeof archive, 'boolean', 'Not implemented');
+
+        let getArchived;
+        if (typeof archive === 'boolean') {
+            getArchived = () => archive;
+        } else {
+            const { property, not } = archive;
+            getArchived = source => {
+                const v = toBoolean(getDeepValue(source, property));
+                return not ? !v : v;
+            };
+        }
+
         const { api } = this;
         for (const source of toArray(obj)) {
             const formID = +getDeepValue(source, formIDProperty);
-            formID && await api.setFormArchived(formID, archive);
+            formID && await api.setFormArchived(formID, getArchived(source));
         }
         return obj;
     }
