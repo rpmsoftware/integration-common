@@ -85,7 +85,6 @@ module.exports = {
             for (const k in propertyMap) {
                 const c = propertyMap[k];
                 const { constant } = c;
-                console.log(c)
                 const v = constant === undefined ? getDeepValue(source, c) : constant;
                 v === undefined || (formProps[k] = v);
             }
