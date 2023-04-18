@@ -1338,7 +1338,7 @@ API.prototype.getRepByAssignment = function (supplierNameOrID, assignCode) {
         AssignmentCode: assignCode
     };
     request[typeof supplierNameOrID === 'number' ? 'SupplierID' : 'Supplier'] = supplierNameOrID;
-    return this.request('Rep', request).then(r => extractContact(this.tweakDates(r)));
+    return this.request('Rep', request).then(r => this._normalizeRep(r));
 };
 
 API.prototype.errorToFormAction = function (error, form, user) {

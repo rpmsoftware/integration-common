@@ -61,24 +61,29 @@ function clearArray(array) {
 
 exports.clearArray = clearArray;
 
-const toBoolean = exports.toBoolean = (value, demand) => {
+const BOOLEANS = {
+    'true': true,
+    'yes': true,
+    'y': true,
+    '1': true,
+    'on': true,
+    'false': false,
+    'no': false,
+    'n': false,
+    '0': false,
+    '': false,
+    'off': false
+};
+
+exports.toBoolean = (value, demand) => {
     if (typeof value !== 'string') {
         return Boolean(value);
     }
-    switch (value.trim().toLowerCase()) {
-        case 'true':
-        case 'yes':
-        case 'y':
-        case '1':
-            return true;
-        case 'false':
-        case 'no':
-        case 'n':
-        case '0':
-        case '':
-            return false;
+    const result = BOOLEANS[value.trim().toLowerCase()];
+    if (result !== undefined) {
+        return result;
     }
-    var msg = 'Cannot convert to boolean: ' + value;
+    const msg = 'Cannot convert to boolean: ' + value;
     if (demand) {
         throw new SyntaxError(msg);
     }
