@@ -1040,10 +1040,13 @@ API.prototype.editAccount = function (accountID, data) {
         data = accountID;
         accountID = data.AccountID;
     }
-    this.validateParameters && (accountID = normalizeInteger(accountID));
     data = Object.assign({}, data);
-    data.AccountID = accountID;
-    return this.request('AccountEdit', { Account: data });
+    if (this.validateParameters) {
+        accountID = normalizeInteger(accountID);
+        data.AccountID = accountID;
+        data = { Account: data };
+    }
+    return this.request('AccountEdit', data);
 };
 
 function objectToId(nameOrID, property) {

@@ -102,21 +102,22 @@ module.exports = function (api) {
         const original = api[prop];
         api[prop] = async function () {
             const result = await original.apply(this, arguments);
-            if (clearOnUpdate) {
-                cache.clear('demandAccount', [result.Account, result.SupplierID]);
-                cache.clear('demandAccount', [result.Account, result.Supplier]);
-                cache.clear('demandAccount', [result.AccountID]);
+            const { Account, AccountID, Supplier, SupplierID, Customer, CustomerID } = result;
+            if (true || clearOnUpdate) {
+                cache.clear('demandAccount', [Account, SupplierID]);
+                cache.clear('demandAccount', [Account, Supplier]);
+                cache.clear('demandAccount', AccountID);
             } else {
-                cache.put('demandAccount', [result.Account, result.SupplierID], result);
-                cache.put('demandAccount', [result.Account, result.Supplier], result);
-                cache.put('demandAccount', [result.AccountID], result);
+                cache.put('demandAccount', [Account, SupplierID], result);
+                cache.put('demandAccount', [Account, Supplier], result);
+                cache.put('demandAccount', AccountID, result);
             }
             cache.clear('getAccounts');
             cache.clear('searchCustomers');
-            cache.clear('getCustomerAccounts', result.Customer);
-            cache.clear('getCustomerAccounts', result.CustomerID);
-            cache.clear('getSupplierAccounts', result.Supplier);
-            cache.clear('getSupplierAccounts', result.SupplierID);
+            cache.clear('getCustomerAccounts', Customer);
+            cache.clear('getCustomerAccounts', CustomerID);
+            cache.clear('getSupplierAccounts', Supplier);
+            cache.clear('getSupplierAccounts', SupplierID);
             return result;
         };
     });
