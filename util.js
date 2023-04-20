@@ -75,7 +75,7 @@ const BOOLEANS = {
     'off': false
 };
 
-exports.toBoolean = (value, demand) => {
+const toBoolean = exports.toBoolean = (value, demand) => {
     if (typeof value !== 'string') {
         return Boolean(value);
     }

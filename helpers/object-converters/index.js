@@ -194,7 +194,9 @@ const OBJECT_CONVERTERS = {
             return { array, convert, condition, parallel };
         },
         convert: async function ({ array: arrayProperty, condition, convert: convertConf, parallel }, obj) {
+            const runner = createParallelRunner(parallel || 1);
             if (arrayProperty) {
+                const promises = [];
                 for (const parent of toArray(obj)) {
                     const array = getDeepValue(parent, arrayProperty);
                     if (typeof array !== 'object') {
@@ -206,11 +208,11 @@ const OBJECT_CONVERTERS = {
                             continue;
                         }
                         Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
-                        array[key] = await convert.call(this, convertConf, e);
+                        promises.push(runner(async () => array[key] = await convert.call(this, convertConf, e)));
                     }
                 }
+                await Promise.all(promises);
             } else {
-                const runner = createParallelRunner(parallel || 1);
                 obj = await Promise.all(toArray(obj).map(e =>
                     condition && !processCondition(condition, e) ? e :
                         runner(() => convert.call(this, convertConf, e))
