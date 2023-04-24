@@ -37,6 +37,7 @@ async function convert(conf, obj) {
 }
 
 const PARENT_PROPERTY = '_parent';
+const KEY_PROPERTY = '_key';
 
 const OBJECT_CONVERTERS = {
 
@@ -202,12 +203,15 @@ const OBJECT_CONVERTERS = {
                     if (typeof array !== 'object') {
                         continue;
                     }
-                    for (const key in array) {
+                    const isArray = Array.isArray(array);
+                    for (let key in array) {
+                        isArray && (key = +key);
                         const e = array[key];
+                        Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
+                        Object.defineProperty(e, KEY_PROPERTY, { value: key, configurable: true });
                         if (condition && !processCondition(condition, e)) {
                             continue;
                         }
-                        Object.defineProperty(e, PARENT_PROPERTY, { value: parent, configurable: true });
                         promises.push(runner(async () => array[key] = await convert.call(this, convertConf, e)));
                     }
                 }
