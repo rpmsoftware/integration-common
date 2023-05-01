@@ -258,7 +258,7 @@ function matchObjects(obj1, obj2, matcher) {
 exports.matchObjects = matchObjects;
 
 function throwError(message, name, data) {
-    var error = new Error('' + message);
+    const error = new Error('' + message);
     if (typeof name !== 'string') {
         data = name;
         name = undefined;
@@ -267,7 +267,7 @@ function throwError(message, name, data) {
         error.name = name;
     }
     if (typeof data === 'object') {
-        for (var key in data) {
+        for (const key in data) {
             if (key === 'name' || key === 'message') {
                 continue;
             }

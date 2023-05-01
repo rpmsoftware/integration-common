@@ -22,7 +22,8 @@ const {
     defineStandardProperty,
     toArray,
     getDataURLPrefix,
-    setParent
+    setParent,
+    throwError
 } = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
@@ -34,6 +35,8 @@ const MAX_PARALLEL_CALLS = 20;
 
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+const RPM_API_ERROR = 'RpmApiError';
 
 function API(url, key, postRequest) {
     let maxParallelCalls;
@@ -107,18 +110,24 @@ API.prototype.request = async function (endPoint, data, log) {
     const requestTime = new Date();
     data = await this.postRequest(url, data, api.getHeaders())
     const responseTime = new Date();
-    if (!data.Result) {
+    const { Result } = data || null;
+    if (!Result) {
         throw typeof data === 'object' ? data : new Error(data + '');
     }
-    const isError = data.Result.Error;
-    data = isError || data.Result || data;
+    const { Error: error } = Result;
+    if (error) {
+        const { Message } = error;
+        if (Message) {
+            throwError(Message, RPM_API_ERROR, error);
+        } else {
+            throw data;
+        }
+    }
+    data = Result || data;
     if (typeof data === 'object') {
         Object.defineProperty(data, 'requestTime', { value: requestTime });
         Object.defineProperty(data, 'responseTime', { value: responseTime });
         api.assignTo(data);
-    }
-    if (isError) {
-        throw data;
     }
     return data;
 };
