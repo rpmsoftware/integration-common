@@ -42,7 +42,8 @@ module.exports = {
             }
             const data = {};
             for (const k in propertyMap) {
-                data[k] = getDeepValue(e, propertyMap[k]) || null;
+                const v = getDeepValue(e, propertyMap[k]);
+                data[k] = v === undefined ? null : v;
             }
             let togglObj;
             try {
