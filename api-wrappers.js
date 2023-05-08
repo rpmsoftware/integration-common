@@ -120,16 +120,15 @@ API.prototype.request = async function (endPoint, data, log) {
         if (Message) {
             throwError(Message, RPM_API_ERROR, error);
         } else {
-            throw data;
+            throw Result;
         }
     }
-    data = Result || data;
-    if (typeof data === 'object') {
-        Object.defineProperty(data, 'requestTime', { value: requestTime });
-        Object.defineProperty(data, 'responseTime', { value: responseTime });
-        api.assignTo(data);
+    if (typeof Result === 'object') {
+        Object.defineProperty(Result, 'requestTime', { value: requestTime });
+        Object.defineProperty(Result, 'responseTime', { value: responseTime });
+        api.assignTo(Result);
     }
-    return data;
+    return Result;
 };
 
 API.prototype.getUser = function (userName) {
@@ -944,38 +943,23 @@ API.prototype.getCustomers = function () {
             }
             duplicates[customer.CustomerID] = true;
             customer.CustomerID = +customer.CustomerID;
-            api.tweakDates(customer);
             return true;
         });
         return response;
     });
 };
 
-API.prototype.tweakDates = function (object) {
-    object.Added = object.Added && normalizeDate(object.Added);
-    object.Modified = object.Modified ? normalizeDate(object.Modified) : object.Added;
-    return object;
-};
-
 API.prototype.getCustomerAccounts = function (nameOrID) {
-    var req = {};
+    const req = {};
     req[typeof nameOrID === 'number' ? 'CustomerID' : 'Customer'] = nameOrID;
-    var api = this;
-    return api.request('Accounts', req).then(response => {
-        response.Accounts.forEach(a => api.tweakDates(a));
-        return response;
-    });
+    return this.request('Accounts', req);
 };
 
 
 API.prototype.getSupplierAccounts = function (nameOrID) {
-    var req = {};
+    const req = {};
     req[typeof nameOrID === 'number' ? 'SupplierID' : 'Supplier'] = nameOrID;
-    var api = this;
-    return api.request('Accounts', req).then(response => {
-        response.Accounts.forEach(a => api.tweakDates(a));
-        return response;
-    });
+    return this.request('Accounts', req);
 };
 
 API.prototype.demandAccount = async function (account, supplier) {
@@ -986,8 +970,7 @@ API.prototype.demandAccount = async function (account, supplier) {
         req.Account = account;
         req[typeof supplier === 'number' ? 'SupplierID' : 'Supplier'] = supplier;
     }
-    const acc = await this.request('Account', req);
-    return this.tweakDates(acc);
+    return this.request('Account', req);
 };
 
 API.prototype.getAccount = async function (account, supplier, demand) {
@@ -1002,11 +985,7 @@ API.prototype.getAccount = async function (account, supplier, demand) {
 
 API.prototype.getAccounts = function (modifiedAfter) {
     modifiedAfter = modifiedAfter ? normalizeDate(modifiedAfter) : new Date(0);
-    var api = this;
-    return api.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() }).then(response => {
-        response.Accounts.forEach(a => api.tweakDates(a));
-        return response;
-    });
+    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() });
 };
 
 API.prototype.getAllAccounts = function () {
@@ -1100,7 +1079,7 @@ API.prototype._normalizeCustomer = function (customer) {
     const { Locations, Accounts } = customer;
     Accounts.forEach(ch => setParent(ch, customer))
     Locations && Locations.forEach(ch => setParent(ch, customer))
-    return Object.setPrototypeOf(this.tweakDates(customer), CUSTOMER_PROTO);
+    return Object.setPrototypeOf(CUSTOMER_PROTO);
 };
 
 API.prototype.createCustomer = function (data) {
@@ -1181,21 +1160,15 @@ API.prototype.editCustomerLocation = function (customerID, locationID, location)
     });
 };
 
-API.prototype.getSuppliers = async function (includeArchived) {
+API.prototype.getSuppliers =  function (includeArchived) {
     if (this.validateParameters) {
         includeArchived = !!includeArchived || undefined;
     }
-    const result = await this.request('Suppliers', { IncludeArchived: includeArchived });
-    result.Suppliers.forEach(s => this.tweakDates(s));
-    return result;
+    return this.request('Suppliers', { IncludeArchived: includeArchived });
 };
 
 API.prototype.getAgencies = function () {
-    var api = this;
-    return api.request('Agencies').then(response => {
-        response.Agencies.forEach(a => api.tweakDates(a));
-        return response;
-    });
+    return this.request('Agencies');
 };
 
 const CUSTOMER_PROTO = Object.defineProperties({
@@ -1225,19 +1198,6 @@ const STAFF_PROTO = Object.defineProperties({
     RefName: { get() { return this.Name } },
 });
 
-function extractContact(object) {
-    assert.strictEqual(typeof object.Contact, 'object');
-    if (typeof object.Contact !== 'object') {
-        const contact = object.Contact = {};
-        ["ContactID", "Email", "FirstName", "LastName", "PhoneNumbers", "Salutation", "Title"].forEach(property => {
-            contact[property] = object[property];
-            delete object[property];
-        });
-    }
-    Object.defineProperty(object.Contact, 'FullName', { get() { return `${this.FirstName} ${this.LastName}` } });
-    return object;
-}
-
 API.prototype.demandAgency = async function (nameOrID) {
     const request = {};
     request[(typeof nameOrID === 'number') ? 'AgencyID' : 'Agency'] = nameOrID;
@@ -1255,7 +1215,6 @@ API.prototype.getAgency = async function (nameOrID, demand) {
 };
 
 API.prototype._normalizeAgency = function (agency) {
-    agency = extractContact(this.tweakDates(agency));
     const { StaffAssignment, Reps } = agency;
     StaffAssignment && StaffAssignment.forEach(sa => sa.StaffID || (sa.Name = ''));
     Reps && Reps.forEach(rep => setParent(rep, agency));
