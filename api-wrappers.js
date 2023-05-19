@@ -108,7 +108,7 @@ API.prototype.request = async function (endPoint, data, log) {
     }
     debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
-    data = await this.postRequest(url, data, api.getHeaders())
+    data = await this.postRequest(url, data, api.getHeaders());
     const responseTime = new Date();
     const { Result } = data || null;
     if (!Result) {
@@ -1160,7 +1160,7 @@ API.prototype.editCustomerLocation = function (customerID, locationID, location)
     });
 };
 
-API.prototype.getSuppliers =  function (includeArchived) {
+API.prototype.getSuppliers = function (includeArchived) {
     if (this.validateParameters) {
         includeArchived = !!includeArchived || undefined;
     }

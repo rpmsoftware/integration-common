@@ -327,7 +327,7 @@ subTypes = FieldSubType;
 const REGEX_PERCENTS = /^(\d+(\.\d+)?)%$/;
 const COMMA = ',';
 
-add('ListMultiSelect', function (conf, form) {
+add('ListMultiSelect', 'array', function (conf, form) {
     const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, conf.srcUid, true));
     return Value ? Value.split(COMMA).map(s => s.trim()) : [];
 });
