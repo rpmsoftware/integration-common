@@ -6,3 +6,4 @@ exports.MSG_ACCOUNT_NOT_FOUND = 'Account not found';
 exports.MSG_SUPPLIER_NOT_FOUND = 'Supplier not found';
 exports.MSG_FORM_NOT_FOUND = 'Form not found';
 exports.MSG_UNAUTHORIZED_USER = 'Unauthorized user';
+exports.MSG_API_LIMIT_REACHED = 'API daily limit reached';

@@ -42,12 +42,13 @@ const KEY_PROPERTY = '_key';
 const OBJECT_CONVERTERS = {
 
     flatten: {
-        init: ({ array }) => {
+        init: ({ array, forceChildProperties }) => {
             array = toArray(array).map(validateString);
             assert(array.length > 0);
-            return { array };
+            forceChildProperties = toBoolean(forceChildProperties) || undefined;
+            return { array, forceChildProperties };
         },
-        convert: ({ array }, obj) => {
+        convert: ({ array, forceChildProperties }, obj) => {
             let result = [];
             const firstProperty = array[0];
             for (let parent of toArray(obj)) {
@@ -60,7 +61,10 @@ const OBJECT_CONVERTERS = {
                 for (let k in a) {
                     let child = a[k];
                     assert.strictEqual(typeof child, 'object');
-                    child = Object.assign({}, child, parent);
+                    child = Object.assign({},
+                        forceChildProperties ? parent : child,
+                        forceChildProperties ? child : parent
+                    );
                     delete child[firstProperty];
                     result.push(child);
                 }
