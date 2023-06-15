@@ -1,4 +1,4 @@
-const { logErrorStack, getEager } = require('../util');
+const { logErrorStack } = require('../util');
 const { ClientCredentials } = require('simple-oauth2');
 
 const RESOURCE = 'https://graph.microsoft.com/.default';
@@ -6,13 +6,13 @@ const TOKEN_PATH = '/oauth2/v2.0/token';
 const AUTHORIZE_PATH = '/oauth2/v2.0/authorize';
 const TOKEN_HOST = 'https://login.microsoftonline.com/';
 
-exports.createOutlookTokenFactory = function (config) {
-    const tokenHost = TOKEN_HOST + config.tenantID;
+exports.createOutlookTokenFactory = ({ tenantID, clientID, clientSecret, scope }) => {
+    const tokenHost = TOKEN_HOST + tenantID;
 
     const client = new ClientCredentials({
         client: {
-            id: getEager(config, 'clientID'),
-            secret: getEager(config, 'clientSecret'),
+            id: clientID,
+            secret: clientSecret,
         },
         auth: {
             tokenHost,
@@ -22,12 +22,12 @@ exports.createOutlookTokenFactory = function (config) {
     });
 
     const tokenConfig = {
-        tenant: getEager(config, 'tenantID'),
-        scope: config.scope || RESOURCE
+        tenant: tenantID,
+        scope: scope || RESOURCE
     };
 
     let token;
-    return async function () {
+    return async () => {
         if (!token || token.expired()) {
             token = await client.getToken(tokenConfig);
         }
