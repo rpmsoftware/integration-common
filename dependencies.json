@@ -1,6 +1,0 @@
-{
-    "to-csv": "^0.x.x",
-    "tedious": "^1.x.x",
-    "string": "",
-    "node-fetch": ""
-}

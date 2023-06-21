@@ -1,6 +1,5 @@
 const assert = require('assert');
 const { validateString, toBoolean, normalizeInteger, toBase64, toMoment, fetch2json } = require('./util');
-const fetch = require('node-fetch');
 const moment = require('dayjs');
 const debug = require('debug')('rpm:freshdesk');
 

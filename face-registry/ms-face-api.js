@@ -1,6 +1,5 @@
 /* global Buffer */
 const { validateString } = require('../util');
-const fetch = require('node-fetch');
 const assert = require('assert');
 const debug = require('debug')('rpm:face:ms');
 

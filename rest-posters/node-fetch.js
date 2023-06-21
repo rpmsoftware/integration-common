@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const { fetch2json } = require('../util');
 
 const core = (url, data, headers) => {

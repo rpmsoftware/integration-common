@@ -1,5 +1,4 @@
 const { fetch2json, validateString, toBoolean, normalizeInteger, getEager } = require('integration-common/util');
-const fetch = require('node-fetch');
 const debug = require('debug')('rpm:toggl');
 const assert = require('assert');
 

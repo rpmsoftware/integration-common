@@ -1,5 +1,4 @@
 const { createClient } = require('../../../office365/graph');
-global.fetch = require('node-fetch');
 
 module.exports = config => {
     let graphApi = createClient(config);
