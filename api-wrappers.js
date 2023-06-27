@@ -1079,7 +1079,7 @@ API.prototype._normalizeCustomer = function (customer) {
     const { Locations, Accounts } = customer;
     Accounts.forEach(ch => setParent(ch, customer))
     Locations && Locations.forEach(ch => setParent(ch, customer))
-    return Object.setPrototypeOf(CUSTOMER_PROTO);
+    return Object.setPrototypeOf(customer, CUSTOMER_PROTO);
 };
 
 API.prototype.createCustomer = function (data) {
