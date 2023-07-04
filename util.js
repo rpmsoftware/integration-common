@@ -755,7 +755,8 @@ exports.toMoment = value => moment.isDayjs(value) ? value : moment(value);
 
 const toArray = exports.toArray = value => value === undefined ? [] : (Array.isArray(value) ? value : [value]);
 
-exports.toBase64 = data => (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64');
+const toBuffer = exports.toBuffer = data => Buffer.isBuffer(data) ? data : Buffer.from(data);
+exports.toBase64 = data => toBuffer(data).toString('base64');
 
 exports.createPropertySorter = property => (a, b) => {
     const nameA = a[property];

@@ -11,6 +11,7 @@ const {
 } = require('./api-enums');
 
 const {
+    fetch2json,
     normalizeDate,
     getEager,
     demandDeepValue,
@@ -38,10 +39,9 @@ const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss
 
 const RPM_API_ERROR = 'RpmApiError';
 
-function API(url, key, postRequest) {
+function API(url, key) {
     let maxParallelCalls;
     if (typeof url === 'object') {
-        postRequest = url.postRequest;
         key = url.key;
         maxParallelCalls = url.maxParallelCalls;
         url = url.url;
@@ -50,14 +50,6 @@ function API(url, key, postRequest) {
     url = url.toLowerCase().ensureRight('/');
     this.url = url.ensureRight('api2.svc/').toString();
     this.key = key;
-    if (!postRequest) {
-        postRequest = 'node-fetch';
-    }
-    if (typeof postRequest === 'string') {
-        postRequest = require('./rest-posters/' + postRequest)();
-    }
-    assert.strictEqual(typeof postRequest, 'function');
-    Object.defineProperty(this, 'postRequest', { value: postRequest });
     this.modifiedTTL = 5 * 60;
     this._formNumbers = {};
     this.throwNoForms = false;
@@ -108,7 +100,13 @@ API.prototype.request = async function (endPoint, data, log) {
     }
     debug(`POST ${url} ${log && data ? '\n' + JSON.stringify(data) : ''}`);
     const requestTime = new Date();
-    data = await this.postRequest(url, data, api.getHeaders());
+
+    data = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+    }).then(fetch2json);
+
     const responseTime = new Date();
     const { Result } = data || null;
     if (!Result) {
