@@ -1,6 +1,6 @@
 const { 
     getDeepValue, toBoolean, toArray, isEmpty, validateString, validatePropertyConfig
- } = require('integration-common/util');
+ } = require('../../../util');
 const assert = require('assert');
 
 const REGEXP_WORDS_NUMBERS = /\W+/g;
