@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.78.1",
+    "version": "4.79.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -10,6 +10,7 @@
         "logger/*",
         "office365/*",
         "sendemail/*",
+        "sharepoint/*",
         "store/*",
         "amqp.js",
         "api-enums.js",

@@ -1,3 +1,4 @@
+/* global Buffer */
 const { fetch2json, validateString, toBoolean, normalizeInteger } = require('./util');
 const debug = require('debug')('rpm:toggl');
 const assert = require('assert');
