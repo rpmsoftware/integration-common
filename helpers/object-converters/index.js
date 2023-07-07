@@ -230,6 +230,24 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    forProperty: {
+        init: async function ({ srcProperty, dstProperty, convert }) {
+            dstProperty = dstProperty ? validateString(dstProperty) : undefined;
+            srcProperty = validatePropertyConfig(srcProperty);
+            convert = await init.call(this, convert);
+            return { srcProperty, convert, dstProperty };
+        },
+        convert: async function ({ srcProperty, convert: convertConf, dstProperty }, data) {
+            for (const e of toArray(data)) {
+                let o = getDeepValue(e, srcProperty);
+                if (o) {
+                    const r = await convert.call(this, convertConf, o);
+                    dstProperty && (o[dstProperty] = r);
+                }
+            }
+            return data;
+        }
+    },
 
     valueMap: {
         init: function (conf) {
