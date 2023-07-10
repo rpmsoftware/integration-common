@@ -12,10 +12,11 @@ const DEFAULT_CONVERTER = 'getter';
 async function init(conf) {
     const result = [];
     for (let c of conf ? toArray(conf) : []) {
-        let { name, enabled } = c;
+        let { name, enabled, throwError } = c;
         if (enabled !== undefined && !toBoolean(enabled)) {
             continue;
         }
+        throwError = throwError === undefined || toBoolean(throwError);
         name || (name = DEFAULT_CONVERTER);
         const { init } = OBJECT_CONVERTERS[name] || require('./' + name);
         c = init ? await init.call(this, c) : {};
@@ -27,8 +28,16 @@ async function init(conf) {
 
 async function convert(conf, obj) {
     for (let c of conf) {
-        const { name } = c;
-        obj = await (OBJECT_CONVERTERS[name] || require('./' + name)).convert.call(this, c, obj);
+        const { name, throwError } = c;
+        try {
+            obj = await (OBJECT_CONVERTERS[name] || require('./' + name)).convert.call(this, c, obj);
+        } catch (e) {
+            if (throwError) {
+                throw e;
+            }
+            console.error(e);
+            break;
+        }
         if (toArray(obj).length < 1) {
             break;
         }
