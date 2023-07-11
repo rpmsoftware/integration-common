@@ -21,6 +21,7 @@ async function init(conf) {
         const { init } = OBJECT_CONVERTERS[name] || require('./' + name);
         c = init ? await init.call(this, c) : {};
         c.name || (c.name = name);
+        c.throwError = throwError;
         result.push(c);
     }
     return result;
