@@ -381,7 +381,7 @@ const OBJECT_CONVERTERS = {
             if (array) {
                 toArray(data).forEach(e => {
                     const a = e[array];
-                    if (!array) {
+                    if (!a) {
                         return;
                     }
                     assert(Array.isArray(a));
@@ -461,7 +461,8 @@ const OBJECT_CONVERTERS = {
     },
 
     totals: {
-        init: function ({ group, properties: inProperties }) {
+        init: function ({ array, group, properties: inProperties }) {
+            array = array ? validateString(array) : undefined;
             group = toArray(group);
             assert(group.length > 0);
             group.forEach(validateString);
@@ -469,30 +470,43 @@ const OBJECT_CONVERTERS = {
             let initialized = false;
             const ctx = {};
             for (const destination in inProperties) {
-                let { total, condition } = inProperties[destination];
+                const src = inProperties[destination];
+                let { total, condition } = typeof src === 'object' ? src : { total: src };
                 validateString(total);
                 condition = condition ? initCondition.call(ctx, condition) : undefined;
                 properties[destination] = { total, condition };
                 initialized = true;
             }
             assert(initialized);
-            return { group, properties };
+            return { array, group, properties };
         },
 
-        convert: function ({ group, properties }, data) {
-            assert(Array.isArray(data));
-            const result = data.group(PROP_CHILDREN, group);
-            result.forEach(e => {
-                e[PROP_CHILDREN].forEach(c => {
-                    for (const destination in properties) {
-                        const { total, condition } = properties[destination];
-                        e[destination] === undefined && (e[destination] = 0);
-                        (!condition || processCondition(condition, c)) && (e[destination] = e[destination] + (c[total] || 0));
-                    }
-                })
-                delete e[PROP_CHILDREN];
-            });
-            return result;
+        convert: function ({ array, group, properties }, data) {
+
+            const processArray = a => {
+                assert(Array.isArray(a));
+                const result = a.group(PROP_CHILDREN, group);
+                result.forEach(e => {
+                    e[PROP_CHILDREN].forEach(c => {
+                        for (const destination in properties) {
+                            const { total, condition } = properties[destination];
+                            e[destination] === undefined && (e[destination] = 0);
+                            condition && !processCondition(condition, c) || (e[destination] = e[destination] + (+c[total] || 0));
+                        }
+                    })
+                    delete e[PROP_CHILDREN];
+                });
+                return result
+            };
+
+            if (array) {
+                toArray(data).forEach(e => {
+                    const a = e[array];
+                    a && (e[array] = processArray(a));
+                });
+                return data;
+            }
+            return processArray(data);
         }
     },
 
