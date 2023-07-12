@@ -9,7 +9,7 @@ module.exports = {
     },
 
     convert: async function ({ srcProperty, dstProperty }, data) {
-        const options = { dense: true };
+        const options = { dense: true, cellDates: true };
         toArray(data).forEach(e => {
             const d = getDeepValue(e, srcProperty);
             d && (e[dstProperty] = readExcel(toBuffer(d), options));
