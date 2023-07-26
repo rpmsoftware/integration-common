@@ -1,7 +1,7 @@
 const { validateString } = require('../util');
 const createTokenFactory = require('../office365/token-factory');
 const assert = require('assert');
-const debug = require('debug')('rpm:fwh:sharepoint2');
+const debug = require('debug')('rpm:sharepoint2');
 
 const BASE_URL = `https://graph.microsoft.com/v1.0/`;
 const SCOPE = `https://graph.microsoft.com/.default`;
