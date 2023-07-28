@@ -888,7 +888,8 @@ async function setField(conf, data, form) {
         }
         result = { ID: 0, Value: null, Errors: error.message || error };
     }
-    return (result && typeof result === 'object') ? result : (valueIsId ?
+    result instanceof Date && (result = result.toISOString());
+    return (typeof result === 'object') ? result : (valueIsId ?
         { ID: result ? normalizeInteger(result) : 0 } :
         { Value: result }
     );
