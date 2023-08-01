@@ -133,21 +133,22 @@ const OBJECT_CONVERTERS = {
 
     filterArray: {
         init: async function ({ condition, dstProperty, array }) {
+            dstProperty = validateString(dstProperty || array);
             validatePropertyConfig(array);
-            validateString(dstProperty);
             condition = initCondition(condition);
             return { condition, dstProperty, array };
         },
         convert: async function ({ array: arrayProperty, condition, dstProperty }, obj) {
             for (const parent of toArray(obj)) {
-                const array = getDeepValue(parent, arrayProperty);
-                if (!array) {
+                const srcContainer = getDeepValue(parent, arrayProperty);
+                if (!srcContainer) {
                     continue;
                 }
-                const r = [];
-                for (let e in array) {
-                    e = array[e];
-                    processCondition(condition, e) && r.push(e);
+                const array = Array.isArray(srcContainer);
+                const r = array ? [] : {};
+                for (let k in srcContainer) {
+                    const e = srcContainer[k];
+                    processCondition(condition, e) && (array ? r.push(e) : (r[k] = e));
                 }
                 parent[dstProperty] = r;
             }

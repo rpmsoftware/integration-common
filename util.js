@@ -812,3 +812,16 @@ exports.validatePropertyConfig = p => {
 };
 
 exports.setParent = (obj, parent) => Object.defineProperty(obj, 'parent', { value: parent });
+
+exports.createTimeBasedIDGenerator = start => {
+    if (start || (start = 0)) {
+        start = new Date(start).getTime();
+        assert(!isNaN(start));
+        assert(start < Date.now());
+    }
+    let nextID;
+    return () => {
+        nextID || (nextID = Date.now() - start);
+        return nextID++;
+    };
+};

@@ -1,8 +1,7 @@
 /* global process */
 var express = require('express');
-var bodyParser = require('body-parser');
 var https = require('https');
-var rpmUtil = require('./util');
+const { isHeroku } = require('./util');
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 
@@ -47,17 +46,17 @@ function createExpressApp(port, options) {
         options = port;
         port = options.port;
     }
-    var app = express();
-    var heroku = rpmUtil.isHeroku();
+    const app = express();
+    const heroku = isHeroku();
     if (heroku) {
         app.use(herokuEnsureHttps);
         port = process.env.PORT;
     }
-    app.use(bodyParser.urlencoded({ extended: false }));
-    app.use(bodyParser.json({ type: 'application/json' }));
-    app.use(bodyParser.text({ type: '*/*' }));
+    app.use(express.urlencoded({ extended: false }));
+    app.use(express.json({ strict: false }));
+    app.use(express.text({ type: '*/*' }));
     app.startServer = function () {
-        var srv = (heroku ? app : https.createServer(options, app)).listen(port);
+        const srv = (heroku ? app : https.createServer(options, app)).listen(port);
         console.info('WebHooks server is listening on port', port);
         return srv;
     };
