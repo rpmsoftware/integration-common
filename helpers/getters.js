@@ -26,6 +26,14 @@ const initProperty = property => {
     return property;
 };
 
+function getConditionalValue({ valueMap }, data) {
+    for (const { value, condition } of valueMap) {
+        if (processCondition(condition, data)) {
+            return value;
+        }
+    }
+}
+
 const COMMON_GETTERS = {
 
     property: {
@@ -195,13 +203,8 @@ const COMMON_GETTERS = {
     },
 
     conditionalValue: {
-        get: async function ({ valueMap }, data) {
-            for (const { value, condition } of valueMap) {
-                if (processCondition(condition, data)) {
-                    return value;
-                }
-            }
-        },
+        get: getConditionalValue,
+
         init: async function ({ valueMap: inValueMap }, field, fields) {
             const valueMap = [];
             for (let k in inValueMap) {
@@ -220,6 +223,26 @@ const COMMON_GETTERS = {
         }
 
     },
+
+    conditionalStatus: {
+        get: getConditionalValue,
+
+        init: async function ({ process, statusMap }, field, fields) {
+            const { api } = this;
+            process && (fields = await (await api.getProcesses()).getActiveProcess(process, true).getFields());
+            const valueMap = [];
+            for (let value in statusMap) {
+                let condition = statusMap[value];
+                value = fields.getStatus(value, true).ID;
+                condition = initCondition.call(fields, condition);
+                valueMap.push({ value, condition });
+            }
+            assert(valueMap.length > 0);
+            return { valueMap };
+        }
+
+    },
+
     selectFromView: {
         get: async function (config, source) {
             const { value, demand, matchCondition, defaultValue } = config;

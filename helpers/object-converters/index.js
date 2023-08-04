@@ -200,6 +200,45 @@ const OBJECT_CONVERTERS = {
         }
     },
 
+    toFlatArray: {
+        init: function ({ properties, dstProperty, unique }) {
+            validateString(dstProperty);
+            properties = properties.map(p => toArray(validatePropertyConfig(p)));
+            assert(properties.length > 0);
+            unique = toBoolean(unique) || undefined;
+            return { properties, dstProperty, unique };
+        },
+        convert: function ({ properties: propertiesConf, dstProperty, unique }, obj) {
+            toArray(obj).forEach(e => {
+                let result = [];
+                propertiesConf.forEach(properties => {
+                    const process = (value, level) => {
+                        if (typeof value !== 'object') {
+                            return;
+                        }
+                        level > 0 || (level = 0);
+                        const property = properties[level];
+                        if (!property) {
+                            return;
+                        }
+                        value = value[property];
+                        if (value === undefined) {
+                            return;
+                        }
+                        ++level;
+                        level >= properties.length ?
+                            (unique && result.indexOf(value) < 0 || result.push(value)) :
+                            (Array.isArray(value) ? value.forEach(e => process(e, level)) : process(value, level));
+                    };
+                    process(e);
+                });
+                e[dstProperty] = result;
+            });
+            return obj;
+        }
+
+    },
+
     forEach: {
         init: async function ({ array, condition, convert, parallel }) {
             array = array ? validatePropertyConfig(array) : undefined;
@@ -398,10 +437,10 @@ const OBJECT_CONVERTERS = {
     concatenate: {
         init: function ({ arrays, dstProperty, deleteSources }) {
             validateString(dstProperty);
-            deleteSources = toBoolean(deleteSources);
+            deleteSources = toBoolean(deleteSources) || undefined;
             arrays = toArray(arrays);
             assert(arrays.length > 0);
-            arrays.forEach(validateString);
+            arrays = arrays.map(deleteSources ? validateString : validatePropertyConfig);
             return { arrays, dstProperty, deleteSources };
         },
 
@@ -409,11 +448,11 @@ const OBJECT_CONVERTERS = {
             toArray(data).forEach(e => {
                 let result = [];
                 arrays.forEach(prop => {
-                    let a = e[prop];
+                    let a = getDeepValue(e, prop);
                     if (a === undefined) {
                         return;
                     }
-                    result = result.concat(a);
+                    result = result.concat(Array.isArray(a) ? a : Object.values(a));
                     if (deleteSources) {
                         delete e[prop];
                     }

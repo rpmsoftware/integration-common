@@ -101,36 +101,49 @@ module.exports = {
         const number2id = {};
         formNumberProperty && (await api.getFormList(process, true)).Forms.forEach(({ N, ID }) => number2id[N] = ID);
         const promises = [];
+
+        const processedForms = {};
+        const processForm = async (formID, source) => {
+            let form;
+            formID = +formID;
+            if (formID > 0) {
+                if (processedForms[formID]) {
+                    return;
+                }
+                if (!blindPatch) {
+                    form = await api.demandForm(formID);
+                    assert.strictEqual(form.ProcessID, process);
+                }
+                const { formPatch, formProps } = await createFormUpdatePack(source, form);
+                if (formPatch.length > 0 || !isEmpty(formProps)) {
+                    form = await api.editForm(formID, formPatch, formProps);
+                    assert.strictEqual(form.ProcessID, process);
+                }
+            } else if (create) {
+                const { formPatch, formProps } = await createFormUpdatePack(source);
+                (formPatch.length > 0 || !isEmpty(formProps)) &&
+                    (form = await api.createForm(process, formPatch, formProps));
+            }
+            form = form?.Form;
+            form && (processedForms[form.FormID] = true);
+            dstProperty && (source[dstProperty] = form);
+        };
+
         for (let source of toArray(obj)) {
             if (condition && !processCondition(condition, source)) {
                 continue;
             }
-            let formID = formIDProperty && +getDeepValue(source, formIDProperty);
-            if (!formID) {
-                const formNumber = formNumberProperty && getDeepValue(source, formNumberProperty);
-                formNumber && (formID = number2id[formNumber]);
+            let formIDs = toArray(formIDProperty && getDeepValue(source, formIDProperty));
+            formIDs.length < 1 && (
+                formIDs = toArray(formNumberProperty && getDeepValue(source, formNumberProperty)).map(fn => number2id[fn])
+            );
+            formIDs.length < 1 && formIDs.push(undefined);
+            for (const formID of formIDs) {
+                const run = processForm.bind(undefined, formID, source);
+                parallel ? promises.push(api.parallelRunner(run)) : await run();
             }
-            const run = async () => {
-                let form;
-                if (formID) {
-                    if (!blindPatch) {
-                        form = await api.demandForm(formID);
-                        assert.strictEqual(form.ProcessID, process);
-                    }
-                    const { formPatch, formProps } = await createFormUpdatePack(source, form);
-                    if (formPatch.length > 0 || !isEmpty(formProps)) {
-                        form = await api.editForm(formID, formPatch, formProps);
-                        assert.strictEqual(form.ProcessID, process);
-                    }
-                } else if (create) {
-                    const { formPatch, formProps } = await createFormUpdatePack(source);
-                    (formPatch.length > 0 || !isEmpty(formProps)) &&
-                        (form = await api.createForm(process, formPatch, formProps));
-                }
-                dstProperty && (source[dstProperty] = form && form.Form);
-            };
-            parallel ? promises.push(api.parallelRunner(run)) : await run();
         }
+
         await Promise.all(promises);
         return obj;
     }
