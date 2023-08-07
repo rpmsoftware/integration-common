@@ -23,6 +23,8 @@ function isTrue(form) {
     return toBoolean(getOperandValue(this.operand, form));
 }
 
+const REGEX_NOT_LETTERS = /\W+/g;
+
 const OPERATORS = {
     and: {
         init: initMulti,
@@ -235,6 +237,24 @@ const OPERATORS = {
             }
             return true;
         }
+    },
+
+    equalKeys: {
+        init: init2,
+
+        process: function process2numbers(data) {
+            const { operand1, operand2 } = this;
+            const value1 = getOperandValue(operand1, data);
+            const value2 = getOperandValue(operand2, data);
+            if (value1 === undefined || value2 === undefined) {
+                return false;
+            }
+            return value1 === value2 ||
+                typeof value1 === 'string' &&
+                typeof value2 === 'string' &&
+                value1.replace(REGEX_NOT_LETTERS, '').toLowerCase() === value2.replace(REGEX_NOT_LETTERS, '').toLowerCase();
+        }
+
     }
 
 
