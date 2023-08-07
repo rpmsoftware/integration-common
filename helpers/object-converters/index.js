@@ -227,7 +227,7 @@ const OBJECT_CONVERTERS = {
                         }
                         ++level;
                         level >= properties.length ?
-                            (unique && result.indexOf(value) < 0 || result.push(value)) :
+                            (unique && result.indexOf(value) >= 0 || result.push(value)) :
                             (Array.isArray(value) ? value.forEach(e => process(e, level)) : process(value, level));
                     };
                     process(e);
