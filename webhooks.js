@@ -1,7 +1,6 @@
 'use strict';
 const { startPostServer } = require('./express');
 const { ObjectType, WebhookEvents } = require('./api-enums');
-const hash = require('object-hash');
 const assert = require('assert');
 const { createHmac } = require('crypto');
 
@@ -21,13 +20,9 @@ const validateHeaders = headers => {
     }
 };
 
-const EVENT_ID_PROPERTIES = ['Subscriber', 'InstanceID', 'EventName', 'ObjectType', 'ParentType', 'ParentID', 'ObjectID'];
-const EVENTS_GAP_MS = 500;
-
 const createRpmWebHookCallback = exports.createRpmWebHookCallback = (secret, callback) => {
 
     assert.strictEqual(typeof callback, 'function');
-    const eventHashes = {};
 
     return (req, res) => {
         let body;
@@ -50,15 +45,7 @@ const createRpmWebHookCallback = exports.createRpmWebHookCallback = (secret, cal
         body.InstanceID = req.headers['x-rpm-instanceid'];
         body.Instance = req.headers['x-rpm-instance'];
         body.Subscriber = req.headers['x-rpm-subscriber'];
-        const h = hash(EVENT_ID_PROPERTIES.map(p => body[p]));
-        const lastTime = eventHashes[h];
-        const date = new Date();
-        const time = date.getTime();
-        if (lastTime && time - lastTime < EVENTS_GAP_MS) {
-            return;
-        }
-        eventHashes[h] = time;
-        body.time = date;
+        body.time = new Date();
         callback(body, req);
     };
 };
