@@ -123,7 +123,7 @@ const OPERATORS = {
             return { statuses, oldStatus };
         },
         process: function (form) {
-            const { statuses, oldStatus } = this;
+            let { statuses, oldStatus } = this;
             form = form.Form || form;
             let prop, formStatus;
             if (form.hasOwnProperty('StatusID')) {
