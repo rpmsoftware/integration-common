@@ -620,6 +620,20 @@ const OBJECT_CONVERTERS = {
             });
             return data;
         }
+    },
+
+    if: {
+        init: async function ({ condition, convert }) {
+            condition = initCondition(condition);
+            convert = await init.call(this, convert);
+            return { convert, condition };
+        },
+        convert: async function ({ convert: convertConf, condition }, obj) {
+            for (const e of toArray(obj)) {
+                processCondition(condition, e) && await convert.call(this, convertConf, e);
+            }
+            return obj;
+        }
     }
 
 

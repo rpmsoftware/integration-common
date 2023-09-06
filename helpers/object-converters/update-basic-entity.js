@@ -46,7 +46,7 @@ module.exports = {
         assert(!errProperty, '"errProperty" is discontinued. Use "fieldErrorProperty" instead');
         typeof type === 'string' && (type = getEager(ObjectType, type));
         getEager(OBJECT_UPDATERS, type);
-        validateString(dstProperty);
+        dstProperty = dstProperty ? validateString(dstProperty) : undefined;
         fieldErrorProperty = fieldErrorProperty ? validateString(fieldErrorProperty) : undefined;
         errorProperty = errorProperty ? validateString(errorProperty) : undefined;
         create = toBoolean(create) || undefined;
@@ -112,7 +112,7 @@ module.exports = {
                             throw err;
                         }
                     });
-                } 
+                }
                 if (!result && name) {
                     beforeUpdate = await api.getEntity(type, name);
                     beforeUpdate && (result = await editEntity.call(api, beforeUpdate.EntityID, props));
@@ -147,7 +147,7 @@ module.exports = {
                 }
                 srcObj[fieldErrorProperty] = errors;
             }
-            srcObj[dstProperty] = result;
+            dstProperty && (srcObj[dstProperty] = result);
         }
         return obj;
     }
