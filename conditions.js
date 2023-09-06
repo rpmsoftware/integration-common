@@ -1,6 +1,7 @@
 const assert = require('assert');
 const {
-    getEager, toBoolean, validateString, toArray, normalizeInteger, getDeepValue, toMoment, validatePropertyConfig
+    getEager, toBoolean, validateString, toArray, normalizeInteger,
+    getDeepValue, toMoment, validatePropertyConfig, demandDeepValue
 } = require('./util');
 const {
     getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT
@@ -108,17 +109,21 @@ const OPERATORS = {
         }
     },
     formStatus: {
-        init: function (conf) {
+        init: function ({ statuses: inStatuses, oldStatus }) {
             let statuses = {};
-            for (let status of toArray(getEager(conf, 'statuses'))) {
+            for (let status of toArray(inStatuses)) {
                 const { ID, Text } = this.StatusLevels.demand(s => s.Text === status);
                 statuses[ID] = { ID, Text };
             }
             statuses = Object.values(statuses);
             assert(statuses.length > 0);
-            return { statuses };
+            if (oldStatus || (oldStatus = undefined)) {
+                typeof oldStatus === 'string' && (oldStatus = { field: oldStatus });
+            }
+            return { statuses, oldStatus };
         },
         process: function (form) {
+            const { statuses, oldStatus } = this;
             form = form.Form || form;
             let prop, formStatus;
             if (form.hasOwnProperty('StatusID')) {
@@ -128,9 +133,17 @@ const OPERATORS = {
                 prop = 'Text';
                 formStatus = form.Status;
             }
-            return !!this.statuses.find(s => s[prop] === formStatus);
+            if (oldStatus) {
+                oldStatus = getOperandValue(oldStatus, form);
+                oldStatus = +oldStatus || oldStatus;
+                if (oldStatus === formStatus) {
+                    return false;
+                }
+            }
+            return !!statuses.find(s => s[prop] === formStatus);
         }
     },
+
     oneOfValues: {
         init: function (conf) {
             const result = init1.call(this, conf);
@@ -193,15 +206,15 @@ const OPERATORS = {
     },
     exists: {
         init: function ({ array, condition }) {
-            validateString(array);
+            array = validatePropertyConfig(array);
             condition = init.call(this, condition);
             return { array, condition };
         },
         process: function (form) {
             let { array, condition } = this;
-            let a = getEager(form, array);
+            let a = demandDeepValue(form, array);
             assert(Array.isArray(a), `Array is expected: ${array}`);
-            return a.findIndex(e => process(condition, Object.assign({}, e, form))) >= 0;
+            return a.findIndex(e => process(condition, { parent: form, child: e })) >= 0;
         }
     },
     regexp: {
