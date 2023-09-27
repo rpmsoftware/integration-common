@@ -782,6 +782,18 @@ exports.defineLazyProperty = (obj, name, init) => {
     });
 };
 
+const FETCH_ERROR = 'FetchError';
+
+exports.fetch = async function () {
+    const response = await fetch.apply(this, arguments);
+    let { ok, status, statusText } = response;
+    if (ok) {
+        return response;
+    }
+    throwError(statusText, FETCH_ERROR, { status, statusText, response: await response.text() });
+};
+
+
 exports.fetch2json = async response => {
     let { ok, status, statusText } = response;
     response = await response.text();

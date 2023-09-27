@@ -1,7 +1,6 @@
 const debug = require('debug')('rpm:send-email');
 const assert = require('assert');
 const { validateString, toArray, getEager, toBoolean, isEmpty, validatePropertyConfig, getDeepValue } = require('../../util');
-const { render } = require('mustache');
 
 exports.send = async function (conf, data) {
     let {
@@ -37,13 +36,17 @@ exports.send = async function (conf, data) {
         Object.defineProperty(ctx, '_sendEmail', { value: _sendEmail });
     }
 
-    subject = subject && render(subject, data);
-    body = body && render(body, data);
-    const attachments = attachmentsConf && attachmentsConf.map(({ content, filename, type }) => ({
-        content: render(content, data),
-        filename: render(filename, data),
-        type
-    }));
+    subject = subject && getPropOrValue(subject, data);
+    body = body && getPropOrValue(body, data);
+    const attachments = [];
+    attachmentsConf && attachmentsConf.forEach(({ content, filename, type }) => {
+        content = getPropOrValue(content, data);
+        content && attachments.push({
+            content,
+            filename: getPropOrValue(filename, data),
+            type
+        })
+    });
     subject || assert(body);
     const fromEmail = getEmails.call(this, fromEmailConf, data)[0];
     assert(fromEmail);
@@ -99,16 +102,22 @@ function initEmailConfig(conf) {
     return { property, address, name };
 }
 
+const initPropOrValue = conf => conf.property ?
+    { property: validatePropertyConfig(conf.property) } :
+    { value: validateString(conf.value || conf) };
+
+const getPropOrValue = ({ property, value }, obj) => property ? getDeepValue(obj, property) : value;
+
 exports.init = async function ({ transport, fromEmail, toEmails, replyToEmail, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
     const { globals } = this.parentContext || this;
     fromEmail = initEmailConfig.call(this, fromEmail);
     replyToEmail = replyToEmail ? initEmailConfig.call(this, replyToEmail) : undefined;
-    subject = subject ? validateString(subject.trim()) : undefined;
-    body = body ? validateString(body.trim()) : undefined;
+    subject = subject ? initPropOrValue(subject) : undefined;
+    body = body ? initPropOrValue(body) : undefined;
 
     attachments = attachments ? toArray(attachments).map(({ content, filename, type }) => {
-        validateString(content);
-        validateString(filename);
+        content = initPropOrValue(content);
+        filename = initPropOrValue(filename);
         type = type ? validateString(type) : undefined;
         return { content, filename, type };
     }) : [];

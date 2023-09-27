@@ -372,19 +372,37 @@ add('Percent', function (conf, form) {
     return conf.isTableField ? result / 100 : result;
 });
 
-add('YesNo', function (conf, form) {
-    const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, conf.srcUid, true));
+add('YesNo', function ({ srcUid }, form) {
+    const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
     return Value ? toBoolean(Value) : undefined;
 });
 
-add('FieldTableDefinedRow', async function (conf, form) {
-    const srcRows = (form.Form || form).getFieldByUid(conf.srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
-    const result = {};
-    for (let rowConf of conf.tableRows) {
-        const srcRow = srcRows.find(r => r.TemplateDefinedRowID === rowConf.id);
-        assert(srcRow, 'Cannot find form row with TemplateDefinedRowID=' + rowConf.id);
+const OPTION_VALUES = [undefined, false, true];
+add('YesNoList', function ({ srcUid, options }, form) {
+    const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
+    return Value ? JSON.parse(Value).Values.map(({ OptionID, Value, Comment }) => ({
+        Option: options[OptionID]?.Text,
+        OptionID,
+        Value: OPTION_VALUES[Value],
+        Comment
+    })) : [];
+}, function ({ asArray }, { Options }) {
+    asArray = toBoolean(asArray) || undefined;
+    const options = {};
+    for (const { ID, Text } of Options) {
+        options[ID] = { ID, Text };
+    }
+    return { options, asArray };
+});
+
+add('FieldTableDefinedRow', async function ({ srcField, tableFields, tableRows, srcUid, asArray }, form) {
+    const srcRows = (form.Form || form).getFieldByUid(srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
+    const result = asArray ? [] : {};
+    for (let { id, name } of tableRows) {
+        const srcRow = srcRows.find(r => r.TemplateDefinedRowID === id);
+        assert(srcRow, 'Cannot find form row with TemplateDefinedRowID=' + id);
         const resultRow = {};
-        for (let fieldConf of conf.tableFields) {
+        for (const fieldConf of tableFields) {
             resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
                 Fields: srcRow.Fields.map(fld => {
                     fld = Object.assign({}, fld);
@@ -400,13 +418,20 @@ add('FieldTableDefinedRow', async function (conf, form) {
                 })
             });
         }
-        result[rowConf.name] = resultRow;
+        if (asArray) {
+            resultRow[srcField] = name;
+            result.push(resultRow);
+        } else {
+            result[name] = resultRow;
+        }
     }
     return result;
 
 }, async function (conf, rpmField) {
+    const { asArray } = conf;
     conf = await initTableFields.call(this, conf, rpmField);
     conf.tableRows = rpmField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow).map(r => ({ id: r.ID, name: r.Name }));
+    conf.asArray = toBoolean(asArray) || undefined;
     return conf;
 });
 
