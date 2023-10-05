@@ -1,18 +1,35 @@
 const { validateString, toArray, toBoolean, validatePropertyConfig, getDeepValue } = require('../../util');
 const SqlDatabase = require('better-sqlite3');
 const assert = require('assert');
+const debug = require('debug')('rpm:select-from-view');
 
 const COL_FORM_ID = 'FormID';
 
 module.exports = {
-    init: async function ({ dstProperty, process, view, sqlTable, sqlColumns, query, parameters, single }) {
+    init: async function ({ dstProperty, sqlTables: inSqlTables, sqlTable, process, view, sqlColumns, query, parameters, single }) {
         validateString(dstProperty);
-        process = (await this.api.getProcesses()).getActiveProcess(process, true);
-        view = (await process.getViews()).Views.demand(({ Name }) => Name === view).ID;
-        process = process.ProcessID;
-        validateString(sqlTable);
+        const processes = await this.api.getProcesses();
+        inSqlTables || ((inSqlTables = {})[validateString(sqlTable)] = { process, view, sqlColumns });
+        const sqlTables = [];
+        for (const sqlTable in inSqlTables) {
+            let { process, view, sqlColumns } = inSqlTables[sqlTable];
+            process = processes.getActiveProcess(process, true);
+            view = (await process.getViews()).Views.demand(({ Name }) => Name === view).ID;
+            process = process.ProcessID;
+            if (sqlColumns || (sqlColumns = undefined)) {
+                const r = {};
+                for (let name in sqlColumns) {
+                    assert.notStrictEqual(name, COL_FORM_ID);
+                    const idx = +sqlColumns[name];
+                    assert(!isNaN(idx));
+                    r[name] = idx;
+                }
+                sqlColumns = r;
+            }
+            sqlTables.push({ process, view, sqlTable, sqlColumns });
+        }
+        assert(sqlTables.length > 0);
         validateString(query);
-
         if (parameters || (parameters = undefined)) {
             const r = {};
             for (let name in parameters) {
@@ -20,46 +37,38 @@ module.exports = {
             }
             parameters = r;
         }
-
-        if (sqlColumns || (sqlColumns = undefined)) {
-            const r = {};
-            for (let name in sqlColumns) {
-                assert.notStrictEqual(name, COL_FORM_ID);
-                const idx = +sqlColumns[name];
-                assert(!isNaN(idx));
-                r[name] = idx;
-            }
-            sqlColumns = r;
-        }
         single = toBoolean(single);
-        return { dstProperty, process, view, sqlTable, sqlColumns, query, parameters, single };
+        return { dstProperty, sqlTables, query, parameters, single };
     },
 
-    convert: async function ({ dstProperty, process, view, sqlTable, sqlColumns, query, parameters, single }, data) {
-        const db = new SqlDatabase();
-        const columns = [COL_FORM_ID];
-        const { Columns, Forms } = await this.api.getForms(process, view);
-        if (sqlColumns) {
-            for (const name in sqlColumns) {
-                assert(Columns[sqlColumns[name]]);
-                columns.push(name);
-            }
-        }
-        db.table(sqlTable, {
-            columns,
-            rows: function* () {
-                for (const { FormID, Values } of Forms) {
-                    const result = {};
-                    result[COL_FORM_ID] = FormID;
-                    if (sqlColumns) {
-                        for (let name in sqlColumns) {
-                            result[name] = Values[sqlColumns[name]];
-                        }
-                    }
-                    yield result;
+    convert: async function ({ dstProperty, sqlTables, query, parameters, single }, data) {
+        const db = new SqlDatabase(undefined, { verbose: debug });
+
+        for (const { process, view, sqlTable, sqlColumns } of sqlTables) {
+            const columns = [COL_FORM_ID];
+            const { Columns, Forms } = await this.api.getForms(process, view);
+            if (sqlColumns) {
+                for (const name in sqlColumns) {
+                    assert(Columns[sqlColumns[name]]);
+                    columns.push(name);
                 }
-            },
-        });
+            }
+            db.table(sqlTable, {
+                columns,
+                rows: function* () {
+                    for (const { FormID, Values } of Forms) {
+                        const result = {};
+                        result[COL_FORM_ID] = FormID;
+                        if (sqlColumns) {
+                            for (let name in sqlColumns) {
+                                result[name] = Values[sqlColumns[name]];
+                            }
+                        }
+                        yield result;
+                    }
+                },
+            });
+        }
 
         const stmt = db.prepare(query);
         toArray(data).forEach(srcObj => {
@@ -74,7 +83,7 @@ module.exports = {
         });
 
         db.close();
-        
+
         return data;
     }
 };

@@ -276,9 +276,8 @@ const OPERATORS = {
 const DEFAULT_FIELD_PROPERTY = 'Value';
 
 function initOperand(config) {
-    if (typeof config === 'string') {
-        config = Array.isArray(this.Fields) ? { field: config } : { property: config };
-    }
+    Array.isArray(config) && (config = { property: config });
+    typeof config === 'string' && (config = Array.isArray(this.Fields) ? { field: config } : { property: config });
     assert.strictEqual(typeof config, 'object');
     let { field, property, value } = config;
     let resultConfig;
