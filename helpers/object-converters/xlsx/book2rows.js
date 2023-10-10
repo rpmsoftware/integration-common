@@ -1,6 +1,6 @@
-const { 
+const {
     getDeepValue, toBoolean, toArray, isEmpty, validateString, validatePropertyConfig
- } = require('../../../util');
+} = require('../../../util');
 const assert = require('assert');
 
 const REGEXP_WORDS_NUMBERS = /\W+/g;
@@ -40,13 +40,11 @@ const loadBook = (book, columns, normalize) => {
 
     normalize = normalize ? v => lowLettersNumbers(v + '') : v => v + '';
     const cns = {};
-    columns.forEach(n => {
-        let { name, required } = typeof n === 'object' ? n : { name: n, required: true };
-        name = validateString(normalize(name));
-        assert(!cns[name]);
-        cns[name] = { name, required, n };
+    columns.forEach(c => {
+        let { name } = c;
+        c.name = name = validateString(normalize(name));
+        cns[name] = c
     });
-
     const data = [];
 
     const loadSheet = sheet => {
@@ -95,7 +93,14 @@ module.exports = {
     init: async function ({ srcProperty, dstProperty, columns, normalize }) {
         validateString(dstProperty);
         srcProperty = validatePropertyConfig(srcProperty);
-        columns = toArray(columns).map(validateString);
+        const cns = {};
+        columns = toArray(columns).map(c => {
+            let { name, required } = typeof c === 'object' ? c : { name: c, required: true };
+            name = validateString(name);
+            required = toBoolean(required) || undefined;
+            assert(!cns[name]);
+            return (cns[name] = { name, required });
+        });
         assert(columns.length > 0);
         normalize = toBoolean(normalize) || undefined;
         return { srcProperty, dstProperty, columns, normalize };
