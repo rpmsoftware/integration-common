@@ -148,7 +148,9 @@ const OBJECT_CONVERTERS = {
                 const r = array ? [] : {};
                 for (let k in srcContainer) {
                     const e = srcContainer[k];
+                    e[PARENT_PROPERTY] = parent;
                     processCondition(condition, e) && (array ? r.push(e) : (r[k] = e));
+                    delete e[PARENT_PROPERTY];
                 }
                 parent[dstProperty] = r;
             }
@@ -291,8 +293,10 @@ const OBJECT_CONVERTERS = {
             for (const e of toArray(data)) {
                 let o = getDeepValue(e, srcProperty);
                 if (o) {
+                    toArray(o).forEach(o => o[PARENT_PROPERTY] = e);
                     const r = await convert.call(this, convertConf, o);
                     dstProperty && (o[dstProperty] = r);
+                    toArray(o).forEach(o => delete o[PARENT_PROPERTY]);
                 }
             }
             return data;

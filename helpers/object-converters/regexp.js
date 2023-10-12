@@ -21,7 +21,6 @@ module.exports = {
                 v = undefined;
             }
             obj[dstProperty] = v;
-            return data;
         });
         return data;
     }
