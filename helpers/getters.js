@@ -372,27 +372,37 @@ add('Percent', function (conf, form) {
     return conf.isTableField ? result / 100 : result;
 });
 
-add('YesNo', function ({ srcUid }, form) {
+add('YesNo', function ({ srcUid, values }, form) {
     const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
-    return Value ? toBoolean(Value) : undefined;
+    return values ? values[isEmptyValue(Value) ? '' : toBoolean(Value)] : toBoolean(Value);
+}, function ({ values }) {
+    if (values || (values = undefined)) {
+        const { '': e, 'true': t, 'false': f } = values;
+        values = { '': e, 'true': t, 'false': f };
+    }
+    return { values };
 });
 
 const OPTION_VALUES = [undefined, false, true];
-add('YesNoList', function ({ srcUid, options }, form) {
+add('YesNoList', function ({ srcUid, options, values }, form) {
     const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
     return Value ? JSON.parse(Value).Values.map(({ OptionID, Value, Comment }) => ({
         Option: options[OptionID]?.Text,
         OptionID,
-        Value: OPTION_VALUES[Value],
+        Value: (values || OPTION_VALUES)[Value],
         Comment
     })) : [];
-}, function ({ asArray }, { Options }) {
+}, function ({ asArray, values }, { Options }) {
     asArray = toBoolean(asArray) || undefined;
     const options = {};
     for (const { ID, Text } of Options) {
         options[ID] = { ID, Text };
     }
-    return { options, asArray };
+    if (values || (values = undefined)) {
+        const { '': e, 'true': t, 'false': f } = values;
+        values = [e, f, t];
+    }
+    return { options, asArray, values };
 });
 
 add('FieldTableDefinedRow', async function ({ srcField, tableFields, tableRows, srcUid, asArray }, form) {
@@ -557,18 +567,29 @@ add('FieldTable', 'fieldMap', async function ({ srcUid, key, fieldMap }, form) {
     return r;
 });
 
-add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys }, form) {
+add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys, asArray }, form) {
     form = form.Form || form;
     const srcField = form.getFieldByUid(srcUid, true);
-    const result = {};
+    const result = asArray ? [] : {};
     for (const srcRow of srcField.Rows) {
+        if (srcRow.IsDefinition || srcRow.IsLabelRow) {
+            continue;
+        }
         const key = keys[srcRow.TemplateDefinedRowID];
-        srcRow.IsDefinition || srcRow.IsLabelRow || key &&
-            (result[key] = await getTableRow.call(this, fieldMap, srcRow));
+        if (!key) {
+            continue;
+        }
+        const row = await getTableRow.call(this, fieldMap, srcRow);
+        if (asArray) {
+            row[srcField.Field] = key;
+            result.push(row);
+        } else {
+            result[key] = row;
+        }
     }
     return result;
 }, async function (conf, rpmField) {
-    let { rows: rowNames } = conf;
+    let { rows: rowNames, asArray } = conf;
     const resultConf = await tableFieldMapInit.call(this, conf, rpmField);
     const keys = {};
     const tableRows = rpmField.Rows.filter(({ IsDefinition, IsLabelRow }) => !IsDefinition && !IsLabelRow);
@@ -576,6 +597,7 @@ add('FieldTableDefinedRow', 'fieldMap', async function ({ srcUid, fieldMap, keys
         toArray(rowNames).forEach(rn => keys[tableRows.demand(({ Name }) => Name === validateString(rn)).ID] = rn) :
         tableRows.forEach(({ ID, Name }) => (keys[ID] = Name));
     resultConf.keys = keys;
+    resultConf.asArray = toBoolean(asArray) || undefined;
     return resultConf;
 });
 
