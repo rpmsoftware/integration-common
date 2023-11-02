@@ -12,7 +12,10 @@ module.exports = {
         inSqlTables || ((inSqlTables = {})[validateString(sqlTable)] = { process, view, sqlColumns });
         const sqlTables = [];
         for (const sqlTable in inSqlTables) {
-            let { process, view, sqlColumns } = inSqlTables[sqlTable];
+            let { process, view, sqlColumns, enabled } = inSqlTables[sqlTable];
+            if (enabled !== undefined && !toBoolean(enabled)) {
+                continue;
+            }
             process = processes.getActiveProcess(process, true);
             view = (await process.getViews()).Views.demand(({ Name }) => Name === view).ID;
             process = process.ProcessID;
@@ -48,8 +51,9 @@ module.exports = {
             const columns = [COL_FORM_ID];
             const { Columns, Forms } = await this.api.getForms(process, view);
             if (sqlColumns) {
+                const { length } = Forms;
                 for (const name in sqlColumns) {
-                    assert(Columns[sqlColumns[name]]);
+                    length > 0 && assert(Columns[sqlColumns[name]]);
                     columns.push(name);
                 }
             }

@@ -772,21 +772,30 @@ add('CustomerAccount',
     }
 );
 
-add('RestrictedReference', async function (conf, data) {
-    const { isTableField } = conf;
-    data = getObjectValue(conf, data);
-    if (!data) {
-        return getEmpty();
-    }
-    if (typeof data === 'number') {
-        if (isTableField) {
-            return { ID: data };
+add('RestrictedReference',
+    async function (conf, data) {
+        const { isTableField, forceNumber } = conf;
+        data = getObjectValue(conf, data);
+        if (!data) {
+            return getEmpty();
         }
-        data = await this.api.demandForm(data);
-        data = data.Form.Number;
+        if (typeof data === 'number') {
+            if (isTableField) {
+                return { ID: data };
+            }
+            if (forceNumber) {
+                return data + '';
+            }
+            data = await this.api.demandForm(data);
+            data = data.Form.Number;
+        }
+        return data;
+    },
+    function ({ forceNumber }) {
+        forceNumber = toBoolean(forceNumber) || undefined;
+        return { forceNumber };
     }
-    return data;
-});
+);
 
 add('RestrictedReference', 'title2reference', async function (conf, data) {
     data = getObjectValue(conf, data);

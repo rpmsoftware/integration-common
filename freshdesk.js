@@ -9,15 +9,18 @@ const DEFAULT_HEADERS = {
 
 const REGEX_NEXT_PAGE_LINK = /<(https:\/\/\S+)>; rel="next"/i;
 const GET_DEFAULTS = { per_page: 100 }
-
+const MAX_PAGES = 300;
 
 class API {
 
     constructor(url, key) {
+        let maxPages;
         if (typeof url === 'object') {
             key = url.key;
+            maxPages = url.maxPages;
             url = url.url;
         }
+        this.maxPages = (maxPages > 0 && maxPages <= MAX_PAGES) ? maxPages : MAX_PAGES;
         validateString(url);
         validateString(key);
         this.url = url.toLowerCase().ensureRight('/').ensureRight('api/').ensureRight('v2/').toString();
@@ -49,10 +52,16 @@ class API {
     async requestEndpoint(method, endpoint, options) {
         let partialResult = await this.request(method, this.getUrl(endpoint), options);
         let result = partialResult;
+        let c = 1;
         while (partialResult.nextLink) {
+            if (c >= this.maxPages) {
+                debug('Page limit exceeded');
+                break;
+            }
             assert(Array.isArray(result));
             partialResult = await this.request(method, partialResult.nextLink);
             result = result.concat(partialResult);
+            ++c;
         }
         return result;
     }
@@ -85,17 +94,15 @@ class API {
 
     }
 
-    getTimeEntries(before, after, billable) {
-        if (typeof before === 'object' && !moment.isDayjs(before)) {
-            billable = before.billable;
-            after = before.after;
-            before = before.before;
+    getTimeEntries(after, before, billable) {
+        if (after && typeof after === 'object' && !moment.isDayjs(after)) {
+            billable = after.billable;
+            before = after.before;
+            after = after.after;
         }
         before = before ? toMoment(before).toISOString() : undefined;
         after = after ? toMoment(after).toISOString() : undefined;
-        if (billable !== undefined) {
-            billable = toBoolean(billable);
-        }
+        billable === undefined || (billable = toBoolean(billable));
         return this.getPaged('time_entries', {
             executed_after: after,
             executed_before: before,
@@ -135,14 +142,52 @@ class API {
         return this.get('tickets/' + normalizeInteger(id));
     }
 
+    async getTicketFields(normalize) {
+        const result = await this.getPaged('ticket_fields');
+        if (toBoolean(normalize)) {
+            let statuses = result.demand(({ name }) => name === 'status');
+            const normalizedChoices = [];
+            const { choices } = statuses;
+            for (const id in choices) {
+                const [label_for_agents, label_for_customers] = choices[id];
+                normalizedChoices.push({ id, label_for_agents, label_for_customers });
+            }
+            statuses.choices = normalizedChoices;
+            const fixChoices = containerName => {
+                const container = result.demand(({ name }) => name === containerName);
+                const normalizedChoices = [];
+                const { choices } = container;
+                for (const label in choices) {
+                    const id = choices[label];
+                    normalizedChoices.push({ id, label });
+                }
+                container.choices = normalizedChoices;
+            }
+            fixChoices('source');
+            fixChoices('priority');
+            fixChoices('group');
+            fixChoices('agent');
+            fixChoices('product');
+
+        }
+        return result;
+    }
+
     getTimeEntry(id) {
         return this.get('time_entries/' + normalizeInteger(id));
     }
 
-    getTickets(since) {
+    getTickets(since, filter) {
         return this.getPaged('tickets', {
-            updated_since: since ? toMoment(since).toISOString() : undefined
+            updated_since: since ? toMoment(since).toISOString() : undefined,
+            order_by: 'updated_at',
+            order_type: 'asc',
+            filter: filter ? validateString(filter) : undefined
         });
+    }
+
+    getProducts() {
+        return this.getPaged('products');
     }
 
     updateContact(id, data) {

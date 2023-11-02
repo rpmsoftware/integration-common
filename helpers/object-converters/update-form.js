@@ -5,6 +5,7 @@ const {
 const { init: initCondition, process: processCondition } = require('../../conditions');
 const { set, initMultiple: initSetters } = require('../setters');
 
+const NUMBER_PROPERTY = 'Number';
 module.exports = {
     init: async function ({
         process,
@@ -86,7 +87,7 @@ module.exports = {
                 const c = propertyMap[k];
                 const { constant } = c;
                 const v = constant === undefined ? getDeepValue(source, c) : constant;
-                v === undefined || (formProps[k] = v);
+                v === undefined || (formProps[k] = k === NUMBER_PROPERTY ? v + '' : v);
             }
             if (statusMap) {
                 for (let cond of statusMap) {
@@ -125,7 +126,11 @@ module.exports = {
                     (form = await api.createForm(process, formPatch, formProps));
             }
             form = form?.Form;
-            form && (processedForms[form.FormID] = true);
+            if (form) {
+                const { FormID, Number } = form;
+                processedForms[FormID] = true;
+                number2id[Number] = FormID;
+            }
             dstProperty && (source[dstProperty] = form);
         };
 

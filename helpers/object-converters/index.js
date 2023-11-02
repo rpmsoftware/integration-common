@@ -293,7 +293,9 @@ const OBJECT_CONVERTERS = {
             for (const e of toArray(data)) {
                 let o = getDeepValue(e, srcProperty);
                 if (o) {
-                    toArray(o).forEach(o => o[PARENT_PROPERTY] = e);
+                    toArray(o).forEach(o =>
+                        Object.defineProperty(o, PARENT_PROPERTY, { value: e, configurable: true })
+                    );
                     const r = await convert.call(this, convertConf, o);
                     dstProperty && (o[dstProperty] = r);
                     toArray(o).forEach(o => delete o[PARENT_PROPERTY]);
@@ -308,7 +310,7 @@ const OBJECT_CONVERTERS = {
 
             const initSingle = (dstProperty, { property, keyProperty, valueMap, propertyMap }) => {
                 validateString(dstProperty);
-                keyProperty = validatePropertyConfig(keyProperty || property);
+                keyProperty = validatePropertyConfig(keyProperty || property || dstProperty);
                 valueMap && !isEmpty(valueMap) || (valueMap = undefined);
                 if (propertyMap || (propertyMap = undefined)) {
                     assert.strictEqual(typeof propertyMap, 'object');

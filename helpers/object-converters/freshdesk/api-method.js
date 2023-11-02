@@ -1,6 +1,7 @@
 const { validateString, toArray, validatePropertyConfig, getDeepValue } = require('../../../util');
 const { init: initCondition, process: processCondition } = require('../../../conditions');
 const assert = require('assert');
+const { getFreshDeskApi } = require('./util');
 
 module.exports = {
     init: function ({ dstProperty, parameters, condition, method }) {
@@ -27,7 +28,7 @@ module.exports = {
     },
 
     convert: async function ({ method, dstProperty, parameters, condition }, obj) {
-        const { api } = this;
+        const api = getFreshDeskApi.call(this);
         for (const e of toArray(obj)) {
             (!condition || processCondition(condition, e)) && (
                 e[dstProperty] = await api[method].apply(api, parameters.map(
