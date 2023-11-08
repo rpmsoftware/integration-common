@@ -5,9 +5,8 @@ const assert = require('assert');
 module.exports = {
     init: function ({ dstProperty, parameters, condition, method }) {
         validateString(method);
-        validateString(dstProperty);
-        parameters = toArray(parameters);
-        parameters = parameters.map(c => {
+        dstProperty = dstProperty ? validateString(dstProperty) : undefined;
+        parameters = toArray(parameters).map(c => {
             let { value, property } = (c === null) ? { value: null } : c;
             if (value !== undefined) {
                 property = undefined;
@@ -29,11 +28,14 @@ module.exports = {
     convert: async function ({ method, dstProperty, parameters, condition }, obj) {
         const { api } = this;
         for (const e of toArray(obj)) {
-            (!condition || processCondition(condition, e)) && (
-                e[dstProperty] = await api[method].apply(api, parameters.map(
-                    ({ value, property }) => value === undefined ? getDeepValue(e, property) : value)
-                )
+            if (condition && !processCondition(condition, e)) {
+                continue;
+            }
+            const result = await api[method].apply(api, parameters.map(
+                ({ value, property }) => value === undefined ? getDeepValue(e, property) : value)
             );
+            dstProperty ? (e[dstProperty] = result) : Object.assign(e, result);
+
         }
         return obj;
     }

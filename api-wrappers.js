@@ -1563,6 +1563,14 @@ API.prototype.getCommAgencies = function (run) {
     return this.request('CommAgencies', { Run: run });
 };
 
+API.prototype.getCommAccounts = function (run) {
+    if (this.validateParameters) {
+        run = run ? validateString(run) : 'all';
+    }
+    return this.request('CommAccounts', { Run: run });
+};
+
+
 API.prototype.getEntities = function (type, normalize) {
     return getEager(ENTITY_GETTERS, type).getEntities.call(this, toBoolean(normalize));
 };

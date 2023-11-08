@@ -297,7 +297,7 @@ const OBJECT_CONVERTERS = {
                         Object.defineProperty(o, PARENT_PROPERTY, { value: e, configurable: true })
                     );
                     const r = await convert.call(this, convertConf, o);
-                    dstProperty && (o[dstProperty] = r);
+                    dstProperty && (e[dstProperty] = r);
                     toArray(o).forEach(o => delete o[PARENT_PROPERTY]);
                 }
             }
