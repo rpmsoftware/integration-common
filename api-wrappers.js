@@ -12,7 +12,6 @@ const {
 
 const {
     fetch2json,
-    normalizeDate,
     getEager,
     demandDeepValue,
     normalizeInteger,
@@ -31,6 +30,7 @@ const { URL } = require('url');
 const assert = require('assert');
 const util = require('util');
 const { EventEmitter } = require('events');
+const dayjs = require('dayjs');
 
 const MAX_PARALLEL_CALLS = 20;
 
@@ -981,9 +981,21 @@ API.prototype.getAccount = async function (account, supplier, demand) {
     }
 };
 
-API.prototype.getAccounts = function (modifiedAfter) {
-    modifiedAfter = modifiedAfter ? normalizeDate(modifiedAfter) : new Date(0);
-    return this.request('Accounts', { ModifiedAfter: modifiedAfter.toISOString() });
+API.prototype.getAccounts = function (bodyOrDate) {
+    if (typeof bodyOrDate !== 'object' || dayjs.isDayjs(bodyOrDate)) {
+        bodyOrDate = { ModifiedAfter: toMoment(bodyOrDate || undefined).format(ISO_DATE_FORMAT) }
+    } else {
+        let { Supplier, SupplierID, Customer, CustomerID, ModifiedAfter } = bodyOrDate || {};
+        ModifiedAfter = ModifiedAfter ?
+            (dayjs.isDayjs(ModifiedAfter) ? ModifiedAfter.format(ISO_DATE_FORMAT) : validateString(ModifiedAfter)) :
+            undefined;
+        Supplier = Supplier ? validateString(Supplier) : undefined;
+        SupplierID = SupplierID ? normalizeInteger(SupplierID) : undefined;
+        Customer = Customer ? validateString(Customer) : undefined;
+        CustomerID = CustomerID ? normalizeInteger(CustomerID) : undefined;
+        bodyOrDate = { Supplier, SupplierID, Customer, CustomerID, ModifiedAfter };
+    }
+    return this.request('Accounts', bodyOrDate);
 };
 
 API.prototype.getAllAccounts = function () {
