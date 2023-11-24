@@ -13,7 +13,6 @@ const {
 const {
     fetch2json,
     getEager,
-    demandDeepValue,
     normalizeInteger,
     validateString,
     toBoolean,
@@ -235,7 +234,7 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
     return this.editFormAction(+formOrID, {
         Description: description,
         StaffOnly: true,
-        Due: toMoment(due).format(ISO_DATE_FORMAT),
+        Due: due,
         Assignee: {
             UserID: +userID
         }
@@ -243,20 +242,39 @@ API.prototype.createFormAction = function (description, formOrID, due, userID) {
 };
 
 API.prototype.editFormAction = function (formID, data) {
-    if (data === undefined) {
+    if (typeof formID === 'object') {
         data = formID;
         formID = undefined;
     }
     if (this.validateParameters) {
-        data = data.Action || data;
-        formID = normalizeInteger(formID || demandDeepValue(data, 'Form', 'FormID'));
         assert.strictEqual(typeof data, 'object');
-        validateString(data.Description);
-        assert(data.Due);
-        assert(+data.Assignee.UserID || +data.Assignee.ParticipantID, 'Assignee UserID or ParticipantID required');
+        let {
+            ActionID, AlternateID, Done, Description, TypeID, Added, Start, End,
+            Form, FormID, StaffOnly, Due, UserID, ParticipantID, Assignee
+        } = data.Action || data;
+        ActionID = ActionID ? normalizeInteger(ActionID) : undefined;
+        AlternateID = AlternateID ? validateString(AlternateID) : undefined;
+        Done = toBoolean(Done) || undefined;
+        validateString(Description);
+        let AddedUserID = Added?.UserID;
+        Added = AddedUserID ? { UserID: normalizeInteger(AddedUserID) } : undefined;
+        TypeID = TypeID ? normalizeInteger(TypeID) : undefined;
+        FormID = normalizeInteger(formID || FormID || Form?.FormID);
+        StaffOnly = toBoolean(StaffOnly) || undefined;
+        Due = toMoment(Due, true).format(ISO_DATE_FORMAT);
+        UserID = +(UserID || Assignee?.UserID) || undefined;
+        ParticipantID = +(ParticipantID || Assignee?.ParticipantID) || undefined;
+        UserID || assert(ParticipantID, 'Assignee UserID or ParticipantID is required');
+        Start = Start ? toMoment(Start, true).format(ISO_DATE_FORMAT) : undefined;
+        End = End ? toMoment(End, true).format(ISO_DATE_FORMAT) : undefined;
+        data = {
+            Action: {
+                ActionID, AlternateID, Done, Description, TypeID, Added, Start, End,
+                Form: { FormID }, StaffOnly, Due, Assignee: { UserID, ParticipantID }
+            }
+        };
     }
-    formID && (data = Object.assign({ Form: { FormID: formID } }, data));
-    return this.request('ActionEdit', this.validateParameters ? { Action: data } : data);
+    return this.request('ActionEdit', data);
 };
 
 const PROC_PROMISE_PROPERTY = Symbol();

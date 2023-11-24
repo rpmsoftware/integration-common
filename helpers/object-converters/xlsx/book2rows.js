@@ -1,12 +1,15 @@
 const {
-    getDeepValue, toBoolean, toArray, isEmpty, validateString, validatePropertyConfig
+    getDeepValue, toBoolean, toArray, isEmpty, validateString, validatePropertyConfig, isEmptyValue
 } = require('../../../util');
 const assert = require('assert');
+const { sheet_add_aoa } = require('xlsx').utils;
 
 const REGEXP_WORDS_NUMBERS = /\W+/g;
 const lowLettersNumbers = s => s.replace(REGEXP_WORDS_NUMBERS, '').toLowerCase();
 
-const TYPE_STUB = 'z';
+const TYPES = { stub: 'z', string: 's', number: 'n', boolean: 'b' };
+
+const getCellType = v => isEmptyValue(v) ? TYPES.stub : TYPES[typeof v] || TYPES.string;
 
 class Row {
     #cells;
@@ -15,7 +18,7 @@ class Row {
     constructor(cells) {
         this.#cells = cells;
         for (const k in this.#cells) {
-            this.values[k] = this.#cells[k].v;
+            this.values[k] = this.#cells[k].v || undefined;
         }
     }
 
@@ -24,12 +27,13 @@ class Row {
         if (!cell) {
             return;
         }
-        if (value === undefined || value === null || value === '') {
+        delete cell.w;
+        if (isEmptyValue(value)) {
             cell.v = undefined;
-            cell.t = TYPE_STUB;
+            cell.t = TYPES.stub;
         } else {
             cell.v = value;
-            cell.t = 's';
+            cell.t = getCellType(value);
         }
         this.values[key] = cell.v;
     }
@@ -42,7 +46,7 @@ const loadBook = (book, columns, normalize) => {
     const cns = {};
     columns.forEach(c => {
         let { name } = c;
-        c.name = name = validateString(normalize(name));
+        c.id = name = validateString(normalize(name));
         cns[name] = c
     });
     const data = [];
@@ -50,35 +54,43 @@ const loadBook = (book, columns, normalize) => {
     const loadSheet = sheet => {
         assert.strictEqual(typeof sheet, 'object');
         let header;
+        let newColumnIdx = 0;
         sheet.forEach((row, rowIdx) => {
             if (!row) {
                 return;
             }
             let match = 0;
             const columns = {};
+            row.length < newColumnIdx || (newColumnIdx = row.length);
             row.forEach(({ v }, colIdx) => (v = normalize(v)) && cns[v] && (++match) && (columns[v] = colIdx));
-            (!header || match > header.match) && (header = { row: rowIdx, match, columns });
+            (!header || match > header.match) && (header = { rowIdx, match, columns });
         });
-        const { columns, row: headerRow } = header;
+        const { columns, rowIdx: headerRowIdx, } = header;
         for (let c in cns) {
-            const { name, required } = cns[c];
-            required && assert(columns[name] >= 0, `Column is required: "${name}"`);
+            const { name, required, create, id } = cns[c];
+            if (columns[id] >= 0) {
+                continue;
+            }
+            if (create) {
+                sheet_add_aoa(sheet, [[name]], { origin: { r: headerRowIdx, c: newColumnIdx } });
+                columns[id] = newColumnIdx;
+                ++newColumnIdx;
+            } else if (required) {
+                throw `Column is required: "${name}"`;
+            }
         }
-        for (let rowIdx = headerRow + 1; rowIdx < sheet.length; rowIdx++) {
+        for (let rowIdx = headerRowIdx + 1; rowIdx < sheet.length; rowIdx++) {
             const row = sheet[rowIdx];
             if (!row) {
                 return;
             }
             const cells = {};
-            for (let columnName in columns) {
-                const colIdx = columns[columnName];
+            for (let id in columns) {
+                const colIdx = columns[id];
                 const cell = row[colIdx];
-                cells[columnName] = cell || (row[colIdx] = { t: TYPE_STUB });
+                cells[id] = cell || (row[colIdx] = { t: TYPES.stub });
             }
-            if (!isEmpty(cells)) {
-                data.push(new Row(cells));
-                // break;
-            }
+            isEmpty(cells) || data.push(new Row(cells));
         }
     };
 
@@ -95,11 +107,12 @@ module.exports = {
         srcProperty = validatePropertyConfig(srcProperty);
         const cns = {};
         columns = toArray(columns).map(c => {
-            let { name, required } = typeof c === 'object' ? c : { name: c, required: true };
+            let { name, required, create } = typeof c === 'object' ? c : { name: c, required: true };
             name = validateString(name);
-            required = toBoolean(required) || undefined;
+            create = toBoolean(create) || undefined;
+            required = !create && toBoolean(required) || undefined;
             assert(!cns[name]);
-            return (cns[name] = { name, required });
+            return (cns[name] = { name, required, create });
         });
         assert(columns.length > 0);
         normalize = toBoolean(normalize) || undefined;

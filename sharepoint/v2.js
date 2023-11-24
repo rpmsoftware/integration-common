@@ -1,4 +1,4 @@
-const { validateString } = require('../util');
+const { validateString, throwError } = require('../util');
 const createTokenFactory = require('../office365/token-factory');
 const assert = require('assert');
 const debug = require('debug')('rpm:sharepoint2');
@@ -7,6 +7,7 @@ const BASE_URL = `https://graph.microsoft.com/v1.0/`;
 const SCOPE = `https://graph.microsoft.com/.default`;
 
 const SUBSCRIPTION_TTL = 43200; // minutes
+const SHAREPOINT_ERROR = 'SharepointError';
 
 class SharepointApi {
     #getAccessToken;
@@ -40,18 +41,13 @@ class SharepointApi {
     async #request(method, url, body, headers) {
         debug(method, url);
         body || (body = undefined);
-        // if (body) {
-        //     typeof body === 'object' && (body = JSON.stringify(body));
-        //     debug(body);
-        // }
-
         headers || (headers = { 'Content-Type': 'application/json' });
         headers.Authorization = 'Bearer ' + await this.#getAccessToken();
-
         const response = await fetch(url, { method, headers, body });
         let { ok, status, statusText } = response;
         if (!ok) {
-            throw Object.assign({ status, statusText }, await response.json());
+            const { code, innerError, message } = (await response.json()).error;
+            throwError(message, SHAREPOINT_ERROR, { status, statusText, code, innerError });
         }
         return response;
     }
@@ -78,7 +74,12 @@ class SharepointApi {
     }
 
     async getDriveItems(siteID, parentID) {
-        return (await this.get(`/sites/${siteID}/drive/items/${parentID}/children`)).value.map(i => i.file ? new File(this, i) : i);
+        return (await this.get(`sites/${siteID}/drive/items/${parentID}/children`)).value.map(i => i.file ? new File(this, i) : i);
+    }
+
+    async getDriveItem(siteID, id) {
+        const item = await this.get(`sites/${siteID}/drive/items/${id}`);
+        return item.file ? new File(this, item) : item;
     }
 
     async getListsItems(list) {

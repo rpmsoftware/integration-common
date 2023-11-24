@@ -1,8 +1,9 @@
-const { getEager, validateString } = require('../util');
+const { getEager, validateString, isEmptyValue } = require('../util');
 const { FIELD_TYPE } = require('../api-wrappers');
 
 module.exports = {
     DEFAULT_ACCESSOR_NAME: 'default',
+
     getFullType: function (fieldTypeOrField, subType) {
         if (typeof fieldTypeOrField === 'object') {
             subType = fieldTypeOrField.SubType;
@@ -15,5 +16,7 @@ module.exports = {
         }
         return `RPM_${fieldTypeOrField}_${subType}`;
     },
-    isEmptyValue: v => v === undefined || v === null || v === ''
+
+    isEmptyValue
+
 };

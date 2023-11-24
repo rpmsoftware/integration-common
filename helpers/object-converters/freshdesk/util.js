@@ -17,4 +17,4 @@ exports.getFreshDeskApi = function () {
     let { state } = this;
     state || (state = this);
     return state[FD_API] || (state[FD_API] = new FreshdeskApi(state.globals.freshdeskApi));
-}
+};

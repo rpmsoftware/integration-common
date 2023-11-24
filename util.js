@@ -753,7 +753,11 @@ const validateString = exports.validateString = value => {
     return value;
 };
 
-exports.toMoment = value => moment.isDayjs(value) ? value : moment(value);
+exports.toMoment = (value, validate) => {
+    value = moment.isDayjs(value) ? value : moment(value);
+    validate && assert(value.isValid());
+    return value;
+};
 
 const toArray = exports.toArray = value => value === undefined ? [] : (Array.isArray(value) ? value : [value]);
 
@@ -837,3 +841,7 @@ exports.createTimeBasedIDGenerator = start => {
         return nextID++;
     };
 };
+
+const EMPTY_STRING = '';
+
+exports.isEmptyValue = v => v === undefined || v === null || v === EMPTY_STRING;

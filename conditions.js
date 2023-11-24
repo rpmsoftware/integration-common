@@ -1,7 +1,7 @@
 const assert = require('assert');
 const {
     getEager, toBoolean, validateString, toArray, normalizeInteger,
-    getDeepValue, toMoment, validatePropertyConfig, demandDeepValue
+    getDeepValue, toMoment, validatePropertyConfig, demandDeepValue, isEmptyValue
 } = require('./util');
 const {
     getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT
@@ -75,7 +75,7 @@ const OPERATORS = {
             const { operand, trim } = this;
             let value = getOperandValue(operand, data);
             typeof value === 'string' && trim && (value = value.trim());
-            return value === undefined || value === null || value === '';
+            return isEmptyValue(value);
         }
 
     },

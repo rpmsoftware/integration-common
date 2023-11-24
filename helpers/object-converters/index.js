@@ -12,16 +12,16 @@ const DEFAULT_CONVERTER = 'getter';
 async function init(conf) {
     const result = [];
     for (let c of conf ? toArray(conf) : []) {
-        let { name, enabled, throwError } = c;
+        let { name, enabled, throwError, errorProperty } = c;
         if (enabled !== undefined && !toBoolean(enabled)) {
             continue;
         }
-        throwError = throwError === undefined || toBoolean(throwError);
         name || (name = DEFAULT_CONVERTER);
         const { init } = OBJECT_CONVERTERS[name] || require('./' + name);
         c = init ? await init.call(this, c) : {};
         c.name || (c.name = name);
-        c.throwError = throwError;
+        c.throwError = throwError === undefined || toBoolean(throwError);
+        c.errorProperty = errorProperty ? validateString(errorProperty) : undefined;
         result.push(c);
     }
     return result;
@@ -29,14 +29,17 @@ async function init(conf) {
 
 async function convert(conf, obj) {
     for (let c of conf) {
-        const { name, throwError } = c;
+        const { name, throwError, errorProperty } = c;
         try {
             obj = await (OBJECT_CONVERTERS[name] || require('./' + name)).convert.call(this, c, obj);
-        } catch (e) {
-            if (throwError) {
-                throw e;
+            errorProperty && delete obj[errorProperty];
+        } catch (error) {
+            if (errorProperty) {
+                obj[errorProperty] = error;
+            } else if (throwError) {
+                throw error;
             }
-            console.error(e);
+            console.error(error);
             break;
         }
         if (toArray(obj).length < 1) {
