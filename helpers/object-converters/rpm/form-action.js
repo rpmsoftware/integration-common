@@ -3,12 +3,12 @@ const { propertyOrValue } = require('../util');
 
 const ASSIGNEE_GETTERS = {
     _owner: async function (formID) {
-        const { Participants, Owner } = (await this.demandForm(formID)).Form;
+        const { Participants, Owner } = (await this.api.demandForm(formID)).Form;
         return Participants.demand(({ Name }) => Name === Owner).UserID;
     },
 
     _lastModified: async function (formID) {
-        const { Participants, ModifiedBy } = (await this.demandForm(formID)).Form;
+        const { Participants, ModifiedBy } = (await this.api.demandForm(formID)).Form;
         return Participants.demand(({ Name }) => Name === ModifiedBy).UserID;
     },
 
@@ -41,12 +41,12 @@ module.exports = {
     convert: async function ({ formIDProperty, assignee, description, dstProperty }, data) {
         const { api } = this;
         const StaffOnly = true;
+        const ag = ASSIGNEE_GETTERS[assignee];
         for (const e of toArray(data)) {
             const FormID = +getDeepValue(e, formIDProperty);
             let action;
             if (FormID) {
-                const ag = ASSIGNEE_GETTERS[assignee];
-                const UserID = ag ? await ag.call(api, FormID) : +propertyOrValue.get(assignee, e);
+                const UserID = ag ? await ag.call(this, FormID) : +propertyOrValue.get(assignee, e);
                 const Description = propertyOrValue.get(description, e) + '';
                 UserID && Description && (
                     action = await api.editFormAction({ FormID, Description, StaffOnly, UserID })
