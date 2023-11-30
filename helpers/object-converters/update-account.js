@@ -8,7 +8,7 @@ module.exports = {
         create, dstProperty, propertyMap, fieldMap, errorProperty
     }) {
         errorProperty = errorProperty ? validateString(errorProperty) : undefined;
-        validateString(dstProperty);
+        dstProperty = dstProperty ? validateString(dstProperty) : undefined;
         idProperty = validatePropertyConfig(idProperty);
         create = toBoolean(create) || undefined;
         customerIdProperty = customerIdProperty ? validatePropertyConfig(customerIdProperty) : undefined;
@@ -102,7 +102,7 @@ module.exports = {
                     CustomerID, Customer, SupplierID, Supplier
                 };
             }
-            srcObj[dstProperty] = result;
+            dstProperty && (srcObj[dstProperty] = result);
         }
         return obj;
     }
