@@ -111,11 +111,11 @@ API.prototype.request = async function (endPoint, data, log) {
     if (!Result) {
         throw typeof data === 'object' ? data : new Error(data + '');
     }
-    const { Error: error } = Result;
-    if (error) {
-        const { Message } = error;
+    const { Error } = Result;
+    if (Error) {
+        const { Message } = Error;
         if (Message) {
-            throwError(Message, RPM_API_ERROR, error);
+            throwError(Message, RPM_API_ERROR, Error);
         } else {
             throw Result;
         }

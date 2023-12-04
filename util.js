@@ -816,7 +816,7 @@ exports.fetch2json = async response => {
     } catch (e) {
         // ;
     }
-    throw { status, statusText, response };
+    throwError(statusText, FETCH_ERROR, { status, statusText, response });
 };
 
 exports.validatePropertyConfig = p => {
