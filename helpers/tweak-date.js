@@ -23,11 +23,11 @@ module.exports = {
             return;
         }
         dateTime = toMoment(dateTime);
-        for (let unit in shift) {
-            dateTime = dateTime.add(shift[unit], unit);
-        }
         for (let unit in set) {
             dateTime = dateTime.set(unit, set[unit]);
+        }
+        for (let unit in shift) {
+            dateTime = dateTime.add(shift[unit], unit);
         }
         assert(dateTime.isValid());
         return dateTime;
