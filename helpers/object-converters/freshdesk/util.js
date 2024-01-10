@@ -1,6 +1,6 @@
 const assert = require('assert');
 const moment = require('dayjs');
-const FreshdeskApi = require('integration-common/freshdesk');
+const FreshdeskApi = require('../../../freshdesk');
 const TIME_FORMAT = /^(\d+):(\d+)$/;
 
 exports.toMinutes = h => {

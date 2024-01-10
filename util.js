@@ -788,28 +788,13 @@ exports.defineLazyProperty = (obj, name, init) => {
 
 const FETCH_ERROR = 'FetchError';
 
-exports.fetch = async function () {
-    const response = await fetch.apply(this, arguments);
+const validateFetchResponse = exports.validateFetchResponse = async response => {
+    response = await response;
     let { ok, status, statusText } = response;
     if (ok) {
         return response;
     }
-    throwError(statusText, FETCH_ERROR, { status, statusText, response: await response.text() });
-};
-
-
-exports.fetch2json = async response => {
-    let { ok, status, statusText } = response;
     response = await response.text();
-    if (ok) {
-        try {
-            return response ? JSON.parse(response) : undefined;
-        } catch (e) {
-            console.error(response);
-            throw e;
-        }
-    }
-    response || (response = undefined);
     statusText || (statusText = undefined);
     try {
         response = response && JSON.parse(response);
@@ -817,6 +802,20 @@ exports.fetch2json = async response => {
         // ;
     }
     throwError(statusText, FETCH_ERROR, { status, statusText, response });
+};
+
+exports.fetch = function () {
+    return validateFetchResponse(fetch.apply(this, arguments));
+};
+
+exports.fetch2json = async response => {
+    response = await validateFetchResponse(response).then(r => r.text());
+    try {
+        return response ? JSON.parse(response) : undefined;
+    } catch (e) {
+        console.error(response);
+        throw e;
+    }
 };
 
 exports.validatePropertyConfig = p => {

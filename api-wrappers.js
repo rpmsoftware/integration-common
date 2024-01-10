@@ -22,7 +22,8 @@ const {
     toArray,
     getDataURLPrefix,
     setParent,
-    throwError
+    throwError,
+    fetch
 } = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
