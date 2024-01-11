@@ -1,7 +1,7 @@
 /* global Buffer */
 const { randomUUID } = require('crypto');
 const assert = require('assert');
-const { fetch2json, validateString } = require('../util');
+const { fetch2json, validateString, fetch } = require('../util');
 
 const DEFAULT_SCOPE = 'https://graph.microsoft.com/.default';
 

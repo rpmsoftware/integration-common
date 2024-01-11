@@ -1,4 +1,4 @@
-const { fetch2json, validateString, toBoolean } = require('./util');
+const { fetch2json, validateString, toBoolean, fetch } = require('./util');
 const assert = require('assert');
 const debug = require('debug')('rpm:salesforce');
 

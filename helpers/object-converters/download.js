@@ -1,4 +1,4 @@
-const { validateString, toArray, toBoolean, getDeepValue, validatePropertyConfig, fetch2json } = require('../../util');
+const { validateString, toArray, toBoolean, getDeepValue, validatePropertyConfig, fetch2json,fetch } = require('../../util');
 
 module.exports = {
     init: function ({ dstProperty, url, json }) {

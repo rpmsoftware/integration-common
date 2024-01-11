@@ -1,7 +1,7 @@
 /* global Buffer */
 
 const debug = require('debug')('rpm:moneyworks');
-const { getDeepValue, demandDeepValue, validateString, getEager, toArray } = require('./util');
+const { getDeepValue, demandDeepValue, validateString, getEager, toArray,fetch } = require('./util');
 const assert = require('assert');
 const { parse: parseXml } = require('./xml');
 

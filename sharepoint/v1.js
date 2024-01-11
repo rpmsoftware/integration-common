@@ -1,4 +1,4 @@
-const { validateString } = require('../util');
+const { validateString,fetch } = require('../util');
 const createTokenFactory = require('../office365/token-factory');
 const assert = require('assert');
 const debug = require('debug')('rpm:sharepoint');
