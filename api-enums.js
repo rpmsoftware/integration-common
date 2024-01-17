@@ -646,3 +646,14 @@ exports.WebhookEvents = {
     SupplierEdit: 'supplier.edit',
     SupplierDelete: 'supplier.delete'
 };
+
+exports.CommType = {
+    NA: 0,
+    NetBilled: 1,
+    GrossComm: 2,
+    Cash: 3,
+    AgentComm: 4,
+    PercentNetBilledWholesale: 5,
+    PercentWholesale: 6,
+    PercentContractValue: 9
+};
