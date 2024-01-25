@@ -12,8 +12,8 @@ module.exports = {
 
 const API = Symbol();
 
- function getApi () {
+function getApi() {
     let { state } = this;
     state || (state = this);
     return state[API] || (state[API] = new Api(state.globals.moneyworksApi));
-};
+}

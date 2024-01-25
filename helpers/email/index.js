@@ -39,12 +39,16 @@ exports.send = async function (conf, data) {
     subject = subject && getPropOrValue(subject, data);
     body = body && getPropOrValue(body, data);
     const attachments = [];
-    attachmentsConf && attachmentsConf.forEach(({ content, filename, type }) => {
-        content = getPropOrValue(content, data);
-        content && attachments.push({
-            content,
-            filename: getPropOrValue(filename, data),
-            type
+    attachmentsConf && attachmentsConf.forEach(({ property, content, filename, type, raw }) => {
+        const d = property ? toArray(getDeepValue(data, property)) : [data];
+        d.forEach(data => {
+            let c = getPropOrValue(content, data);
+            c && attachments.push({
+                content: c,
+                filename: getPropOrValue(filename, data),
+                type,
+                raw
+            })
         })
     });
     subject || assert(body);
@@ -115,11 +119,13 @@ exports.init = async function ({ transport, fromEmail, toEmails, replyToEmail, c
     subject = subject ? initPropOrValue(subject) : undefined;
     body = body ? initPropOrValue(body) : undefined;
 
-    attachments = attachments ? toArray(attachments).map(({ content, filename, type }) => {
+    attachments = attachments ? toArray(attachments).map(({ property, content, filename, type, raw }) => {
+        raw = toBoolean(raw) || undefined;
+        property = property ? validatePropertyConfig(property) : undefined;
         content = initPropOrValue(content);
         filename = initPropOrValue(filename);
         type = type ? validateString(type) : undefined;
-        return { content, filename, type };
+        return { property, content, filename, type, raw };
     }) : [];
     attachments.length < 1 && (attachments = undefined);
 

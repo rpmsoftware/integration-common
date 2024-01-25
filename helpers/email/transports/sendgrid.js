@@ -17,10 +17,10 @@ module.exports = ({ apiKey }) => {
             reply_to: replyToEmail ? normalize(replyToEmail) : undefined,
             to: toEmails.map(normalize),
             cc: ccEmails.map(normalize),
-            attachments: attachments ? attachments.map(({ content, filename, type }) => ({
+            attachments: attachments ? attachments.map(({ content, filename, type, raw }) => ({
                 filename,
                 type,
-                content: toBase64(content)
+                content: raw ? content : toBase64(content)
             })) : undefined
         };
         messageBody && (message[html ? 'html' : 'text'] = messageBody);
