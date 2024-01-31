@@ -801,7 +801,7 @@ const validateFetchResponse = exports.validateFetchResponse = async response => 
     } catch (e) {
         // ;
     }
-    throwError(statusText, FETCH_ERROR, { status, statusText, response });
+    throwError(statusText || status, FETCH_ERROR, { status, statusText, response });
 };
 
 exports.fetch = function () {
@@ -844,3 +844,14 @@ exports.createTimeBasedIDGenerator = start => {
 const EMPTY_STRING = '';
 
 exports.isEmptyValue = v => v === undefined || v === null || v === EMPTY_STRING;
+
+const PROP_GLOBAL = Symbol();
+
+exports.getGlobal = () => {
+    let result = global[PROP_GLOBAL];
+    if (!result) {
+        result = {};
+        Object.defineProperty(global, PROP_GLOBAL, { value: result });
+    }
+    return result;
+};
