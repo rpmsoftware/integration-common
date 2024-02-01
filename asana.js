@@ -1,4 +1,4 @@
-const { validateString, toBoolean, fetch: baseFetch, throwError } = require('./util');
+const { validateString, toBoolean, fetch, throwError } = require('./util');
 const debug = require('debug')('rpm:asana');
 const BASE_URL = 'https://app.asana.com/api/1.0/';
 
@@ -9,9 +9,9 @@ const METHODS = {
 
 const API_ERROR = 'AsanaApiError';
 
-async function fetch() {
+async function asanaFetch() {
     try {
-        return await baseFetch.apply(this, arguments);
+        return await fetch.apply(this, arguments);
     } catch (e) {
         const { errors } = e.response;
         if (!Array.isArray(errors)) {
@@ -22,18 +22,58 @@ async function fetch() {
     }
 }
 
+const REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob';
+const TOKEN_URL = `https://app.asana.com/-/oauth_token`;
+
+const createTokenFactory = ({ refreshToken, clientID, clientSecret }) => {
+    validateString(refreshToken);
+    validateString(clientID + '');
+    validateString(clientSecret);
+    let token;
+    const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+    return async () => {
+        const now = Date.now();
+        if (!token || token.expiresAt <= now) {
+            const body = new URLSearchParams();
+            body.append('grant_type', 'refresh_token');
+            body.append('refresh_token', refreshToken);
+            body.append('client_id', clientID);
+            body.append('client_secret', clientSecret);
+            body.append('redirect_uri', REDIRECT_URI);
+            token = await fetch(TOKEN_URL, { method: METHODS.post, body, headers }).then(r => r.json());
+            token.expiresAt = now + token.expires_in;
+        }
+        return token.access_token;
+    };
+};
+
 class API {
 
-    constructor({ apiToken, dryRun, workspaceID }) {
-        Object.defineProperty(this, 'headers', {
-            value: {
-                authorization: 'Bearer ' + validateString(apiToken),
-                accept: 'application/json'
-            }
-        });
+    constructor(conf) {
+        const { personalToken, dryRun, workspaceID } = conf;
+        let getAccessToken;
+        if (personalToken) {
+            validateString(personalToken);
+            getAccessToken = () => personalToken;
+        } else {
+            getAccessToken = createTokenFactory(conf);
+        }
+        this._getAccessToken = getAccessToken;
         this.dryRun = toBoolean(dryRun) || undefined;
         this.setWorkspace(workspaceID);
+    }
 
+    _getAccessToken() {
+        throw new Error('Not Implemented');
+    }
+
+    async _getHeaders() {
+        return {
+            authorization: 'Bearer ' + await this._getAccessToken(),
+            accept: 'application/json'
+        };
     }
 
     getMe() {
@@ -78,7 +118,7 @@ class API {
     }
 
     async createAttachmentFromUrl(parentID, name, url) {
-        const { headers } = this;
+        const headers = await this._getHeaders();
         const body = new FormData();
         body.append('url', url);
         body.append('name', name);
@@ -87,7 +127,7 @@ class API {
         const method = METHODS.post;
         const endpoint = BASE_URL + 'attachments';
         debug('%s %s', method, endpoint);
-        let result = await fetch(endpoint, { headers, method, body });
+        let result = await asanaFetch(endpoint, { headers, method, body });
         result = await result.json();
         return result.data || result;
     }
@@ -101,12 +141,12 @@ class API {
     }
 
     async _request(method, endpoint, data) {
-        let { headers } = this;
+        let headers = await this._getHeaders();
         const url = BASE_URL + endpoint;
         data = data ? JSON.stringify({ data }) : undefined;
         headers = Object.assign({ 'content-Type': 'application/json' }, headers);
         debug('%s %s\n%s', method, url, data || '');
-        const result = await fetch(url, { headers, method, body: data }).then(r => r.json());
+        const result = await asanaFetch(url, { headers, method, body: data }).then(r => r.json());
         return result.data || result;
     }
 
