@@ -1,7 +1,11 @@
 const debug = require('debug')('rpm:send-email');
 const assert = require('assert');
-const { validateString, toArray, getEager, toBoolean, isEmpty, validatePropertyConfig, getDeepValue } = require('../../util');
+const {
+    validateString, toArray, getEager, toBoolean, isEmpty,
+    validatePropertyConfig, getDeepValue, getGlobal
+} = require('../../util');
 
+const PROP_SEND_EMAIL = Symbol();
 exports.send = async function (conf, data) {
     let {
         transport,
@@ -23,17 +27,16 @@ exports.send = async function (conf, data) {
 
     let ctx;
     if (typeof transport === 'string') {
-        const { globals } = this.parentContext || this;
-        ctx = globals;
-        transport = getEager(globals, transport);
+        ctx = getGlobal();
+        transport = getEager(ctx, transport);
     } else {
         ctx = this;
     }
-    let { _sendEmail } = ctx;
-    if (!_sendEmail) {
-        _sendEmail = require(`./transports/${transport.name}`)(transport);
-        assert.strictEqual(typeof _sendEmail, 'function');
-        Object.defineProperty(ctx, '_sendEmail', { value: _sendEmail });
+    let sendEmail = ctx[PROP_SEND_EMAIL];
+    if (!sendEmail) {
+        sendEmail = require(`./transports/${transport.name}`)(transport);
+        assert.strictEqual(typeof sendEmail, 'function');
+        Object.defineProperty(ctx, PROP_SEND_EMAIL, { value: sendEmail });
     }
 
     subject = subject && getPropOrValue(subject, data);
@@ -67,8 +70,8 @@ exports.send = async function (conf, data) {
         return;
     }
     dryRun ?
-        debug('_sendEmail(%j, %j, %j, %j, %s, %s, %s)', fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html) :
-        await _sendEmail(fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html, attachments);
+        debug('sendEmail(%j, %j, %j, %j, %s, %s, %s)', fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html) :
+        await sendEmail(fromEmail, replyToEmail, toEmails, ccEmails, subject, body, html, attachments);
     debug('Email is sent');
 
 };
@@ -113,7 +116,6 @@ const initPropOrValue = conf => conf.property ?
 const getPropOrValue = ({ property, value }, obj) => property ? getDeepValue(obj, property) : value;
 
 exports.init = async function ({ transport, fromEmail, toEmails, replyToEmail, ccEmails, subject, body, html, dryRun, sendEmpty, attachments }) {
-    const { globals } = this.parentContext || this;
     fromEmail = initEmailConfig.call(this, fromEmail);
     replyToEmail = replyToEmail ? initEmailConfig.call(this, replyToEmail) : undefined;
     subject = subject ? initPropOrValue(subject) : undefined;
@@ -143,7 +145,7 @@ exports.init = async function ({ transport, fromEmail, toEmails, replyToEmail, c
     assert(toEmails.length > 0);
     ccEmails = await initEmails(ccEmails);
 
-    const t = typeof transport === 'string' ? getEager(globals, transport) : transport;
+    const t = typeof transport === 'string' ? getEager(getGlobal(), transport) : transport;
     assert.strictEqual(typeof t, 'object');
     require(`./transports/${t.name}`);
 
