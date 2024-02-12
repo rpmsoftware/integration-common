@@ -1,6 +1,6 @@
 /* global Buffer */
 
-const { getEager, validateString, fetch, normalizeInteger } = require('./util');
+const { getEager, validateString, fetch, normalizeInteger } = require('../util');
 const debug = require('debug')('rpm:quickbooks');
 
 const TOKEN_ENDPOINT = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
