@@ -1,7 +1,9 @@
 /* global Buffer */
 
-const { getEager, validateString, fetch, normalizeInteger } = require('../util');
+const { getEager, validateString, fetch, normalizeInteger,
+    throwError, toBoolean, isEmpty } = require('../util');
 const debug = require('debug')('rpm:quickbooks');
+const assert = require('assert');
 
 const TOKEN_ENDPOINT = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 
@@ -11,6 +13,19 @@ const HOSTS = {
 };
 
 const Token = require('./token');
+const QB_ERROR = 'QuickbooksError';
+
+const tryQBError = ({ Fault }) => {
+    const err = Fault?.Error?.[0];
+    err && throwError(err.Message, QB_ERROR, err);
+};
+
+const qbFetch = function () {
+    return fetch.apply(this, arguments).catch(e => {
+        tryQBError(e.response);
+        throw e;
+    });
+};
 
 class TokenBase {
     #headers;
@@ -27,7 +42,7 @@ class TokenBase {
     }
 
     requestToken(body) {
-        return fetch(TOKEN_ENDPOINT, {
+        return qbFetch(TOKEN_ENDPOINT, {
             method: Methods.post,
             headers: this.#headers,
             body: new URLSearchParams(body).toString()
@@ -38,13 +53,14 @@ class TokenBase {
 class QuickbooksApi extends TokenBase {
     #token = undefined;
     #baseUrl;
+    #realmID
 
     constructor(config) {
         let { environment, refreshToken, realmID } = config;
         super(config);
         this.refreshToken = validateString(refreshToken);
         const host = getEager(HOSTS, environment.trim().toLowerCase());
-        realmID = normalizeInteger(realmID);
+        this.#realmID = realmID = normalizeInteger(realmID);
         this.#baseUrl = `https://${host}/v3/company/${realmID}/`;
     }
 
@@ -80,8 +96,8 @@ class QuickbooksApi extends TokenBase {
         const token = await this.getToken();
         const { accessToken } = token;
         url = this.#baseUrl + url;
-        debug('%s %s\n%j', method, url, data);
-        return fetch(url, {
+        debug('%s %s\n%j', method, url, data || {});
+        return qbFetch(url, {
             method,
             headers: {
                 Authorization: `Bearer ${await accessToken}`,
@@ -93,12 +109,20 @@ class QuickbooksApi extends TokenBase {
     }
 
     async select(query) {
-        const result = await this.request(Methods.get, 'query?' + new URLSearchParams({ query }).toString());
-        return getEager(result, 'QueryResponse');
+        let result;
+        const { QueryResponse } = await this.request(Methods.get, 'query?' + new URLSearchParams({ query }).toString());
+        for (let k in QueryResponse) {
+            const v = QueryResponse[k];
+            if (Array.isArray(v)) {
+                result = v;
+                break;
+            }
+        }
+        return result || [];
     }
 
     getCompanyInfo(id) {
-        return this.request(Methods.get, `companyinfo/${id}`);
+        return this.get('companyinfo', id);
     }
 
     queryCompanyInfo() {
@@ -108,7 +132,51 @@ class QuickbooksApi extends TokenBase {
     queryInvoices() {
         return this.select('select * from Invoice');
     }
+
+    getVendor(id) {
+        return this.get('vendor', id);
+    }
+
+    async get(type, id) {
+        validateString(type);
+        return strip(type, this.request(Methods.get, `${type}/${id}`));
+    }
+
+    create(type, data) {
+        validateString(type);
+        return strip(type, this.request(Methods.post, type, data));
+    }
+
+    async update(type, id, data, blind) {
+        validateString(type);
+        if (typeof id === 'object') {
+            blind = data;
+            data = id;
+            id = data.Id;
+        }
+        assert(!isEmpty(data));
+        data = Object.assign(
+            toBoolean(blind) ? {} : await this.get(type, id),
+            data
+        );
+        data.Id = normalizeInteger(id) + '';
+        delete data.MetaData;
+        delete data.sparse;
+        return strip(type, this.request(Methods.post, type, data));
+    }
 }
+
+const strip = async (type, obj) => {
+    obj = await (obj);
+    let result;
+    for (let k in obj) {
+        if (k.toLowerCase() === type) {
+            result = obj[k];
+            break;
+        }
+    }
+    return result;
+};
 
 const Methods = {
     get: 'GET',
