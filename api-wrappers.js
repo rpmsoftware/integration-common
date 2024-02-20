@@ -7,7 +7,8 @@ const {
     RefSubType,
     FieldSubType,
     ProcessPermission,
-    ProcessPermissionsHidden
+    ProcessPermissionsHidden,
+    PhoneType
 } = require('./api-enums');
 
 const {
@@ -33,6 +34,7 @@ const { EventEmitter } = require('events');
 const dayjs = require('dayjs');
 
 const MAX_PARALLEL_CALLS = 20;
+const NA = 'n/a';
 
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
@@ -1105,9 +1107,13 @@ API.prototype.searchCustomers = function (field, value) {
 
 API.prototype._normalizeCustomer = function (customer) {
     customer.Age = customer.Age || 0;
-    const { Locations, Accounts } = customer;
-    Accounts.forEach(ch => setParent(ch, customer))
-    Locations && Locations.forEach(ch => setParent(ch, customer))
+    const { Locations, Accounts, Contacts } = customer;
+    Accounts.forEach(ch => setParent(ch, customer));
+    Locations && Locations.forEach(ch => {
+        setParent(ch, customer);
+        ch.StateProvince === NA && (delete ch.StateProvince);
+    });
+    Contacts.forEach(({ Contact }) => Object.setPrototypeOf(Contact, CONTACT_PROTO));
     return Object.setPrototypeOf(customer, CUSTOMER_PROTO);
 };
 
@@ -1207,6 +1213,24 @@ const CUSTOMER_PROTO = Object.defineProperties({
 }, {
     EntityID: { get() { return this.CustomerID } },
     RefName: { get() { return this.Customer || this.Name } },
+    Contact: { get() { return (this.Contacts.find(({ IsPrimary }) => IsPrimary) || this.Contacts[0])?.Contact } },
+    Location: { get() { return this.Locations.find(({ IsPrimary }) => IsPrimary) || this.Locations[0] } },
+});
+
+function getPhoneNumber(type) {
+    return this.PhoneNumbers?.find(({ Type }) => Type === type)?.Number;
+}
+
+const CONTACT_PROTO = Object.defineProperties({
+    EntityType: ObjectType.CustomerContact,
+    RefType: ObjectType.CustomerContact,
+    IDProperty: 'ContactID'
+}, {
+    EntityID: { get() { return this.ContactID } },
+    BusinessPhone: { get() { return getPhoneNumber.call(this, PhoneType.Business) } },
+    Fax: { get() { return getPhoneNumber.call(this, PhoneType.Fax) } },
+    HomePhone: { get() { return getPhoneNumber.call(this, PhoneType.Home) } },
+    OtherPhone: { get() { return getPhoneNumber.call(this, PhoneType.Other) } },
 });
 
 const AGENCY_PROTO = Object.defineProperties({
@@ -1429,6 +1453,7 @@ const SUPPLIER_PROTO = Object.defineProperties({
 });
 
 API.prototype._normalizeSupplier = function (supplier) {
+    Object.setPrototypeOf(supplier.Contact, CONTACT_PROTO);
     return Object.setPrototypeOf(supplier, SUPPLIER_PROTO);
 };
 

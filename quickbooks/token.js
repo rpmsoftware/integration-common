@@ -13,7 +13,8 @@ module.exports = class Token {
         const now = Date.now();
         this.refreshToken = validateString(refresh_token);
         this.accessToken = validateString(access_token);
-        this.refreshTokenExpires = now + normalizeInteger(x_refresh_token_expires_in) * 1000;
+        this.refreshTokenExpiresIn = normalizeInteger(x_refresh_token_expires_in);
+        this.refreshTokenExpires = now + this.refreshTokenExpiresIn * 1000;
         this.accessTokenExpires = now + normalizeInteger(expires_in) * 1000;
         this.realmID = realmID ? validateString(realmID) : undefined;
     }

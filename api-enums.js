@@ -657,3 +657,10 @@ exports.CommType = {
     PercentWholesale: 6,
     PercentContractValue: 9
 };
+
+exports.PhoneType = {
+    Business: 1,
+    Home: 2,
+    Fax: 3,
+    Other: 6
+};

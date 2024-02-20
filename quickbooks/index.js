@@ -17,7 +17,10 @@ const QB_ERROR = 'QuickbooksError';
 
 const tryQBError = ({ Fault }) => {
     const err = Fault?.Error?.[0];
-    err && throwError(err.Message, QB_ERROR, err);
+    if (err) {
+        console.error('%j', err);
+        throwError(err.Message, QB_ERROR, err);
+    }
 };
 
 const qbFetch = function () {
@@ -81,7 +84,7 @@ class QuickbooksApi extends TokenBase {
         }
 
         const { refreshToken } = token || this;
-        debug('Refreshing access token');
+        debug('Refreshing access token (%s)', refreshToken);
         token = this.#token = new Token(await this.requestToken({
             grant_type: 'refresh_token',
             refresh_token: refreshToken
@@ -93,8 +96,7 @@ class QuickbooksApi extends TokenBase {
 
 
     async request(method, url, data) {
-        const token = await this.getToken();
-        const { accessToken } = token;
+        const { accessToken } = await this.getToken();
         url = this.#baseUrl + url;
         debug('%s %s\n%j', method, url, data || {});
         return qbFetch(url, {
@@ -147,21 +149,17 @@ class QuickbooksApi extends TokenBase {
         return strip(type, this.request(Methods.post, type, data));
     }
 
-    async update(type, id, data, blind) {
+    async update(type, id, data) {
         validateString(type);
         if (typeof id === 'object') {
-            blind = data;
             data = id;
             id = data.Id;
         }
         assert(!isEmpty(data));
-        data = Object.assign(
-            toBoolean(blind) ? {} : await this.get(type, id),
-            data
-        );
+        const { sparse } = data;
+        data = Object.assign({}, data);
         data.Id = normalizeInteger(id) + '';
-        delete data.MetaData;
-        delete data.sparse;
+        data.sparse = (sparse === undefined || toBoolean(sparse)) + '';
         return strip(type, this.request(Methods.post, type, data));
     }
 }
