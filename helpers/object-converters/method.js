@@ -30,7 +30,7 @@ const extractParameter = (conf, data) => {
 
 module.exports = {
     init: function ({ srcProperty, dstProperty, parameters, condition, method, merge }) {
-        validateString(method);
+        method = method ? validateString(method) : undefined;
         dstProperty = dstProperty ? validateString(dstProperty) : undefined;
         srcProperty = srcProperty ? validateString(srcProperty) : undefined;
         parameters = toArray(parameters).map(initParameter);
@@ -48,7 +48,7 @@ module.exports = {
             }
             const context = await getMethodContext(e);
             const params = paramConf.map(c => extractParameter(c, e));
-            const r = await context[method].apply(context, params);
+            const r = await (method ? context[method].apply(context, params) : context(params));
             dstProperty ? (e[dstProperty] = r) : (merge && Object.assign(e, r));
         }
         return obj;

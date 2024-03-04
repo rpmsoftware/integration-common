@@ -1,11 +1,20 @@
-const { validateString, toArray, toBoolean, validatePropertyConfig, getDeepValue, isEmpty } = require('../../util');
+const { validateString, toArray, toBoolean, validatePropertyConfig, getDeepValue, isEmpty, getGlobal } = require('../../util');
 const SqlDatabase = require('better-sqlite3');
 const assert = require('assert');
 const debug = require('debug')('rpm:sqlite-select');
 
+const PROP_DB = Symbol();
+
 module.exports = {
     init: function ({ dstProperty, sqlTables: inSqlTables, query, parameters, single }) {
-        validateString(dstProperty);
+        single = toBoolean(single);
+        if (dstProperty) {
+            validateString(dstProperty);
+        } else {
+            assert(single);
+            dstProperty = undefined;
+        }
+
         inSqlTables || (inSqlTables = {});
         const sqlTables = [];
         for (const sqlTable in inSqlTables) {
@@ -29,12 +38,13 @@ module.exports = {
             }
             parameters = r;
         }
-        single = toBoolean(single);
         return { dstProperty, sqlTables, query, parameters, single };
     },
 
     convert: function ({ dstProperty, sqlTables, query, parameters, single }, data) {
-        const db = new SqlDatabase(undefined, { verbose: debug });
+        const gl = getGlobal();
+
+        const db = gl[PROP_DB] || (gl[PROP_DB] = new SqlDatabase(undefined, { verbose: debug }));
 
         let srcObj;
 
@@ -63,10 +73,11 @@ module.exports = {
                     params[name] = (value === '' || value === undefined) ? null : value;
                 }
             }
-            srcObj[dstProperty] = single ? stmt.get(params) : stmt.all(params);
+            const r = single ? stmt.get(params) : stmt.all(params);
+            dstProperty ? (srcObj[dstProperty] = r) : Object.assign(srcObj, r);
         }
 
-        db.close();
+        // db.close();
 
         return data;
     }
