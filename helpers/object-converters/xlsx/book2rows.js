@@ -5,7 +5,7 @@ const assert = require('assert');
 const { sheet_add_aoa } = require('xlsx').utils;
 
 const REGEXP_WORDS_NUMBERS = /\W+/g;
-const lowLettersNumbers = s => s.replace(REGEXP_WORDS_NUMBERS, '').toLowerCase();
+const lowLettersNumbers = s => (s + '').replace(REGEXP_WORDS_NUMBERS, '').toLowerCase();
 
 const TYPES = { stub: 'z', string: 's', number: 'n', boolean: 'b' };
 
@@ -19,6 +19,13 @@ class Row {
         this.#cells = cells;
         for (const k in this.#cells) {
             this.values[k] = this.#cells[k].v || undefined;
+        }
+    }
+
+    setAll(obj) {
+        assert.strictEqual(typeof obj, 'object');
+        for (const k in obj) {
+            this.set(k, obj[k]);
         }
     }
 
@@ -42,7 +49,7 @@ class Row {
 
 const loadBook = (book, columns, normalize) => {
 
-    normalize = normalize ? v => lowLettersNumbers(v + '') : v => v + '';
+    normalize = normalize ? v => lowLettersNumbers(v) : v => v + '';
     const cns = {};
     columns.forEach(c => {
         let { name } = c;
