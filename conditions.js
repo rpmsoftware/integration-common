@@ -187,6 +187,14 @@ const OPERATORS = {
             return value1.isSame(value2);
         }
     },
+    equal: {
+        init: init2,
+        process: function (form) {
+            const { operand1, operand2 } = this;
+            form = form.Form || form;
+            return getOperandValue(operand1, form) == getOperandValue(operand2, form);
+        }
+    },
     dateAfter: {
         init: function (conf) {
             const { equal } = conf;
