@@ -1,5 +1,5 @@
 const { getDeepValue, validatePropertyConfig, validateString, toArray } = require('../../util');
-const createPDF = require('integration-common/pdf-printer');
+const createPDF = require('../../pdf-printer');
 const assert = require('assert');
 
 module.exports = {

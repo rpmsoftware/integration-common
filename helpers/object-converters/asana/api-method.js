@@ -1,6 +1,6 @@
 const { init, convert } = require('../method');
 const Api = require('../../../asana');
-const { getGlobal } = require('integration-common/util');
+const { getGlobal } = require('../../../util');
 
 module.exports = {
     init,

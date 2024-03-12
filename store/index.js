@@ -1,6 +1,6 @@
 const { Store } = require('./common');
 const assert = require('assert');
-const { getGlobal } = require('integration-common/util')
+const { getGlobal } = require('../util')
 
 const MEMCACHE_PROPERTY = 'memcache';
 const GLOBAL_CONFIG_KEY = 'keyValueStore';

@@ -1,6 +1,6 @@
 const assert = require('assert');
-const { toArray, validateString, validatePropertyConfig, getDeepValue } = require('integration-common/util');
-const { initMultiple: initGetters, getMultiple } = require('integration-common/helpers/getters');
+const { toArray, validateString, validatePropertyConfig, getDeepValue } = require('../../../util');
+const { initMultiple: initGetters, getMultiple } = require('../../getters');
 
 exports.convert = async function ({ process, fieldMap, srcProperty, dstProperty }, obj) {
     const { api } = this;
