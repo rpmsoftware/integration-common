@@ -1,9 +1,16 @@
+
+const { toBoolean } = require('../../util');
+
 module.exports = {
-    init: async function () {
-        return {};
+    init: async function ({ stop }) {
+        stop = stop === undefined || toBoolean(stop);
+        return { stop };
     },
-    convert: async function (c, obj) {
+    convert: async function ({ stop }, obj) {
         console.log('%j', obj);
-        throw 'STOP';
+        if (stop) {
+            throw 'STOP';
+        }
+        return obj;
     }
 };

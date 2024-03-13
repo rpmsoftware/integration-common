@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.96.7",
+    "version": "4.96.8",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
