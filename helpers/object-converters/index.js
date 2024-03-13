@@ -40,7 +40,6 @@ async function convert(conf, obj) {
                 throw error;
             }
             console.error(error);
-            break;
         }
         if (toArray(obj).length < 1) {
             break;
