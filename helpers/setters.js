@@ -61,19 +61,7 @@ const getObjectValue = ({ srcField, regexp }, data) => {
     return data || undefined;
 };
 
-const DEFAULT_SETTER = {
-    init: function ({ defaultValue }) {
-        return { defaultValue };
-    },
-    convert: function ({ srcField, defaultValue }, data) {
-        const result = getDeepValue(data, srcField);
-        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
-    }
-};
-
 const COMMON_SETTERS = {
-    generic: DEFAULT_SETTER,
-
     now: {
 
         convert: function (conf) {
@@ -261,6 +249,16 @@ const COMMON_SETTERS = {
         }
     }
 
+};
+
+COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] = {
+    init: function ({ defaultValue }) {
+        return { defaultValue };
+    },
+    convert: function ({ srcField, defaultValue }, data) {
+        const result = getDeepValue(data, srcField);
+        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
+    }
 };
 
 for (let name in COMMON_SETTERS) {
@@ -827,15 +825,9 @@ async function initField(conf, rpmField) {
     let gen = SPECIFIC_SETTERS[key] || COMMON_SETTERS;
     (typeof conf === 'string' || Array.isArray(conf)) && (conf = { srcField: conf });
     let { setter, condition, srcField, normalize, regexp } = conf;
-    if (setter) {
-        gen = gen[setter] || COMMON_SETTERS[setter];
-        if (!gen) {
-            throw new Error('Unknown RPM value generator: ' + JSON.stringify(conf));
-        }
-    } else {
-        gen = gen[DEFAULT_ACCESSOR_NAME] || DEFAULT_SETTER;
-    }
-    conf = gen.init ? await gen.init.call(this, conf, rpmField) : {};
+    setter || (setter = DEFAULT_ACCESSOR_NAME);
+    const { init } = gen[setter] || COMMON_SETTERS[setter];
+    conf = init ? await init.call(this, conf, rpmField) : {};
     assert.strictEqual(typeof conf, 'object');
     conf.normalize = normalize === undefined || toBoolean(normalize);
     conf.setter = setter || undefined;
@@ -859,7 +851,8 @@ async function initField(conf, rpmField) {
 
 async function initValue(conf) {
     let { setter, srcField, normalize, regexp } = conf;
-    const { init: initGen } = setter ? getEager(COMMON_SETTERS, setter) : (COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] || DEFAULT_SETTER);
+    setter || (setter = DEFAULT_ACCESSOR_NAME);
+    const { init: initGen } = getEager(COMMON_SETTERS, setter);
     const result = initGen ? await initGen.call(this, conf) : {};
     assert.strictEqual(typeof result, 'object');
     if (srcField !== undefined) {
@@ -868,15 +861,13 @@ async function initValue(conf) {
         result.srcField = srcField;
     }
     result.normalize = normalize === undefined || toBoolean(normalize);
-    result.setter = setter || undefined;
+    result.setter = setter;
     conf.regexp = regexp ? validateString(regexp) : undefined;
     return result;
 }
 
 function getSetter({ type, setter }) {
-    let converter = SPECIFIC_SETTERS[type] || COMMON_SETTERS;
-    setter || (setter = DEFAULT_ACCESSOR_NAME);
-    return (converter && converter[setter] || COMMON_SETTERS[setter] || DEFAULT_SETTER).convert;
+    return ((SPECIFIC_SETTERS[type] || COMMON_SETTERS)[setter] || COMMON_SETTERS[setter]).convert;
 }
 
 async function setField(conf, data, form) {
@@ -898,7 +889,7 @@ async function setField(conf, data, form) {
         result = { ID: 0, Value: null, Errors: error.message || error };
     }
     result instanceof Date && (result = result.toISOString());
-    return (typeof result === 'object') ? result : (valueIsId ?
+    return (result !== null && typeof result === 'object') ? result : (valueIsId ?
         { ID: result ? normalizeInteger(result) : 0 } :
         { Value: result }
     );
