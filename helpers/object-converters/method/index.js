@@ -54,7 +54,7 @@ module.exports = {
     convert: async function (conf, obj) {
         let { method, dstProperty, parameters: paramConf, condition,
             getMethodContext, merge, contextFactory, errorProperty } = conf;
-        if (getMethodContext !== 'function') {
+        if (typeof getMethodContext !== 'function') {
             if (contextFactory) {
                 const instances = getInstances();
                 getMethodContext = instances[contextFactory];
