@@ -73,7 +73,7 @@ module.exports = {
             if (condition && !processCondition(condition, e)) {
                 continue;
             }
-            const context = await getMethodContext(e);
+            const context = await getMethodContext.call(this, e);
             const params = paramConf.map(c => extractParameter(c, e));
             try {
                 const r = await (method ? context[method].apply(context, params) : context.apply(undefined, params));
