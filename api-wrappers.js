@@ -1004,11 +1004,11 @@ API.prototype.getAccount = async function (account, supplier, demand) {
 
 API.prototype.getAccounts = function (bodyOrDate) {
     if (typeof bodyOrDate !== 'object' || dayjs.isDayjs(bodyOrDate) || bodyOrDate instanceof Date) {
-        bodyOrDate = { ModifiedAfter: toMoment(bodyOrDate || undefined).format(ISO_DATE_FORMAT) }
+        bodyOrDate = { ModifiedAfter: toMoment(bodyOrDate || undefined).format(ISO_DATE_TIME_FORMAT) }
     } else {
         let { Supplier, SupplierID, Customer, CustomerID, ModifiedAfter } = bodyOrDate || {};
         ModifiedAfter = ModifiedAfter ?
-            (dayjs.isDayjs(ModifiedAfter) ? ModifiedAfter.format(ISO_DATE_FORMAT) : validateString(ModifiedAfter)) :
+            (dayjs.isDayjs(ModifiedAfter) ? ModifiedAfter.format(ISO_DATE_TIME_FORMAT) : validateString(ModifiedAfter)) :
             undefined;
         Supplier = Supplier ? validateString(Supplier) : undefined;
         SupplierID = SupplierID ? normalizeInteger(SupplierID) : undefined;
