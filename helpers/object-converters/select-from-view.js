@@ -1,7 +1,6 @@
 const { validateString, toArray, toBoolean, validatePropertyConfig, getDeepValue } = require('../../util');
-const SqlDatabase = require('better-sqlite3');
+const { getGlobalDB } = require('./sqlite-select');
 const assert = require('assert');
-const debug = require('debug')('rpm:select-from-view');
 
 const COL_FORM_ID = 'FormID';
 
@@ -17,7 +16,7 @@ module.exports = {
                 continue;
             }
             process = processes.getActiveProcess(process, true);
-            view = (await process.getViews()).Views.demand(({ Name }) => Name === view).ID;
+            view = view ? (await process.getViews()).Views.demand(({ Name }) => Name === view).ID : undefined;
             process = process.ProcessID;
             if (sqlColumns || (sqlColumns = undefined)) {
                 const r = {};
@@ -45,7 +44,7 @@ module.exports = {
     },
 
     convert: async function ({ dstProperty, sqlTables, query, parameters, single }, data) {
-        const db = new SqlDatabase(undefined, { verbose: debug });
+        const db = getGlobalDB();
 
         for (const { process, view, sqlTable, sqlColumns } of sqlTables) {
             const columns = [COL_FORM_ID];

@@ -5,15 +5,23 @@ const debug = require('debug')('rpm:sqlite-select');
 
 const PROP_DB = Symbol();
 
+const fixType = (() => {
+    const fixers = {
+        boolean: v => v ? 1 : 0
+    };
+    const self = v => v;
+    return v => (fixers[typeof v] || self)(v);
+})();
+
+const getGlobalDB = () => {
+    const gl = getGlobal();
+    return gl[PROP_DB] || (gl[PROP_DB] = new SqlDatabase(undefined, { verbose: debug }));
+};
+
 module.exports = {
-    init: function ({ dstProperty, sqlTables: inSqlTables, query, parameters, single }) {
-        single = toBoolean(single);
-        if (dstProperty) {
-            validateString(dstProperty);
-        } else {
-            assert(single);
-            dstProperty = undefined;
-        }
+    getGlobalDB,
+
+    init: function ({ sqlTables: inSqlTables, queries: inQueries, dstProperty, query, parameters, single }) {
 
         inSqlTables || (inSqlTables = {});
         const sqlTables = [];
@@ -30,21 +38,37 @@ module.exports = {
             assert(!isEmpty(sqlColumns));
             sqlTables.push({ sqlTable, sqlColumns, srcProperty });
         }
-        validateString(query);
-        if (parameters || (parameters = undefined)) {
-            const r = {};
-            for (let name in parameters) {
-                r[name] = validatePropertyConfig(parameters[name]);
+
+        inQueries || (inQueries = { dstProperty, query, parameters, single });
+        const queries = [];
+        toArray(inQueries).forEach(({ dstProperty, query, parameters, single, enabled }) => {
+            if (enabled !== undefined && !toBoolean(enabled)) {
+                return;
             }
-            parameters = r;
-        }
-        return { dstProperty, sqlTables, query, parameters, single };
+            single = toBoolean(single) || undefined;
+            if (dstProperty) {
+                validateString(dstProperty);
+            } else {
+                assert(single);
+                dstProperty = undefined;
+            }
+            if (parameters || (parameters = undefined)) {
+                const r = {};
+                for (let name in parameters) {
+                    r[name] = validatePropertyConfig(parameters[name]);
+                }
+                parameters = r;
+            }
+            queries.push({ dstProperty, query, parameters, single });
+        });
+
+        assert(queries.length > 0);
+
+        return { sqlTables, queries };
     },
 
-    convert: function ({ dstProperty, sqlTables, query, parameters, single }, data) {
-        const gl = getGlobal();
-
-        const db = gl[PROP_DB] || (gl[PROP_DB] = new SqlDatabase(undefined, { verbose: debug }));
+    convert: function ({ sqlTables, queries }, data) {
+        const db = getGlobalDB();
 
         let srcObj;
 
@@ -57,24 +81,27 @@ module.exports = {
                     for (const key in data) {
                         const row = data[key];
                         const result = {};
-                        columns.forEach(c => result[c] = getDeepValue(row, sqlColumns[c]));
+                        columns.forEach(c => result[c] = fixType(getDeepValue(row, sqlColumns[c])));
                         yield result;
                     }
                 }
             });
         }
 
-        const stmt = db.prepare(query);
+        const stmts = queries.map(({ query }) => db.prepare(query));
         for (srcObj of toArray(data)) {
-            const params = {};
-            if (parameters) {
-                for (const name in parameters) {
-                    const value = getDeepValue(srcObj, parameters[name]);
-                    params[name] = (value === '' || value === undefined) ? null : value;
+            queries.forEach(({ dstProperty, parameters, single }, idx) => {
+                const params = {};
+                if (parameters) {
+                    for (const name in parameters) {
+                        const value = getDeepValue(srcObj, parameters[name]);
+                        params[name] = (value === '' || value === undefined) ? null : value;
+                    }
                 }
-            }
-            const r = single ? stmt.get(params) : stmt.all(params);
-            dstProperty ? (srcObj[dstProperty] = r) : Object.assign(srcObj, r);
+                const stmt = stmts[idx];
+                const r = single ? stmt.get(params) : stmt.all(params);
+                dstProperty ? (srcObj[dstProperty] = r) : Object.assign(srcObj, r);
+            });
         }
 
         // db.close();
