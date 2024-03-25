@@ -1,5 +1,5 @@
 /* global Buffer */
-const { fetch2json, validateString, fetch, pause } = require('integration-common/util');
+const { fetch2json, validateString, fetch, pause } = require('./util');
 const debug = require('debug')('rpm:toggl-reports');
 const assert = require('assert');
 
@@ -7,7 +7,7 @@ const BASE_URL = 'https://api.track.toggl.com/reports/api/v3/';
 const HDR_NEXT_ROW_NUMBER = 'x-next-row-number';
 
 const STATUS_TOO_MANY_REQUESTS = 429;
-const PAUSE = 5000; 
+const PAUSE = 5000;
 
 class TogglReportAPI {
 
