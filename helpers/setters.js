@@ -252,12 +252,13 @@ const COMMON_SETTERS = {
 };
 
 COMMON_SETTERS[DEFAULT_ACCESSOR_NAME] = {
-    init: function ({ defaultValue }) {
-        return { defaultValue };
+    init: function ({ defaultValue, skipEmpty }) {
+        skipEmpty = toBoolean(skipEmpty) || undefined;
+        return { defaultValue, skipEmpty };
     },
-    convert: function ({ srcField, defaultValue }, data) {
+    convert: function ({ srcField, defaultValue, skipEmpty }, data) {
         const result = getDeepValue(data, srcField);
-        return isEmptyValue(result) ? (defaultValue === undefined ? null : defaultValue) : result;
+        return isEmptyValue(result) ? (skipEmpty ? undefined : (defaultValue === undefined ? null : defaultValue)) : result;
     }
 };
 
