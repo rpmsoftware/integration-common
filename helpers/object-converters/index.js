@@ -642,8 +642,31 @@ const OBJECT_CONVERTERS = {
             }
             return obj;
         }
-    }
+    },
 
+    processCondition: {
+        init: async function ({ condition, dstProperty, conditions: inConditions }) {
+            if (!inConditions) {
+                inConditions = {};
+                inConditions[validateString(dstProperty)] = condition;
+            }
+            const conditions = {};
+            for (dstProperty in inConditions) {
+                conditions[dstProperty] = initCondition(inConditions[dstProperty]);
+            }
+            assert(!isEmpty(inConditions));
+            return { conditions };
+        },
+
+        convert: async function ({ conditions }, obj) {
+            for (const e of toArray(obj)) {
+                for (const dstProperty in conditions) {
+                    e[dstProperty] = processCondition(conditions[dstProperty], e);
+                }
+            }
+            return obj;
+        }
+    }
 
 };
 
