@@ -73,6 +73,17 @@ const COMMON_GETTERS = {
         return toSimpleField(getFieldByUid.call(form, config.srcUid, true)).ID;
     },
 
+    percents: function (config, form) {
+        form = form.Form || form;
+        let v = +toSimpleField(getFieldByUid.call(form, config.srcUid, true)).Value;
+        return isNaN(v) ? undefined : Math.round(v * 10000) / 100;
+    },
+
+    getValue: function (config, form) {
+        form = form.Form || form;
+        return toSimpleField(getFieldByUid.call(form, config.srcUid, true)).Value;
+    },
+
     getValueAndID: function (config, form) {
         form = form.Form || form;
         const { Value, ID } = toSimpleField(getFieldByUid.call(form, config.srcUid, true));
@@ -406,43 +417,45 @@ add('YesNoList', function ({ srcUid, options, values }, form) {
 });
 
 add('FieldTableDefinedRow', async function ({ srcField, tableFields, tableRows, srcUid, asArray }, form) {
-    const srcRows = (form.Form || form).getFieldByUid(srcUid, true).Rows.filter(r => !r.IsDefinition && !r.IsLabelRow);
+    const srcRows = (form.Form || form).getFieldByUid(srcUid, true).Rows;
     const result = asArray ? [] : {};
-    for (let { id, name } of tableRows) {
-        const srcRow = srcRows.find(r => r.TemplateDefinedRowID === id);
-        assert(srcRow, 'Cannot find form row with TemplateDefinedRowID=' + id);
+    for (let { ID, Name, IsLabelRow } of tableRows) {
         const resultRow = {};
-        for (const fieldConf of tableFields) {
-            resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
-                Fields: srcRow.Fields.map(fld => {
-                    fld = Object.assign({}, fld);
-                    const val = fld.Values[0];
-                    delete fld.Values;
-                    if (val) {
-                        assert.strictEqual(typeof val, 'object');
-                        Object.assign(fld, val);
-                    } else {
-                        fld.Value = null;
-                    }
-                    return fld;
-                })
-            });
-        }
-        if (asArray) {
-            resultRow[srcField] = name;
-            result.push(resultRow);
+        if (IsLabelRow) {
+            resultRow._rowLabel = Name;
         } else {
-            result[name] = resultRow;
+            const srcRow = srcRows.find(r => r.TemplateDefinedRowID === ID);
+            assert(srcRow, 'Cannot find form row with TemplateDefinedRowID=' + ID);
+            for (const fieldConf of tableFields) {
+                resultRow[fieldConf.srcField] = await get.call(this, fieldConf, {
+                    Fields: srcRow.Fields.map(fld => {
+                        fld = Object.assign({}, fld);
+                        const val = fld.Values[0];
+                        delete fld.Values;
+                        if (val) {
+                            assert.strictEqual(typeof val, 'object');
+                            Object.assign(fld, val);
+                        } else {
+                            fld.Value = null;
+                        }
+                        return fld;
+                    })
+                });
+            }
+            asArray && (resultRow[srcField] = Name);
         }
+        asArray ? result.push(resultRow) : (result[Name] = resultRow);
     }
     return result;
-
 }, async function (conf, rpmField) {
-    const { asArray } = conf;
+    let { asArray, includeLabels } = conf;
+    asArray = toBoolean(asArray) || undefined;
+    includeLabels = asArray && toBoolean(includeLabels) || undefined;
     conf = await initTableFields.call(this, conf, rpmField);
-    conf.tableRows = rpmField.Rows.filter(r => !r.IsDefinition && !r.IsLabelRow).map(r => ({ id: r.ID, name: r.Name }));
-    conf.asArray = toBoolean(asArray) || undefined;
-    return conf;
+    let tableRows = rpmField.Rows
+        .filter(({ IsDefinition, IsLabelRow }) => !IsDefinition && (includeLabels || !IsLabelRow))
+        .map(({ ID, Name, IsLabelRow }) => ({ ID, Name, IsLabelRow }));
+    return Object.assign(conf, { asArray, includeLabels, tableRows });
 });
 
 async function initTableFields({

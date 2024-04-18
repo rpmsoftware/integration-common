@@ -1,7 +1,8 @@
 const assert = require('assert');
 const {
     getEager, toBoolean, validateString, toArray, normalizeInteger,
-    getDeepValue, toMoment, validatePropertyConfig, demandDeepValue, isEmptyValue
+    getDeepValue, toMoment, validatePropertyConfig, demandDeepValue, isEmptyValue,
+    isEmpty
 } = require('./util');
 const {
     getField, toSimpleField, getFieldByUid, ISO_DATE_TIME_FORMAT
@@ -65,20 +66,25 @@ const OPERATORS = {
         init: init1,
         process: function (form) { return !isTrue.call(this, form); }
     },
+    
     empty: {
         init: function (conf) {
+            const { trim, objects } = conf;
             const resultConf = init1.call(this, conf);
-            resultConf.trim = toBoolean(conf.trim) || undefined;
+            resultConf.trim = toBoolean(trim) || undefined;
+            resultConf.objects = toBoolean(objects) || undefined;
             return resultConf;
         },
         process: function (data) {
-            const { operand, trim } = this;
+            const { operand, trim, objects } = this;
             let value = getOperandValue(operand, data);
-            typeof value === 'string' && trim && (value = value.trim());
+            const t = typeof value;
+            trim && t === 'string' && (value = value.trim());
+            objects && t === 'object' && isEmpty(value) && (value = undefined);
             return isEmptyValue(value);
         }
-
     },
+
     expired: {
         init: function (conf) {
             const resultConf = init1.call(this, conf);

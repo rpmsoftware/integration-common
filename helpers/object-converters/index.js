@@ -407,7 +407,7 @@ const OBJECT_CONVERTERS = {
                     for (const destination in properties) {
                         const { total, condition } = properties[destination];
                         e[destination] === undefined && (e[destination] = 0);
-                        (!condition || processCondition(condition, c)) && (e[destination] = e[destination] + (c[total] || 0));
+                        (!condition || processCondition(condition, c)) && (e[destination] = e[destination] + (+c[total] || 0));
                     }
                 });
             });
