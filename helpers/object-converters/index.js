@@ -666,8 +666,17 @@ const OBJECT_CONVERTERS = {
             }
             return obj;
         }
-    }
+    },
 
+    blank: {
+        init: function () {
+            return {};
+        },
+
+        convert: function () {
+            return {};
+        }
+    }
 };
 
 function string2object(string) {

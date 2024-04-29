@@ -3,6 +3,7 @@
 const { render } = require('mustache');
 const pdfmake = require('pdfmake');
 const { fetch } = require('../util');
+const { readFileSync } = require('fs');
 
 const PRINTER = (() => {
     let { join } = require('path');
@@ -70,8 +71,12 @@ module.exports = async docDefinition => {
         images = docDefinition.images = Object.assign({}, images);
         for (let name in images) {
             const image = images[name];
-            const { url } = image;
-            url && (images[name] = await fetchImage(url));
+            const { url, file } = image;
+            if (url) {
+                images[name] = await fetchImage(url);
+            } else if (file) {
+                images[name] = readFileSync(file);
+            }
         }
     }
 

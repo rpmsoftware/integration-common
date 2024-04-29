@@ -66,7 +66,7 @@ const OPERATORS = {
         init: init1,
         process: function (form) { return !isTrue.call(this, form); }
     },
-    
+
     empty: {
         init: function (conf) {
             const { trim, objects } = conf;
@@ -233,18 +233,17 @@ const OPERATORS = {
     },
     regexp: {
         init: function (conf) {
-            const { regexp } = conf;
+            const { regexp, flags } = conf;
             conf = init1.call(this, conf);
             conf.regexp = validateString(regexp);
+            conf.flags = flags ? validateString(flags) : undefined;
             return conf;
         },
         process: function (data) {
-            let { operand, regexp } = this;
-            regexp instanceof RegExp || (regexp = this.regexp = new RegExp(regexp));
-            let value = getOperandValue(operand, data);
-            return regexp.test(value + '');
+            let { operand, regexp, flags } = this;
+            regexp instanceof RegExp || (regexp = this.regexp = new RegExp(regexp, flags));
+            return regexp.test(getOperandValue(operand, data) + '');
         }
-
     },
 
     all: {

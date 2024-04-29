@@ -395,25 +395,56 @@ add('YesNo', function ({ srcUid, values }, form) {
 });
 
 const OPTION_VALUES = [undefined, false, true];
-add('YesNoList', function ({ srcUid, options, values }, form) {
-    const { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
-    return Value ? JSON.parse(Value).Values.map(({ OptionID, Value, Comment }) => ({
-        Option: options[OptionID]?.Text,
-        OptionID,
-        Value: (values || OPTION_VALUES)[Value],
-        Comment
-    })) : [];
-}, function ({ asArray, values }, { Options }) {
-    asArray = toBoolean(asArray) || undefined;
-    const options = {};
-    for (const { ID, Text } of Options) {
-        options[ID] = { ID, Text };
+add('YesNoList', function ({ srcUid, options, values, includeLabels }, form) {
+    let { Value } = toSimpleField(getFieldByUid.call(form.Form || form, srcUid, true));
+    if (!Value) {
+        return [];
+    }
+    const { Values } = JSON.parse(Value);
+    if (!includeLabels) {
+        return Values.map(({ OptionID, Value, Comment }) => ({
+            OptionID,
+            Option: options[OptionID]?.Text,
+            Value: (values || OPTION_VALUES)[Value],
+            Comment
+        }));
+    }
+    const r = [];
+    let label;
+    options.forEach(({ ID, Text, IsLabel }) => {
+        let v;
+        if (IsLabel) {
+            label = { OptionID: ID, Option: Text, IsLabel: true };
+        } else if ((v = Values.find(({ OptionID }) => OptionID === ID))) {
+            const { Value, Comment } = v;
+            if (label) {
+                r.push(label);
+                label = undefined;
+            }
+            r.push({
+                OptionID: ID,
+                Option: Text,
+                Value: (values || OPTION_VALUES)[Value],
+                Comment
+            });
+        }
+    });
+    return r;
+}, function ({ values, includeLabels }, field) {
+    includeLabels = toBoolean(includeLabels) || undefined;
+    const options = includeLabels ? [] : {};
+    for (const { ID, Text, IsLabel, IsHidden } of field.Options) {
+        if (IsHidden || IsLabel && !includeLabels) {
+            continue;
+        }
+        const o = { ID, Text, IsLabel };
+        includeLabels ? options.push(o) : options[ID] = o;
     }
     if (values || (values = undefined)) {
         const { '': e, 'true': t, 'false': f } = values;
         values = [e, f, t];
     }
-    return { options, asArray, values };
+    return { options, values, includeLabels };
 });
 
 add('FieldTableDefinedRow', async function ({ srcField, tableFields, tableRows, srcUid, asArray }, form) {
