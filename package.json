@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.100.0",
+    "version": "4.100.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -29,10 +29,12 @@
         "field-patcher.js",
         "freshdesk.js",
         "hash.js",
+        "heroku-api.js",
         "moneyworks.js",
         "mssql.js",
         "normalizers.js",
         "salesforce-api.js",
+        "toggl-report.js",
         "toggl.js",
         "util.js",
         "webhooks.js",
