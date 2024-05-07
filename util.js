@@ -843,7 +843,7 @@ exports.createTimeBasedIDGenerator = start => {
 
 const EMPTY_STRING = '';
 
-exports.isEmptyValue = v => v === undefined || v === null || v === EMPTY_STRING;
+const isEmptyValue = exports.isEmptyValue = v => v === undefined || v === null || v === EMPTY_STRING;
 
 const PROP_GLOBAL = Symbol();
 
@@ -854,4 +854,14 @@ exports.getGlobal = () => {
         Object.defineProperty(global, PROP_GLOBAL, { value: result });
     }
     return result;
+};
+
+exports.round = (value, factor) => factor ? Math.round(value * factor) / factor : Math.round(value);
+
+exports.coalesce = function () {
+    for (const a of arguments) {
+        if (!isEmptyValue(a)) {
+            return a;
+        }
+    }
 };

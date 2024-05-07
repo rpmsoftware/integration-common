@@ -127,9 +127,7 @@ const OBJECT_CONVERTERS = {
             return { condition };
         },
         convert: async function ({ condition }, obj) {
-            const result = toArray(obj).filter(e => processCondition(condition, e));
-            // console.log('Filtered down to',result.length);
-            return result;
+            return toArray(obj).filter(e => processCondition(condition, e));
         }
     },
 

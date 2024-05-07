@@ -46,11 +46,17 @@ function createExpressApp(port, options) {
         options = port;
         port = options.port;
     }
+    const { bodyParser } = options;
     const app = express();
     const heroku = isHeroku();
     if (heroku) {
         app.use(herokuEnsureHttps);
         port = process.env.PORT;
+    }
+    if (bodyParser) {
+        app.use(express[bodyParser](BODY_PARSER_OPTIONS[bodyParser]));
+    } else {
+        ['urlencoded', 'json', 'text'].forEach(p => app.use(express[p](BODY_PARSER_OPTIONS[p])));
     }
     app.use(express.urlencoded({ extended: false }));
     app.use(express.json({ strict: false }));
@@ -66,3 +72,9 @@ function createExpressApp(port, options) {
 exports.startPostServer = startPostServer;
 exports.createExpressApp = createExpressApp;
 exports.normalizePath = normalizePath;
+
+const BODY_PARSER_OPTIONS = {
+    urlencoded: { extended: false },
+    json: { strict: false },
+    text: { type: '*/*' }
+};
