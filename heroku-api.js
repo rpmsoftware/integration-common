@@ -68,6 +68,11 @@ class HerokuApi {
         return this._get(`addons/${addonNameOrID}/config`);
     }
 
+    getApp(appNameOrID) {
+        validateString(appNameOrID)
+        return this._get(`apps/${appNameOrID}`);
+    }
+
     getAppConfig(appNameOrID) {
         validateString(appNameOrID)
         return this._get(`apps/${appNameOrID}/config-vars`);

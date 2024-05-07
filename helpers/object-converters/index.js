@@ -122,12 +122,18 @@ const OBJECT_CONVERTERS = {
     },
 
     filter: {
-        init: async function ({ condition }) {
+        init: async function ({ condition, single }) {
             condition = initCondition(condition);
-            return { condition };
+            single = toBoolean(single) || undefined;
+            return { condition, single };
         },
-        convert: async function ({ condition }, obj) {
-            return toArray(obj).filter(e => processCondition(condition, e));
+        convert: async function ({ condition, single }, obj) {
+            let result = toArray(obj).filter(e => processCondition(condition, e));
+            if (single) {
+                assert(result.length < 2);
+                result = result[0];
+            }
+            return result;
         }
     },
 
