@@ -1,4 +1,4 @@
-const { validateString, fetch } = require('./util');
+const { validateString, fetch, toArray, toBoolean } = require('./util');
 const debug = require('debug')('rpm:heroku');
 const assert = require('assert');
 
@@ -30,6 +30,11 @@ class HerokuApi {
     }
 
     _patch(endpoint, data) {
+        assert.strictEqual(typeof data, 'object');
+        return this._request('PATCH', endpoint, data);
+    }
+
+    _post(endpoint, data) {
         assert.strictEqual(typeof data, 'object');
         return this._request('POST', endpoint, data);
     }
@@ -84,6 +89,20 @@ class HerokuApi {
             validateString(data[k]);
         }
         return this._patch(`apps/${appNameOrID}/config-vars`, data);
+    }
+
+    getAppWebhooks(appNameOrID) {
+        validateString(appNameOrID)
+        return this._get(`apps/${appNameOrID}/webhooks`);
+    }
+
+    createAppWebhook(appNameOrID, { include, sync: level, url, secret }) {
+        validateString(appNameOrID);
+        level = toBoolean(level) ? 'sync' : 'notify';
+        validateString(url);
+        secret = secret ? validateString(secret) : undefined;
+        include = toArray(include).map(validateString);
+        return this._post(`apps/${appNameOrID}/webhooks`, { include, level, url, secret });
     }
 
 }
