@@ -21,6 +21,10 @@ exports.convert = async function ({ process, fieldMap, srcProperty, dstProperty,
             default:
                 assert.fail();
         }
+        if (!form) {
+            dstProperty && (delete obj[dstProperty]);
+            continue;
+        }
         form = form.Form || form;
         assert.strictEqual(process, form.ProcessID);
         const r = await getMultiple.call(this, fieldMap, form);
