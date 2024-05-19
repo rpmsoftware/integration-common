@@ -20,11 +20,9 @@ const {
     isReferenceField
 } = require('../api-wrappers');
 const assert = require('assert');
-const createHash = require('string-hash');
 const { format } = require('util');
 const { getFullType, DEFAULT_ACCESSOR_NAME, isEmptyValue } = require('./common');
 const { FieldSubType, ObjectType, RepTypes } = require('../api-enums');
-const { render } = require('mustache');
 const tweakDate = require('./tweak-date');
 const { init: initCondition, process: processCondition } = require('../conditions');
 const { init: initView, getForms: getViewForms } = require('./views');
@@ -95,12 +93,6 @@ const COMMON_SETTERS = {
         }
     },
 
-    strHash: function ({ srcField }, data) {
-        data = getDeepValue(data, srcField);
-        data = data && data.trim();
-        return data ? '' + createHash(data) : null;
-    },
-
     trim: function ({ srcField }, data) {
         data = getDeepValue(data, srcField);
         return data && data.trim() || null;
@@ -110,16 +102,6 @@ const COMMON_SETTERS = {
         assert(processID > 0);
         const srcValue = getDeepValue(data, srcField);
         return srcValue ? { ID: (await this.api.demandForm(processID, srcValue)).Form.FormID } : getEmpty();
-    },
-
-    mustache: {
-        convert: function ({ template }, data) {
-            return render(template, data);
-        },
-        init: function ({ template }) {
-            validateString(template);
-            return { template };
-        }
     },
 
     dictionary: {
