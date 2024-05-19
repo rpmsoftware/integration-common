@@ -1663,7 +1663,7 @@ exports.OBJECT_TYPE = ObjectType;
 exports.REF_DATA_TYPE = RefSubType;
 exports.SHARED_FIELD_SUBTYPES = ObjectType;
 
-var FIELD_TYPE = exports.FIELD_TYPE = (() => {
+exports.FIELD_TYPE = (() => {
     var fieldTypes = {};
     var name;
     for (name in ObjectType) {
@@ -1702,22 +1702,22 @@ exports.getTableRowValues = function (row, valueExtractor) {
 
 exports.parseTimezoneOffset = parseTimezoneOffset;
 
-function validateFieldType(field, fieldTypeName, subTypeName) {
-    var t = FIELD_TYPE[fieldTypeName];
-    if (!t) {
+const validateFieldType = (field, fieldTypeName, subTypeName) => {
+    let t = +ObjectType[fieldTypeName];
+    if (isNaN(t)) {
         throw new Error('Unknown FieldType: ' + fieldTypeName);
     }
-    if (field.FieldType !== t.value) {
+    if (field.FieldType !== t) {
         throw new Error(`Incorrect FieldType ${field.FieldType}. ${t.value} (${fieldTypeName}) expected`);
     }
     if (subTypeName === undefined) {
         return field;
     }
-    t = t.subTypes[subTypeName];
-    if (!t) {
+    t = +(t === ObjectType.CustomField ? FieldSubType : ObjectType)[subTypeName];
+    if (isNaN(t)) {
         throw new Error(`Unknown SubType '${subTypeName}' for FieldType '${fieldTypeName}' subType`);
     }
-    if (field.SubType !== t.value) {
+    if (field.SubType !== t) {
         throw new Error(`Incorrect SubType ${field.SubType}. ${t.value} (${subTypeName}) expected`);
     }
     return field;
@@ -1760,9 +1760,8 @@ exports.isProcessReference = isProcessReference;
 exports.isFieldType = isFieldType;
 exports.isCustomerReference = isCustomerReference;
 
-exports.isListField = function (field) {
-    var customField = FIELD_TYPE.CustomField;
-    return field.FieldType === customField.value && (field.SubType == customField.subTypes.List.value || field.SubType == customField.subTypes.ListMultiSelect.value);
+exports.isListField = ({ FieldType: ft, SubType: st }) => {
+    return ft === ObjectType.CustomField && (st === FieldSubType.List || st === FieldSubType.ListMultiSelect);
 };
 
 function isTableField(field, definedRows) {

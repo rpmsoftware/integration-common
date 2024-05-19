@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.100.4",
+    "version": "4.101.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "face-registry/*",
@@ -22,13 +22,9 @@
         "cache.js",
         "cached-api.js",
         "conditions.js",
-        "cron-patterns.js",
         "date-time-periods.js",
         "express.js",
-        "field-accessors.js",
-        "field-patcher.js",
         "freshdesk.js",
-        "hash.js",
         "heroku-api.js",
         "moneyworks.js",
         "mssql.js",
