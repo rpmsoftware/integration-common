@@ -664,3 +664,11 @@ exports.PhoneType = {
     Fax: 3,
     Other: 6
 };
+
+exports.FieldGroupEffect = {
+    NA: 0,
+    Hide: 1,
+    Unlock: 2,
+    Lock: 3,
+    Show: 4
+};
