@@ -8,7 +8,8 @@ const {
     FieldSubType,
     ProcessPermission,
     ProcessPermissionsHidden,
-    PhoneType
+    PhoneType,
+    FieldGroupEffect
 } = require('./api-enums');
 
 const {
@@ -24,7 +25,9 @@ const {
     getDataURLPrefix,
     setParent,
     throwError,
-    fetch
+    fetch,
+    isEmpty,
+    isEmptyValue
 } = require('./util');
 const errors = require('./api-errors');
 const { URL } = require('url');
@@ -628,16 +631,32 @@ API.prototype.getBasicFields = async function (type) {
     return { Fields: Fields.map(({ Field: Name, Uid }) => ({ Name, Uid })) };
 };
 
+const FIELD_GROUP_VALUE_SEPARATOR = '||';
+
 API.prototype.getFields = async function (processID) {
     processID = normalizeInteger(processID);
-    const response = await this.request('ProcFields', { ProcessID: processID });
-    const process = response.Process;
+    let response = await this.request('ProcFields', { ProcessID: processID });
+    const { Process } = response;
     delete response.Process;
-    assert.strictEqual(Object.keys(response).length, 0);
-    process.Fields.forEach(field =>
+    assert(isEmpty(response));
+    const { Fields, FieldGroups, StatusLevels } = Process;
+    Fields.forEach(field =>
         Object.defineProperty(field, 'processID', { value: processID })
     );
-    Object.assign(response, process);
+    FieldGroups.forEach(fieldGroup => {
+        let { Value1, Type } = fieldGroup;
+        if (!Value1) {
+            return;
+        }
+        let Values = Value1.split(FIELD_GROUP_VALUE_SEPARATOR);
+        if (Type === ObjectType.FormReference) {
+            Values = Values.map(v => +v);
+        } else if (Type === ObjectType.PMStatus) {
+            Values = Values.map(v => StatusLevels.demand(({ Text }) => Text === v).ID);
+        }
+        Object.defineProperty(fieldGroup, 'Values', { value: Values });
+    });
+    Object.assign(response, Process);
     return Object.setPrototypeOf(response, PROCESS_FIELDS_PROTO);
 };
 
@@ -1814,3 +1833,69 @@ exports.toSimpleField = function (field) {
 
 exports.getFieldEssentials = ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType, Options }) =>
     ({ Name, Uid, ProcessID, Rows, UserCanEdit, FieldType, SubType, Options });
+
+function isFieldGroupActive(form) {
+    const fieldGroup = this;
+    let { Values, Type, SpecificID } = fieldGroup;
+    if (!Values) {
+        return;
+    }
+    if (Type === ObjectType.PMStatus) {
+        const { StatusID } = form;
+        assert(StatusID > 0);
+        return Values.indexOf(StatusID) >= 0;
+    }
+    assert(SpecificID);
+    const { Value, ID } = getFieldByUid.call(form, `${Type}_${SpecificID}`, true);
+    if (Type === ObjectType.FormReference) {
+        return ID > 0 && Values.indexOf(ID) >= 0;
+    }
+    return !isEmptyValue(Value) && Values.indexOf(Value) >= 0;
+}
+
+exports.isFieldGroupActive = isFieldGroupActive;
+
+exports.applyFieldGroupsTo = (() => {
+    const EFFECT_ACTIONS = {};
+
+    const hide = f => f.hidden = true;
+    const lock = f => f.locked === true;
+    const show = undefined;
+    const unlock = undefined;
+
+    EFFECT_ACTIONS[FieldGroupEffect.Hide] = [show, hide];
+    EFFECT_ACTIONS[FieldGroupEffect.Lock] = [unlock, lock];
+    EFFECT_ACTIONS[FieldGroupEffect.Show] = [hide, show];
+    EFFECT_ACTIONS[FieldGroupEffect.Unlock] = [lock, unlock];
+
+
+    return function (form) {
+
+        const { ProcessID, FieldGroups, Fields } = this; // ProcFiedls;
+        form = form.Form || form;
+        assert.strictEqual(ProcessID, form.ProcessID);
+
+        const groupActions = {};
+        for (const fg of FieldGroups) {
+            let { ID, Effect } = fg;
+            const active = isFieldGroupActive.call(fg, form);
+            active === undefined || (
+                groupActions[ID] = getEager(EFFECT_ACTIONS, Effect)[active ? 1 : 0]
+            );
+        }
+
+        const fieldActions = {};
+        for (const { Uid, FieldGroupID } of Fields) {
+            const action = groupActions[FieldGroupID];
+            action && (fieldActions[Uid] = action);
+        }
+
+        for (const formField of form.Fields) {
+            delete formField.hidden;
+            delete formField.locked;
+            const action = fieldActions[formField.Uid];
+            action && action(formField);
+        }
+    };
+
+})();
