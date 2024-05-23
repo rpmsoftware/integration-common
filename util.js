@@ -858,10 +858,10 @@ exports.getGlobal = () => {
 
 exports.round = (value, factor) => factor ? Math.round(value * factor) / factor : Math.round(value);
 
-exports.coalesce = function () {
-    for (const a of arguments) {
-        if (!isEmptyValue(a)) {
-            return a;
+exports.coalesce = function (array) {
+    for (const v of Array.isArray(array) ? array : arguments) {
+        if (!isEmptyValue(v)) {
+            return v;
         }
     }
 };
