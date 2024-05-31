@@ -1,10 +1,13 @@
 const assert = require('assert');
-const { toBoolean } = require('../util');
+const { toBoolean, isEmptyValue } = require('../util');
 const dayjs = require('dayjs');
 const { ISO_DATE_FORMAT } = require('../api-wrappers');
 
 module.exports = {
     number: value => {
+        if(isEmptyValue(value)) {
+            return;
+        }
         const result = +value;
         assert(!isNaN(result), value);
         return result;

@@ -618,6 +618,8 @@ function getStatus(nameOrID, demand) {
     return result;
 }
 
+exports.getStatus = getStatus;
+
 const PROCESS_FIELDS_PROTO = {
     getField,
     getStatus,
