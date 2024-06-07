@@ -41,6 +41,7 @@ const NA = 'n/a';
 
 const ISO_DATE_FORMAT = exports.ISO_DATE_FORMAT = 'YYYY-MM-DD';
 const ISO_DATE_TIME_FORMAT = exports.ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+exports.COMMISSION_RUN_FORMAT = 'YYYYMM';
 
 const RPM_API_ERROR = 'RpmApiError';
 
@@ -633,7 +634,7 @@ API.prototype.getBasicFields = async function (type) {
     return { Fields: Fields.map(({ Field: Name, Uid }) => ({ Name, Uid })) };
 };
 
-const FIELD_GROUP_VALUE_SEPARATOR = '||';
+const FIELD_GROUP_VALUE_SEPARATOR = exports.FIELD_GROUP_VALUE_SEPARATOR = '||';
 
 API.prototype.getFields = async function (processID) {
     processID = normalizeInteger(processID);
