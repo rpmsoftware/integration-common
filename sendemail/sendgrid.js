@@ -1,32 +1,53 @@
-const Svc = require('@sendgrid/mail').MailService;
-const { toArray } = require('../util');
+const { MailService } = require('@sendgrid/mail');
+const { toArray, validateString, toBoolean } = require('../util');
+const assert = require('assert');
+const debug = require('debug')('rpm:sendgrid');
 
-function createMessageSender(apiKey, fromEmail, toEmails, ccEmails) {
-    if (typeof apiKey === 'object') {
-        fromEmail = apiKey.fromEmail;
-        toEmails = apiKey.toEmails;
-        ccEmails = apiKey.ccEmails;
-        apiKey = apiKey.apiKey;
+const normalize = eml => {
+    let { name, address: email } = typeof eml === 'string' ? { address: eml } : eml;
+    validateString(email);
+    name = name ? validateString(name) : undefined;
+    return { name, email };
+};
+
+const VALIDATORS = {
+    fromEmail: normalize,
+    toEmails: v => toArray(v).map(normalize),
+    ccEmails: v => toArray(v).map(normalize),
+    subject: validateString,
+    messageBody: validateString,
+    html: toBoolean
+};
+
+const normConf = conf => {
+    const result = {};
+    for (const k in VALIDATORS) {
+        const v = conf[k];
+        v === undefined || (result[k] = VALIDATORS[k](v));
     }
-    toEmails = toEmails ? toArray(toEmails) : [];
-    ccEmails = ccEmails ? toArray(ccEmails) : [];
-    if (toEmails.length < 1 && ccEmails.length < 1) {
-        throw new Error('There has to be at least one recipient');
-    }
-    const sgMail = new Svc();
+    return result;
+}
+
+exports.createMessageSender = conf => {
+    const { apiKey } = conf;
+    validateString(apiKey);
+    conf = normConf(conf);
+    const sgMail = new MailService();
     sgMail.setApiKey(apiKey);
-    return function (subject, messageBody, sendAsHtml) {
+    return c => {
+        const {
+            subject, fromEmail, toEmails, ccEmails, messageBody, html
+        } = c ? Object.assign({}, conf, normConf(c)) : conf;
+        assert(fromEmail);
+        toEmails && toEmails.length > 0 || assert(ccEmails && ccEmails.length > 0);
         const message = {
-            subject: subject,
+            subject,
             from: fromEmail,
             to: toEmails,
             cc: ccEmails
         };
-        if (messageBody) {
-            message[sendAsHtml ? 'html' : 'text'] = messageBody;
-        }
+        debug('Sending email: %j', message);
+        messageBody && (message[html ? 'html' : 'text'] = messageBody);
         return sgMail.send(message);
     };
-}
-
-exports.createMessageSender = createMessageSender;
+};

@@ -604,7 +604,8 @@ exports.StaticViewColumnUids = {
     AlternateID: '710_761',
     AccountID: '710_640',
     CustomerName: '710_160',
-    SupplierName: '710_384'
+    SupplierName: '710_384',
+    FormFiles: '710_759'
 };
 
 exports.WebhookEvents = {

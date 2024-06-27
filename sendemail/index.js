@@ -1,9 +1,9 @@
-const { logErrorStack } = require('../util');
+const { logErrorStack, getEager, getGlobal } = require('../util');
 const { format } = require('util');
 
-exports.createErrorNotifier = function (configOrSender) {
+const createErrorNotifier = configOrSender => {
     const sendMessage = typeof configOrSender === 'function' ? configOrSender : createMessageSender(configOrSender);
-    return function (error, subject) {
+    return (error, subject) => {
         logErrorStack(error);
         if (subject === undefined) {
             subject = error && error.toString();
@@ -13,12 +13,20 @@ exports.createErrorNotifier = function (configOrSender) {
         } else if (typeof error === 'object') {
             error = format('%j', error);
         }
-        sendMessage(subject, error).then(undefined, logErrorStack);
+        sendMessage({ subject, messageBody: error }).catch(logErrorStack);
     };
 };
 
-function createMessageSender(config) {
-    return require('./' + config.provider).createMessageSender(config);
-}
+const createMessageSender = config =>
+    require('./' + config.provider).createMessageSender(config);
 
-exports.createMessageSender = createMessageSender;
+const SENDERS = {};
+
+const getSender = name => SENDERS[name] ||
+    (SENDERS[name] = createMessageSender(getEager(getGlobal(), name)));
+
+module.exports = {
+    getSender,
+    createErrorNotifier,
+    createMessageSender
+};
