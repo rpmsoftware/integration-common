@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RpmWebhook",
+  "type": "object",
+  "required": [
+    "ObjectType",
+    "EventName",
+    "RequestID"
+  ],
+  "properties": {
+    "ObjectID": {
+      "type": "integer"
+    },
+    "ObjectType": {
+      "type": "integer"
+    },
+    "ParentID": {
+      "type": "integer"
+    },
+    "ParentType": {
+      "type": "integer"
+    },
+    "EventName": {
+      "type": "string",
+      "enum": [
+        "form.start",
+        "form.edit",
+        "form.trash",
+        "form.restore",
+        "action.add",
+        "action.edit",
+        "action.trash",
+        "agency.add",
+        "agency.edit",
+        "agency.trash",
+        "rep.add",
+        "rep.edit",
+        "rep.trash",
+        "staff.add",
+        "staff.edit",
+        "staff.restore",
+        "staff.trash",
+        "commrun.open",
+        "commrun.closed",
+        "commrun.import",
+        "commrun.calculate",
+        "file.add",
+        "file.edit",
+        "file.trash",
+        "file.restore",
+        "customer.add",
+        "customer.edit",
+        "customer.trash",
+        "customer.restore",
+        "supplier.add",
+        "supplier.edit",
+        "supplier.delete",
+        "datawarehouse.start",
+        "datawarehouse.finish",
+        "announcements.updated"
+      ]
+    },
+    "RequestID": {
+      "type": "integer"
+    },
+    "StatusID": {
+      "type": "integer"
+    }
+  }
+}
