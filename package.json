@@ -1,12 +1,23 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.105.0",
+    "version": "4.105.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
     ],
     "exports": {
+        "./quickbooks": "./lib/quickbooks/index.js",
+        "./face-registry": "./lib/face-registry/index.js",
+        "./logger": "./lib/logger/index.js",
+        "./helpers/email": "./lib/helpers/email/index.js",
+        "./helpers": "./lib/helpers/index.js",
+        "./helpers/object-converters/method": "./lib/helpers/object-converters/method/index.js",
+        "./helpers/object-converters": "./lib/helpers/object-converters/index.js",
+        "./sharepoint": "./lib/sharepoint/index.js",
+        "./sendemail": "./lib/sendemail/index.js",
+        "./pdf-printer": "./lib/pdf-printer/index.js",
+        "./store": "./lib/store/index.js",
         "./*": "./lib/*.js"
     },
     "license": "ISC",
