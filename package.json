@@ -1,12 +1,13 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.113.0",
+    "version": "4.114.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
     ],
     "exports": {
+        "./aws": "./lib/aws/index.js",
         "./quickbooks": "./lib/quickbooks/index.js",
         "./face-registry": "./lib/face-registry/index.js",
         "./logger": "./lib/logger/index.js",
