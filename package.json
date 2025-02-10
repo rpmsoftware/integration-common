@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.116.0",
+    "version": "4.116.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
@@ -25,6 +25,7 @@
     "private": true,
     "dependencies": {
         "dayjs": "^1.x.x",
-        "debug": "^4.x.x"
+        "debug": "^4.x.x",
+        "undici": "^7.3.0"
     }
 }
