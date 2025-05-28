@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "4.128.2",
+    "version": "5.0.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
@@ -19,6 +19,7 @@
         "./sendemail": "./lib/sendemail/index.js",
         "./pdf-printer": "./lib/pdf-printer/index.js",
         "./store": "./lib/store/index.js",
+        "./helpers/global-instance": "./lib/helpers/global-instance/index.js",
         "./*": "./lib/*.js"
     },
     "license": "ISC",
