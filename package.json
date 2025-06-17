@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
