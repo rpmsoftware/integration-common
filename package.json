@@ -1,23 +1,17 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "5.9.2",
+    "version": "6.0.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
     ],
     "exports": {
         "./aws": "./lib/aws/index.js",
-        "./quickbooks": "./lib/quickbooks/index.js",
-        "./face-registry": "./lib/face-registry/index.js",
         "./logger": "./lib/logger/index.js",
-        "./helpers/email": "./lib/helpers/email/index.js",
         "./helpers": "./lib/helpers/index.js",
-        "./helpers/object-converters/method": "./lib/helpers/object-converters/method/index.js",
         "./helpers/object-converters": "./lib/helpers/object-converters/index.js",
-        "./sharepoint": "./lib/sharepoint/index.js",
         "./sendemail": "./lib/sendemail/index.js",
-        "./pdf-printer": "./lib/pdf-printer/index.js",
         "./store": "./lib/store/index.js",
         "./helpers/global-instance": "./lib/helpers/global-instance/index.js",
         "./*": "./lib/*.js"
