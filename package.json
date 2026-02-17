@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "6.0.5",
+    "version": "6.1.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
@@ -13,7 +13,7 @@
         "./helpers/object-converters": "./lib/helpers/object-converters/index.js",
         "./sendemail": "./lib/sendemail/index.js",
         "./store": "./lib/store/index.js",
-        "./helpers/global-instance": "./lib/helpers/global-instance/index.js",
+        "./global-instance": "./lib/helpers/global-instance/index.js",
         "./*": "./lib/*.js"
     },
     "license": "ISC",
