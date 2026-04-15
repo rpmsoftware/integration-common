@@ -1,15 +1,13 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "6.2.1",
+    "version": "7.0.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "lib/"
     ],
     "exports": {
         "./aws": "./lib/aws/index.js",
-        "./logger": "./lib/logger/index.js",
-        "./helpers": "./lib/helpers/index.js",
         "./helpers/object-converters": "./lib/helpers/object-converters/index.js",
         "./sendemail": "./lib/sendemail/index.js",
         "./store": "./lib/store/index.js",
