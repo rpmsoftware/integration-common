@@ -1,0 +1,17 @@
+{
+  "include": [
+    "src/**/*"
+  ],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": [
+      "node"
+    ],
+    "declaration": true,
+    "strict": true,
+    "allowJs": true
+  }
+}

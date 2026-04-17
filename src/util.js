@@ -1,6 +1,7 @@
 /* global Buffer, process */
 
 const debug = require('debug')('rpm:util');
+const { toArray, cachify, assertInteger } = require('./util-ts.mjs');
 const { readFileSync, writeFile } = require('fs');
 const moment = require('dayjs');
 const assert = require('assert');
@@ -535,11 +536,7 @@ function normalizeDate(date) {
 
 exports.normalizeDate = normalizeDate;
 
-exports.assertInteger = value => {
-    assert.strictEqual(typeof value, 'number');
-    assert.strictEqual(value % 1, 0);
-    return value;
-};
+exports.assertInteger = assertInteger;
 
 function normalizeInteger(value) {
     let intValue = value;
@@ -686,22 +683,7 @@ const pause = (timeout, value) => new Promise(resolve => setTimeout(() => resolv
 
 exports.pause = pause;
 
-exports.cachify = function (callback, secTimeout) {
-    var cache;
-    secTimeout = +secTimeout;
-    secTimeout = secTimeout > 0 ? secTimeout * 1000 : 0;
-    var last = 0;
-    return function (reset) {
-        if (reset || secTimeout && Date.now() - last > secTimeout) {
-            cache = undefined;
-        }
-        return cache ? Promise.resolve(cache.value) : Promise.resolve().then(callback).then(value => {
-            cache = { value };
-            last = secTimeout && Date.now();
-            return value;
-        });
-    };
-};
+exports.cachify = cachify;
 
 exports.promisify = function (callable) {
     return function (...params) {
@@ -726,7 +708,7 @@ exports.toMoment = (value, validate) => {
     return value;
 };
 
-const toArray = exports.toArray = value => value === undefined ? [] : (Array.isArray(value) ? value : [value]);
+exports.toArray = toArray;
 
 const toBuffer = exports.toBuffer = data => Buffer.isBuffer(data) ? data : Buffer.from(data);
 exports.toBase64 = data => toBuffer(data).toString('base64');

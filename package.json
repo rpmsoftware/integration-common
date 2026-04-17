@@ -1,22 +1,29 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "7.0.0",
+    "version": "8.0.0",
     "author": "Dmitriy Serdyukov",
     "files": [
-        "lib/"
+        "dist"
     ],
     "exports": {
-        "./aws": "./lib/aws/index.js",
-        "./helpers/object-converters": "./lib/helpers/object-converters/index.js",
-        "./sendemail": "./lib/sendemail/index.js",
-        "./store": "./lib/store/index.js",
-        "./global-instance": "./lib/helpers/global-instance/index.js",
-        "./*": "./lib/*.js"
+        "./aws": "./dist/aws/index.js",
+        "./*": "./dist/*.js",
+        "./*.mjs": "./dist/*.mjs",
+        "./*.mts": "./dist/*.mjs",
+        "./helpers/object-converters": "./dist/helpers/object-converters/index.js",
+        "./sendemail": "./dist/sendemail/index.js",
+        "./store": "./dist/store/index.js",
+        "./global-instance": "./dist/helpers/global-instance/index.js"
     },
     "license": "ISC",
     "private": true,
-    "dependencies": {
+    "scripts": {
+        "build": "tsc",
+        "prepare": "yarn build"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.0",
         "dayjs": "^1.x.x",
         "debug": "^4.x.x"
     }

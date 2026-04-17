@@ -1,7 +1,9 @@
 # ignore node installed files
 node_modules
-*config.json
+*-config.json
+config.json
 *.log
 *.csv
 probe*
 temp*
+dist
