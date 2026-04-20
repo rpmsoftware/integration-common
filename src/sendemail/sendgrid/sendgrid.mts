@@ -1,9 +1,10 @@
-import { SendGridAPI, SendMailConfig, ApiConfig } from './sendgrid-api.mjs';
-const debug = require('debug')('rpm:sendgrid');
+import { SendGridAPI, type SendMailConfig, type ApiConfig } from '../../sendgrid-api.mts';
+import Debug from 'debug';
+const debug = Debug('rpm:sendgrid');
 
 type PartialConfig = Partial<SendMailConfig>;
 
-exports.createMessageSender = (globalCfg: PartialConfig & ApiConfig) => {
+export const createMessageSender = (globalCfg: PartialConfig & ApiConfig) => {
     globalCfg = Object.assign({}, globalCfg);
     const { apiKey } = globalCfg as ApiConfig;
     delete (globalCfg as any).apiKey;

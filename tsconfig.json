@@ -1,17 +1,9 @@
 {
-  "include": [
-    "src/**/*"
-  ],
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": [
-      "node"
-    ],
-    "declaration": true,
-    "strict": true,
-    "allowJs": true
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false
   }
 }

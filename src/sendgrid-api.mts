@@ -1,4 +1,4 @@
-import { throwError, fetch, toArray } from '../util.js';
+import { throwError, fetch, toArray } from './util/index.js';
 
 const BASE_URL = 'https://api.sendgrid.com/';
 

@@ -1,30 +1,32 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "8.0.0",
+    "version": "8.1.0",
     "author": "Dmitriy Serdyukov",
     "files": [
-        "dist"
+        "src"
     ],
     "exports": {
-        "./aws": "./dist/aws/index.js",
-        "./*": "./dist/*.js",
-        "./*.mjs": "./dist/*.mjs",
-        "./*.mts": "./dist/*.mjs",
-        "./helpers/object-converters": "./dist/helpers/object-converters/index.js",
-        "./sendemail": "./dist/sendemail/index.js",
-        "./store": "./dist/store/index.js",
-        "./global-instance": "./dist/helpers/global-instance/index.js"
+        "./aws": "./src/aws/index.js",
+        "./*": "./src/*.js",
+        "./*.mjs": "./src/*.mjs",
+        "./*.mts": "./src/*.mts",
+        "./helpers/object-converters": "./src/helpers/object-converters/index.js",
+        "./sendemail": "./src/sendemail/index.js",
+        "./store": "./src/store/index.js",
+        "./global-instance": "./src/helpers/global-instance/index.js",
+        "./util": "./src/util/index.js"
     },
     "license": "ISC",
     "private": true,
-    "scripts": {
-        "build": "tsc",
-        "prepare": "yarn build"
-    },
     "devDependencies": {
         "@types/node": "^25.6.0",
         "dayjs": "^1.x.x",
-        "debug": "^4.x.x"
+        "debug": "^4.x.x",
+        "@types/debug": "^4.1.13",
+        "@types/assert": "^1.5.11"
+    },
+    "engines": {
+        "node": ">=22"
     }
 }

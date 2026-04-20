@@ -1,7 +1,7 @@
 /* global Buffer, process */
 
 const debug = require('debug')('rpm:util');
-const { toArray, cachify, assertInteger } = require('./util-ts.mjs');
+const { toArray, cachify, assertInteger } = require('./util-ts.mts');
 const { readFileSync, writeFile } = require('fs');
 const moment = require('dayjs');
 const assert = require('assert');
