@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "8.2.0",
+    "version": "8.2.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dist"
@@ -26,6 +26,7 @@
         "debug": "^4.x.x"
     },
     "devDependencies": {
-        "@types/node": "^25.6.0"
+        "@types/node": "^25.6.0",
+        "@types/debug": "^4.1.13"
     }
 }
