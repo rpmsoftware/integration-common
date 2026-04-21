@@ -30,24 +30,6 @@ exports.isInteger = function (value) {
     return typeof value === 'number' && value % 1 === 0;
 };
 
-exports.runOnce = function (callable, parameters) {
-    var run = true;
-    return function () {
-        if (!run) {
-            run = false;
-            callable.apply(null, parameters);
-        }
-    };
-};
-
-function clearArray(array) {
-    while (array.length) {
-        array.pop();
-    }
-}
-
-exports.clearArray = clearArray;
-
 const BOOLEANS = {
     'true': true,
     'yes': true,
@@ -77,14 +59,6 @@ const toBoolean = exports.toBoolean = (value, demand) => {
     console.warn(msg);
 };
 
-exports.indexOf = function (array, value) {
-    var result = array.indexOf(value);
-    if (result < 0) {
-        throw new Error(`Value ${value} is not in [${array.join(',')}]`);
-    }
-    return result;
-};
-
 class NotImplementedError extends Error {
     constructor() {
         super('Implement me')
@@ -92,30 +66,6 @@ class NotImplementedError extends Error {
 }
 
 exports.NotImplementedError = NotImplementedError;
-
-function Statistics(name) {
-    this.name = name;
-    this.added = 0;
-    this.updated = 0;
-    this.deleted = 0;
-}
-
-Statistics.prototype.incUpdated = function () {
-    ++this.updated;
-};
-
-Statistics.prototype.incDeleted = function () {
-    ++this.deleted;
-};
-Statistics.prototype.incAdded = function () {
-    ++this.added;
-};
-
-Statistics.prototype.hasChanges = function () {
-    return Boolean(this.added || this.updated || this.deleted);
-};
-
-exports.ChangeStatistics = Statistics;
 
 const isEmpty = object => {
     assert.strictEqual(typeof object, 'object');
@@ -186,20 +136,6 @@ exports.getOrCreate = function (object, key, defaultValue) {
     return result;
 };
 
-const CACHE_PROPERTY = Symbol();
-
-exports.getCache = function (object) {
-    object = object || this;
-    if (!object[CACHE_PROPERTY]) {
-        object[CACHE_PROPERTY] = {};
-    }
-    return object[CACHE_PROPERTY];
-};
-
-exports.deleteCache = function (object) {
-    delete (object || this)._cache;
-};
-
 function getEager(object, id, error) {
     var result = object[id];
     if (result === undefined) {
@@ -208,28 +144,6 @@ function getEager(object, id, error) {
     return result;
 }
 exports.getEager = getEager;
-
-function dummy() {
-}
-
-function matchObjects(obj1, obj2, matcher) {
-    var names = {};
-
-    matcher = matcher || dummy;
-
-    var key;
-    for (key in obj1) {
-        matcher(obj1[key], getEager(obj2, key));
-        names[key] = true;
-    }
-
-    for (key in obj2) {
-        if (!names[key]) {
-            matcher(getEager(obj1, key), obj2[key]);
-        }
-    }
-}
-exports.matchObjects = matchObjects;
 
 function throwError(message, name, data) {
     const error = new Error('' + message);
@@ -279,8 +193,9 @@ const arrayPrototypeExtensions = {
     },
 
     clear: function () {
-        clearArray(this);
-
+        while (this.length) {
+            this.pop();
+        }
     },
 
     pushUnique: function (value) {
@@ -434,14 +349,6 @@ exports.tryJsonParse = function (value) {
 };
 
 extendArrayPrototype();
-
-exports.forcePrototype = function (base, data) {
-    var result = Object.create(base.prototype);
-    for (var key in data) {
-        result[key] = data[key];
-    }
-    return result;
-};
 
 exports.isHeroku = function () {
     for (var key in HEROKU_ENVIRONMENT) {
@@ -662,38 +569,11 @@ exports.createDateMatcher = function (config) {
     };
 };
 
-exports.promiseFinally = function (callback) {
-    return function (promise) {
-        return promise.then(result => {
-            var cbResult = callback();
-            return cbResult instanceof Promise ? cbResult.then(() => result) : result;
-        }, error => {
-            var cbResult = callback();
-            if (cbResult instanceof Promise) {
-                return cbResult.then(() => {
-                    throw error;
-                });
-            }
-            throw error;
-        });
-    };
-};
-
 const pause = (timeout, value) => new Promise(resolve => setTimeout(() => resolve(value), normalizeInteger(timeout)));
 
 exports.pause = pause;
 
 exports.cachify = cachify;
-
-exports.promisify = function (callable) {
-    return function (...params) {
-        return new Promise((resolve, reject) => {
-            params.push((error, result) => error ? reject(error) : resolve(result));
-            callable.apply(this, params);
-        });
-
-    };
-};
 
 const validateString = exports.validateString = value => {
     if (typeof value !== 'string' || value.length < 1) {
@@ -807,27 +687,6 @@ exports.getGlobal = () => {
 };
 
 exports.round = (value, factor) => factor ? Math.round(value * factor) / factor : Math.round(value);
-
-exports.coalesce = function (array) {
-    for (const v of Array.isArray(array) ? array : arguments) {
-        if (!isEmptyValue(v)) {
-            return v;
-        }
-    }
-};
-
-const extendWithEnvironmentVariables = exports.extendWithEnvironmentVariables = obj => {
-    if (typeof obj === 'object') {
-        const { _envar: value } = obj;
-        if (value !== undefined) {
-            return getEager(process.env, validateString(value));
-        }
-        for (const key in obj) {
-            obj[key] = extendWithEnvironmentVariables(obj[key]);
-        }
-    }
-    return obj;
-};
 
 exports.isDisabled = ({ enabled }) => enabled !== undefined && !toBoolean(enabled);
 
