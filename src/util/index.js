@@ -80,7 +80,7 @@ const isEmpty = object => {
 
 exports.isEmpty = isEmpty;
 
-exports.getValues = Object.values;
+exports.getValues = object => Object.values(object);
 
 function demandDeepValue(object, keys) {
     function goDeeper(key) {
