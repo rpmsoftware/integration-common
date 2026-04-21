@@ -1,1 +1,1 @@
-module.exports = require('./sendgrid.mts');
+module.exports = require('./sendgrid.mjs');

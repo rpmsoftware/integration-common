@@ -1,4 +1,4 @@
-import { SendGridAPI, type SendMailConfig, type ApiConfig } from '../../sendgrid-api.mts';
+import { SendGridAPI, type SendMailConfig, type ApiConfig } from '../../sendgrid-api.mjs';
 import Debug from 'debug';
 const debug = Debug('rpm:sendgrid');
 
