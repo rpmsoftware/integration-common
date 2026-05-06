@@ -1,4 +1,4 @@
-const { toArray } = require('../util');
+const { toArray } = require('../util/index.mjs');
 
 const EMAIL_PATTERN = /(^\s*(\S.*\S)\s*<\s*([\w.]+@[\w.]+)\s*>\s*$)|(^\s*([\w.]+@[\w.]+)\s*$)/;
 

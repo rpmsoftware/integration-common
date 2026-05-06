@@ -1,7 +1,5 @@
-/* global process */
-
 const { Client } = require('memjs');
-const { validateString } = require('../util');
+const { validateString } = require('../util/index.mjs');
 
 class MemJsClient extends require('./common').Store {
 

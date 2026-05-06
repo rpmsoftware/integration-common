@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "8.2.4",
+    "version": "8.3.0",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dist"
@@ -14,7 +14,7 @@
         "./sendemail": "./dist/sendemail/index.js",
         "./store": "./dist/store/index.js",
         "./global-instance": "./dist/helpers/global-instance/index.js",
-        "./util": "./dist/util/index.js"
+        "./util": "./dist/util.mjs"
     },
     "license": "ISC",
     "private": true,

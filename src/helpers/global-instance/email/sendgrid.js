@@ -1,5 +1,5 @@
 const { MailService } = require('@sendgrid/mail');
-const { validateString, toBase64, toBoolean, toArray } = require('../../../util');
+const { validateString, toBase64, toBoolean, toArray } = require('../../../util/index.mjs');
 
 const normalize = eml => {
     let { name, address: email } = typeof eml === 'string' ? { address: eml } : eml;
