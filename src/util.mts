@@ -11,6 +11,12 @@ type Cache<T> = {
     value?: T
 };
 
+Object.assign(String.prototype, {
+    ensureRight: function (this: string, right: string) {
+        return this.endsWith(right) ? this : this + right;
+    }
+});
+
 export const cachify = <T,>(callback: () => T | undefined, secTimeout?: number) => {
     let cache: Cache<T> | undefined;
     secTimeout = secTimeout && secTimeout > 0 ? secTimeout * 1000 : 0;
