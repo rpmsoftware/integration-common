@@ -1,4 +1,4 @@
-const { getGlobal, getEager } = require('../../util/index.mjs');
+const { getGlobal, getEager } = require('../../util.mjs');
 
 const PROP_INSTANCES = Symbol();
 

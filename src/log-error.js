@@ -1,3 +1,3 @@
 module.exports = config => config?.notifier ?
     require('./sendemail').createErrorNotifier(config.notifier) :
-    require('./util/index.mjs').logErrorStack;
+    require('./util.mjs').logErrorStack;

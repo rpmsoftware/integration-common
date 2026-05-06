@@ -1,4 +1,4 @@
-let { readConfig, validateString } = require('../util/index.mjs');
+let { readConfig, validateString } = require('../util.mjs');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const client = new SecretsManagerClient();

@@ -1,5 +1,5 @@
 const { Client } = require('memjs');
-const { validateString } = require('../util/index.mjs');
+const { validateString } = require('../util.mjs');
 
 class MemJsClient extends require('./common').Store {
 

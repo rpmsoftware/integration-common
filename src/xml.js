@@ -1,4 +1,4 @@
-const rpmUtil = require('./util/index.mjs');
+const rpmUtil = require('./util.mjs');
 const parse = rpmUtil.promisify(require('xml2js').parseString);
 
 const NAMESPACE_PREFIX = exports.NAMESPACE_PREFIX = 'xmlns';

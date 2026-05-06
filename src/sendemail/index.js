@@ -1,4 +1,4 @@
-const { logErrorStack, getEager, getGlobal } = require('../util/index.mjs');
+const { logErrorStack, getEager, getGlobal } = require('../util.mjs');
 const { format } = require('util');
 
 const createErrorNotifier = configOrSender => {
