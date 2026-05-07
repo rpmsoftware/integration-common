@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "8.3.4",
+    "version": "8.3.5",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dist"
@@ -28,6 +28,7 @@
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
-        "@types/debug": "^4.1.13"
+        "@types/debug": "^4.1.13",
+        "@aws-sdk/client-secrets-manager": "^3.x.x"
     }
 }
