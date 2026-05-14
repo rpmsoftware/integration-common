@@ -135,7 +135,7 @@ export const validateString = (value: any) => {
     return value;
 };
 
-export const toMoment = (value: any, validate: boolean) => {
+export const toMoment = (value: any, validate: boolean): moment.Dayjs => {
     value = moment.isDayjs(value) ? value : moment(value);
     validate && assert(value.isValid());
     return value;
