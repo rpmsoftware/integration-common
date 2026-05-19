@@ -11,6 +11,16 @@ type Cache<T> = {
     value?: T
 };
 
+declare global {
+    interface String {
+        ensureRight(right: string): string;
+    }
+    interface Array<T> {
+        toObject(property: string): Record<string, T>
+        toSet(): Array<T>
+    }
+};
+
 Object.assign(String.prototype, {
     ensureRight: function (this: string, right: string) {
         return this.endsWith(right) ? this : this + right;
@@ -110,7 +120,7 @@ export const getValues = (obj: object) => Object.values(obj);
 
 export const throwError = (message: any, name?: string, data?: any): never => {
     const error = new Error('' + message);
-    if (typeof name !== 'string') {
+    if (typeof name === 'object') {
         data = name;
         name = undefined;
     }
@@ -135,7 +145,7 @@ export const validateString = (value: any) => {
     return value;
 };
 
-export const toMoment = (value: any, validate: boolean): moment.Dayjs => {
+export const toMoment = (value: any, validate?: boolean): moment.Dayjs => {
     value = moment.isDayjs(value) ? value : moment(value);
     validate && assert(value.isValid());
     return value;
