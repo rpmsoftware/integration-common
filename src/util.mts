@@ -16,8 +16,10 @@ declare global {
         ensureRight(right: string): string;
     }
     interface Array<T> {
-        toObject(property: string): Record<string, T>
-        toSet(): Array<T>
+        toObject: typeof ARRAY_EXTRAS.toObject;
+        toSet: typeof ARRAY_EXTRAS.toSet;
+        demand: typeof ARRAY_EXTRAS.demand<T>;
+        demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
     }
 };
 
@@ -557,7 +559,7 @@ export const getEager = (object: HashMap, id: string, error?: string) => {
     return result;
 }
 
-function demandArrayValue(this: any[], ...args: Parameters<typeof Array.prototype.find>) {
+function demandArrayValue<T>(this: T[], ...args: Parameters<typeof Array.prototype.find>) {
     const result = this.find(...args);
     if (result === undefined) {
         throw new TypeError('Array element not found');
@@ -608,7 +610,8 @@ function arrayGroup(this: any[], aggrProp: string | symbol, groupProps: string |
     return Object.values(result);
 }
 
-Object.assign(Array.prototype, {
+
+const ARRAY_EXTRAS = {
     demandIndexOf: function (this: any[], element: any) {
         const result = this.indexOf(element);
         if (result < 0) {
@@ -702,7 +705,9 @@ Object.assign(Array.prototype, {
         return result;
     }
 
-});
+};
+
+Object.assign(Array.prototype, ARRAY_EXTRAS);
 
 const PROP_AGGREGATE = Symbol();
 
