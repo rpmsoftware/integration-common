@@ -5,3 +5,4 @@ node_modules
 *.csv
 probe*
 temp*
+dist
