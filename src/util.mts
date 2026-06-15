@@ -17,7 +17,6 @@ declare global {
     }
     interface Array<T> {
         toObject: typeof ARRAY_EXTRAS.toObject;
-        toSet: typeof ARRAY_EXTRAS.toSet;
         demand: typeof ARRAY_EXTRAS.demand<T>;
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
     }
@@ -688,22 +687,6 @@ const ARRAY_EXTRAS = {
     aggregateMerge: arrayAggregateMerge,
 
     group: arrayGroup,
-
-    toSet: function (this: any[]) {
-        const result = [];
-        for (let ii = 0; ii < this.length; ii++) {
-            const element = this[ii];
-            let duplicate;
-            for (let jj = ii + 1; jj < this.length; jj++) {
-                duplicate = element === this[jj];
-                if (duplicate) {
-                    break;
-                }
-            }
-            !duplicate && result.push(element);
-        }
-        return result;
-    }
 
 };
 
