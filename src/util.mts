@@ -19,6 +19,7 @@ declare global {
         toObject: typeof ARRAY_EXTRAS.toObject;
         demand: typeof ARRAY_EXTRAS.demand<T>;
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
+        shuffle: typeof ARRAY_EXTRAS.shuffle;
     }
 };
 
