@@ -279,6 +279,9 @@ export const singleRun = (callback: (stop?: () => void) => any) => {
     };
 };
 
+export const toDate = (date: Date | string | number) =>
+    date instanceof Date ? date : new Date(date);
+
 export function normalizeDate(date: any) {
     let result;
     if (date instanceof Date) {
