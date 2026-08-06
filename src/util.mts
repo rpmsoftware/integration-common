@@ -121,7 +121,7 @@ export const isEmpty = (obj: object | any[]) => {
 export const getValues = (obj: object) => Object.values(obj);
 
 export const throwError = (message: any, name?: string, data?: any): never => {
-    const error = new Error('' + message);
+    const error = message instanceof Error ? message : new Error('' + message);
     if (typeof name === 'object') {
         data = name;
         name = undefined;
