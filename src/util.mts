@@ -356,7 +356,7 @@ function fetchAndValidate(...args: Parameters<typeof fetch>) {
 }
 export { fetchAndValidate as fetch };
 
-const GLOBAL: HashMap = {};
+const GLOBAL: THashMap = {};
 export const getGlobal = () => GLOBAL;
 
 
@@ -508,7 +508,7 @@ export const tryJsonParse = (value: any) => {
 
 
 export const demandDeepValue = (obj: any, keys: string | string[]) => {
-    const goDeeper = (key: string | HashMap) => {
+    const goDeeper = (key: string | THashMap) => {
         if (typeof obj !== 'object') {
             throw new TypeError('No property: ' + JSON.stringify(key));
         }
@@ -544,7 +544,7 @@ export const getDeepValue = (...args: Parameters<typeof demandDeepValue>) => {
     }
 }
 
-export const getOrCreate = (object: HashMap, key: string, defaultValue?: any) => {
+export const getOrCreate = (object: THashMap, key: string, defaultValue?: any) => {
     let result = object[key];
     if (result === undefined && defaultValue !== undefined) {
         result = object[key] = defaultValue;
@@ -552,7 +552,7 @@ export const getOrCreate = (object: HashMap, key: string, defaultValue?: any) =>
     return result;
 };
 
-export const getEager = (object: HashMap, id: string, error?: string) => {
+export const getEager = (object: THashMap, id: string, error?: string) => {
     const result = object[id];
     result === undefined && throwError(
         error || `Property "${id}" not found in object: ${JSON.stringify(object)}`,
@@ -570,7 +570,7 @@ function demandArrayValue<T>(this: T[], ...args: Parameters<typeof Array.prototy
     return result;
 };
 
-type HashMap = Record<string, any>;
+type THashMap<T = any> = Record<string, T>;
 
 function arrayAggregate(this: any[], aggrProp: string, reducer: () => any, groupProps: string | string[]) {
     const result = arrayGroup.call(this, aggrProp, groupProps);
@@ -595,9 +595,9 @@ function arrayGroup(this: any[], aggrProp: string | symbol, groupProps: string |
         assert.strictEqual(typeof p, 'string')
         assert.notStrictEqual(p, aggrProp);
     });
-    const result: HashMap = {};
+    const result: THashMap = {};
     this.forEach(e => {
-        const groupValues: HashMap = {};
+        const groupValues: THashMap = {};
         const key1 = groupProps.map(p => {
             const v = groupValues[p] = e[p];
             return isEmptyValue(v) ? '' : v;
@@ -653,7 +653,7 @@ const ARRAY_EXTRAS = {
     demand: demandArrayValue,
 
     toObject: function <T>(this: T[], keyProperty?: string | string[] | ((element: T) => unknown)) {
-        const result: HashMap = {};
+        const result: THashMap<T> = {};
         const getKey = keyProperty ?
             (typeof keyProperty === 'function' ?
                 (element: T) => keyProperty(element) :
