@@ -16,7 +16,7 @@ declare global {
         ensureRight(right: string): string;
     }
     interface Array<T> {
-        toObject: typeof ARRAY_EXTRAS.toObject;
+        toObject: typeof ARRAY_EXTRAS.toObject<T>;
         demand: typeof ARRAY_EXTRAS.demand<T>;
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
         shuffle: typeof ARRAY_EXTRAS.shuffle;
@@ -652,16 +652,18 @@ const ARRAY_EXTRAS = {
 
     demand: demandArrayValue,
 
-    toObject: function (this: any[], keyProperty: string) {
+    toObject: function <T>(this: T[], keyProperty?: string | string[] | ((element: T) => unknown)) {
         const result: HashMap = {};
+        const getKey = keyProperty ?
+            (typeof keyProperty === 'function' ?
+                (element: T) => keyProperty(element) :
+                (element: T) => getDeepValue(element, keyProperty)
+            ) :
+            (element: unknown) => element;
         this.forEach(element => {
-            const key = keyProperty === undefined ? element : getDeepValue(element, keyProperty);
-            if (key === undefined) {
-                throw Error('Property cannot be empty: ' + keyProperty);
-            }
-            if (result[key]) {
-                throw Error('Duplicate key property value: ' + key);
-            }
+            const key = getKey(element);
+            key === undefined && throwError('Property cannot be empty', undefined, { element });
+            result[key] && throwError(`Duplicate key property value: "${key}"`, undefined, { element });
             result[key] = element;
         });
         return result;
