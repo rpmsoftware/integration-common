@@ -570,7 +570,7 @@ function demandArrayValue<T>(this: T[], ...args: Parameters<typeof Array.prototy
     return result;
 };
 
-type THashMap<T = any> = Record<string, T>;
+export type THashMap<T = any> = Record<string, T>;
 
 function arrayAggregate(this: any[], aggrProp: string, reducer: () => any, groupProps: string | string[]) {
     const result = arrayGroup.call(this, aggrProp, groupProps);

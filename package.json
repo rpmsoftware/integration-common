@@ -1,7 +1,7 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "8.3.14",
+    "version": "8.3.15",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dist"
