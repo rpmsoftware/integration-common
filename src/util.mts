@@ -428,7 +428,7 @@ export const createParallelRunner = (parallelRequests: number = PARALLEL_REQUEST
     assert(perMilliseconds >= 0);
     assert(parallelRequests > 0);
 
-    let queue = [] as (() => any)[];
+    const queue = [] as (() => Promise<void>)[];
     const slots = [] as { available: boolean, lastUsed?: number }[];
 
     let running = false;
@@ -463,14 +463,14 @@ export const createParallelRunner = (parallelRequests: number = PARALLEL_REQUEST
         running = false;
     };
 
-    return (callback: () => any) => {
+    return (callback: () => unknown) => {
         assert.strictEqual(typeof callback, 'function');
         return new Promise((resolve, reject) => push(async () => {
             try {
                 resolve(await callback());
             } catch (error) {
-                queue = [];
                 reject(error);
+                throw error;
             }
         }));
     };
@@ -480,6 +480,47 @@ const HEROKU_ENVIRONMENT: Record<string, RegExp | string> = {
     DYNO: /^web\.\d+$/,
     PORT: /^\d+$/,
     NODE_HOME: '/app/.heroku/node',
+};
+
+
+export const createBulkParallelRunner = (parallelRequests: number = PARALLEL_REQUESTS, perMilliseconds: number = 0) => {
+    parallelRequests = +parallelRequests;
+    perMilliseconds = +perMilliseconds;
+
+    assert(perMilliseconds >= 0);
+    assert(parallelRequests > 0);
+
+    let firstFinished = 0;
+    let lastFinished = 0;
+
+    return async (callbacks: (() => void)[]) => {
+        if (callbacks.length < 1) {
+            return;
+        }
+        const msToWait = perMilliseconds - (Date.now() - lastFinished);
+        msToWait > 0 && await pause(msToWait);
+        lastFinished = 0;
+
+        let promises = [] as Promise<void>[];
+
+        const flush = async () => {
+            await Promise.all(promises);
+            promises = [];
+            const msToWait = perMilliseconds - (lastFinished - firstFinished);
+            lastFinished = firstFinished = 0;
+            msToWait > 0 && await pause(msToWait);
+        };
+        for (const cb of callbacks) {
+            promises.push(Promise.resolve(cb()).then(() => {
+                const finished = Date.now();
+                firstFinished > 0 || (firstFinished = finished);
+                finished > lastFinished && (lastFinished = finished);
+            }));
+            promises.length >= parallelRequests && await flush();
+        }
+        await Promise.all(promises);
+        firstFinished = 0;
+    };
 };
 
 
