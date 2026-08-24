@@ -21,7 +21,19 @@ declare global {
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
         shuffle: typeof ARRAY_EXTRAS.shuffle;
     }
+    interface Date {
+        toLocalIsoString: typeof toLocalIsoString;
+    }
 };
+
+export const ISO_DATE_FORMAT = 'YYYY-MM-DD';
+export const ISO_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+function toLocalIsoString(this: Date, dateOnly?: boolean) {
+    return moment(this).format(dateOnly ? ISO_DATE_FORMAT : ISO_DATE_TIME_FORMAT);
+}
+
+Date.prototype.toLocalIsoString = toLocalIsoString;
 
 Object.assign(String.prototype, {
     ensureRight: function (this: string, right: string) {
