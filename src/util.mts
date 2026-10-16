@@ -17,7 +17,7 @@ declare global {
     }
     interface Array<T> {
         toObject: typeof ARRAY_EXTRAS.toObject<T>;
-        demand: typeof ARRAY_EXTRAS.demand<T>;
+        demand: typeof demandArrayValue<T>;
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
         shuffle: typeof ARRAY_EXTRAS.shuffle;
     }
@@ -568,7 +568,7 @@ export const demandDeepValue = (obj: any, keys: string | string[]) => {
         if (typeof key === 'object') {
             assert(Array.isArray(obj));
             assert(!isEmpty(key));
-            obj = demandArrayValue.call(obj, e => {
+            obj = obj.demand(e => {
                 for (const k in key) {
                     if (e[k] !== key[k]) {
                         return false;
@@ -615,13 +615,13 @@ export const getEager = (object: THashMap, id: string, error?: string) => {
     return result;
 }
 
-function demandArrayValue<T>(this: T[], ...args: Parameters<typeof Array.prototype.find>) {
-    const result = this.find(...args);
+function demandArrayValue<T>(this: T[], predicate: (value: T, index: number, obj: T[]) => boolean) {
+    const result = this.find(predicate) as T;
     if (result === undefined) {
         throw new TypeError('Array element not found');
     }
     return result;
-};
+}
 
 export type THashMap<T = any> = Record<string, T>;
 
