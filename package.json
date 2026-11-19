@@ -1,13 +1,14 @@
 {
     "name": "integration-common",
     "description": "RPM common libraries",
-    "version": "9.0.0",
+    "version": "9.0.1",
     "author": "Dmitriy Serdyukov",
     "files": [
         "dist"
     ],
     "exports": {
         "./aws": "./dist/aws/index.mjs",
+        "./sendmail": "./dist/sendmail/index.mjs",
         "./*": "./dist/*.mjs"
     },
     "license": "ISC",
@@ -23,6 +24,7 @@
     "devDependencies": {
         "@types/node": "^26.x.x",
         "@types/debug": "^4.x.x",
-        "@aws-sdk/client-secrets-manager": "^3.x.x"
+        "@aws-sdk/client-secrets-manager": "^3.x.x",
+        "@aws-sdk/client-lambda": "^3.x.x"
     }
 }
