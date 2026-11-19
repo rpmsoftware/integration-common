@@ -1,4 +1,4 @@
-const assert = require('assert');
+import assert from 'assert';
 
 const DELIMITER = ',';
 
@@ -10,7 +10,7 @@ const getKey = (id, params) => {
     return id + '(' + params;
 };
 
-module.exports = class {
+export default class {
 
     constructor() {
         this.cache = {};
@@ -35,7 +35,7 @@ module.exports = class {
     }
 
     cachify(f, id) {
-        assert.equal(typeof f, 'function');
+        assert.strictEqual(typeof f, 'function');
         id = id || f.name;
         assert(id);
         const self = this;

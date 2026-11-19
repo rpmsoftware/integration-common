@@ -1,4 +1,4 @@
-class Store {
+export class Store {
     set(key, val) {
         return this._set(key, val ? JSON.stringify(val) : undefined);
     }
@@ -13,4 +13,3 @@ class Store {
     close() { }
 
 }
-exports.Store = Store;

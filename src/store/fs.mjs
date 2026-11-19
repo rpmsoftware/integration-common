@@ -1,42 +1,43 @@
-const fs = require('fs');
-const { join } = require('path');
-const { homedir } = require('os');
-const format = require('util').format.bind(undefined, '.keyvaluestore_%s');
-const PATTERN = /^\.keyvaluestore_.+$/;
+import { statSync, mkdirSync, writeFileSync, unlinkSync, readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
+import { Store } from './common.mjs';
+import { format } from 'util';
 
+const PATTERN = /^\.keyvaluestore_.+$/;
 const ENCODING = 'utf8';
 const DEFAULT_DIR = '.keyvaluestore';
 
-class FsClient extends require('./common').Store {
+class FsClient extends Store {
 
     constructor(dir) {
         super();
         dir = dir || join(homedir(), DEFAULT_DIR);
         try {
-            if (!fs.statSync(dir).isDirectory()) {
+            if (!statSync(dir).isDirectory()) {
                 throw new Error(`"${dir}" has to be a directory`);
             }
         } catch (err) {
             if (err.code !== 'ENOENT') {
                 throw err;
             }
-            fs.mkdirSync(dir);
+            mkdirSync(dir);
         }
         this.dir = dir;
     }
 
     getFileName(key) {
-        return join(this.dir, format(key));
+        return join(this.dir, format('.keyvaluestore_%s', key));
     }
 
     _set(key, val) {
         const path = this.getFileName(key);
-        val ? fs.writeFileSync(path, val, ENCODING) : fs.unlinkSync(path);
+        val ? writeFileSync(path, val, ENCODING) : unlinkSync(path);
     }
 
     _get(key) {
         try {
-            return fs.readFileSync(this.getFileName(key), ENCODING);
+            return readFileSync(this.getFileName(key), ENCODING);
         } catch (err) {
             if (err.code !== 'ENOENT') {
                 throw err;
@@ -45,10 +46,10 @@ class FsClient extends require('./common').Store {
     }
 
     flush() {
-        fs.readdirSync(this.dir).forEach(f => PATTERN.test(f) && fs.unlinkSync(join(this.dir, f)));
+        readdirSync(this.dir).forEach(f => PATTERN.test(f) && unlinkSync(join(this.dir, f)));
     }
 }
 
-module.exports = function ({ dir }) {
+export default function ({ dir }) {
     return new FsClient(dir);
 };

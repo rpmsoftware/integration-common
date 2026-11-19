@@ -1,7 +1,8 @@
-const { Client } = require('memjs');
-const { validateString } = require('../util.mjs');
+import { Client } from 'memjs';
+import { validateString } from '../util.mjs';
+import { Store } from './common.mjs';
 
-class MemJsClient extends require('./common').Store {
+class MemJsClient extends Store {
 
     constructor(conf) {
         super();
@@ -9,11 +10,13 @@ class MemJsClient extends require('./common').Store {
         if (servers) {
             this.core = Client.create(validateString(servers), options ? Object.assign({}, options) : undefined);
         } else {
-            this.core = process.env.MEMCACHEDCLOUD_SERVERS ?
-                Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
-                    username: process.env.MEMCACHEDCLOUD_USERNAME,
-                    password: process.env.MEMCACHEDCLOUD_PASSWORD
-                }) :
+            const {
+                MEMCACHEDCLOUD_SERVERS: servers,
+                MEMCACHEDCLOUD_USERNAME: username,
+                MEMCACHEDCLOUD_PASSWORD: password
+            } = process.env;
+            this.core = servers ?
+                Client.create(servers, { username, password }) :
                 Client.create();
         }
     }
@@ -23,8 +26,7 @@ class MemJsClient extends require('./common').Store {
     }
 
     async _get(key) {
-        const result = await this.core.get(key);
-        return result.value;
+        return (await this.core.get(key)).value;
     }
 
     flush() {
@@ -36,6 +38,6 @@ class MemJsClient extends require('./common').Store {
     }
 }
 
-module.exports = function (conf) {
+export default function (conf) {
     return new MemJsClient(conf);
 };

@@ -1,24 +1,11 @@
-import { throwError, fetch, toArray } from './util.mjs';
+import { throwError, fetch, toArray } from '../util.mjs';
+import Debug from 'debug';
+import { EmailAddress, SendMailConfig } from './index.mjs';
 
 const BASE_URL = 'https://api.sendgrid.com/';
 
 export type ApiConfig = {
     apiKey: string
-};
-
-type EmailAddress = {
-    name?: string,
-    address: string
-} | string;
-
-export type SendMailConfig = {
-    fromEmail: EmailAddress,
-    toEmails: EmailAddress[] | EmailAddress,
-    subject: string,
-    messageBody?: string,
-    replyToEmail?: EmailAddress,
-    ccEmails?: EmailAddress[] | EmailAddress,
-    html?: boolean
 };
 
 const SendGridErrorType = 'SendGridApiError';
@@ -82,4 +69,20 @@ export class SendGridAPI {
     }
 }
 
-export default SendGridAPI;
+const debug = Debug('rpm:sendgrid');
+
+type PartialConfig = Partial<SendMailConfig>;
+
+export type SenderConfig = PartialConfig & ApiConfig;
+
+export const createMessageSender = (globalCfg: SenderConfig) => {
+    globalCfg = Object.assign({}, globalCfg);
+    const { apiKey } = globalCfg as ApiConfig;
+    delete (globalCfg as any).apiKey;
+    const sgMail = new SendGridAPI({ apiKey });
+    return (cfg?: PartialConfig) => {
+        cfg = cfg ? Object.assign({}, globalCfg, cfg) : globalCfg;
+        debug('Sending email: %j', cfg);
+        return sgMail.sendMail(cfg as SendMailConfig);
+    };
+};

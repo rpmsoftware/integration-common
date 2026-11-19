@@ -1,11 +1,12 @@
-const rpmUtil = require('./util.mjs');
-const parse = rpmUtil.promisify(require('xml2js').parseString);
+import { promisify } from './util.mjs';
+import { parseString } from 'xml2js';
+const prs = promisify(parseString);
 
-const NAMESPACE_PREFIX = exports.NAMESPACE_PREFIX = 'xmlns';
+export const NAMESPACE_PREFIX = 'xmlns';
 const NAMESPACE_PATTERN = new RegExp(`^${NAMESPACE_PREFIX}:(\\w+)$`);
-const PROP_ATTRIBUTES = exports.PROP_ATTRIBUTES = '$';
+export const PROP_ATTRIBUTES = '$';
 
-exports.parse = function (xml) {
+export function parse(xml) {
     const namespaces = [];
     function removeNamespaces(tagName) {
         for (let { name } of namespaces) {
@@ -15,7 +16,7 @@ exports.parse = function (xml) {
         }
         return tagName;
     }
-    return parse(xml, {
+    return prs(xml, {
         explicitArray: false,
         attrValueProcessors: [function (value, name) {
             let namespace;
@@ -28,11 +29,10 @@ exports.parse = function (xml) {
         }],
         attrNameProcessors: [removeNamespaces],
         tagNameProcessors: [removeNamespaces],
-
     });
 };
 
-exports.demandNamespace = function (obj, namespace) {
+export function demandNamespace(obj, namespace) {
     obj = obj[PROP_ATTRIBUTES] || obj;
     for (let key in obj) {
         if (obj[key] === namespace) {
@@ -43,4 +43,4 @@ exports.demandNamespace = function (obj, namespace) {
         }
     }
     throw new Error(`Namespace not found: "${namespace}"`);
-};
+}

@@ -1,8 +1,9 @@
 import assert from 'assert';
-import { readFileSync, writeFile } from 'fs';
+import { readFileSync } from 'fs';
 import moment from 'dayjs';
 import { unzipSync } from 'zlib';
 import Debug from 'debug';
+import { readFile, writeFile } from 'fs/promises';
 const debug = Debug('rpm:util');
 
 export const toArray = <T,>(x?: T[] | T): T[] => Array.isArray(x) ? x : (x ? [x] : []);
@@ -20,6 +21,7 @@ declare global {
         demand: typeof demandArrayValue<T>;
         demandIndexOf: typeof ARRAY_EXTRAS.demandIndexOf;
         shuffle: typeof ARRAY_EXTRAS.shuffle;
+        findDuplicates: typeof ARRAY_EXTRAS.findDuplicates;
     }
     interface Date {
         toLocalIsoString: typeof toLocalIsoString;
@@ -242,34 +244,6 @@ export const defineStandardProperty = (
         enumerable: true,
         configurable: true
     });
-
-
-export const createObjectSerializer = (object: any, fileName: string) => {
-    let running = false;
-    let triggered = false;
-
-    const doSave = () => {
-        triggered = false;
-        debug('Saving state');
-        writeFile(fileName, JSON.stringify(object), err => {
-            running = false;
-            if (err) {
-                console.error(err);
-            }
-            if (triggered) {
-                doSave();
-            }
-        });
-    };
-
-    return () => {
-        triggered = true;
-        if (!running) {
-            running = true;
-            doSave();
-        }
-    };
-}
 
 export const singleRun = (callback: (stop?: () => void) => any) => {
     let running = false;
@@ -747,9 +721,34 @@ const ARRAY_EXTRAS = {
 
     group: arrayGroup,
 
+    findDuplicates: function <T>(this: T[], getKey: (obj: T) => string) {
+        const duplicates: THashMap<T[]> = {};
+
+        this.forEach(e => {
+            const key = getKey(e);
+            (duplicates[key] || (duplicates[key] = [])).push(e);
+        });
+
+        for (const k in duplicates) {
+            duplicates[k].length > 1 || delete duplicates[k];
+        }
+
+        return duplicates;
+    }
+
 };
 
 Object.assign(Array.prototype, ARRAY_EXTRAS);
 
 const PROP_AGGREGATE = Symbol();
 
+export const readJsonFile = async (fileName: string, defaultValue: unknown) => readFile(fileName, 'utf-8').then(
+    data => (data && (data = data.trim())) ? JSON.parse(data) : defaultValue,
+    e => {
+        if (e.code !== 'ENOENT') throw e;
+        return defaultValue;
+    }
+);
+
+export const writeJsonFile = (fileName: string, data: unknown) =>
+    writeFile(fileName, data === undefined ? '' : JSON.stringify(data), 'utf-8');
