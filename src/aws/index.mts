@@ -26,9 +26,9 @@ type AwsSqsEvent = {
     }[];
 };
 
-export const unwrapSqsEvent = (event: AwsSqsEvent) => {
+export const unwrapSqsEvent = (event: THashMap, returnOriginal = false) => {
     try {
-        const { Records } = event;
+        const { Records } = event as AwsSqsEvent;
         assert(Array.isArray(Records));
         const result = Records.map(r => {
             assert.strictEqual(r.eventSource, 'aws:sqs');
@@ -37,6 +37,9 @@ export const unwrapSqsEvent = (event: AwsSqsEvent) => {
         });
         return result;
     } catch (cause) {
+        if (returnOriginal) {
+            return [event];
+        }
         throw new TypeError('Unsupported event: ' + JSON.stringify(event), { cause });
     }
 };
